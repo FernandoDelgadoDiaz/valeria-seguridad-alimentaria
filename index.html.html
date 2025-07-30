@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Valeria · Seguridad Alimentaria</title>
+
+  <!-- Iconos -->
+  <link rel="icon" href="favicon.jpg" type="image/jpeg">
+  <meta name="theme-color" content="#004080">
+
+  <style>
+    :root{
+      --azul:#004080;
+      --azul-claro:#cce5ff;
+      --gris-borde:#d9d9d9;
+      --fondo:#f5f6f8;
+      --blanco:#ffffff;
+      --texto:#222;
+    }
+    *{box-sizing:border-box}
+    html,body{
+      height:100%;
+      margin:0;
+      padding:0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
+      color:var(--texto);
+      background:var(--fondo);
+    }
+
+    /* Encabezado fijo tipo WhatsApp */
+    header{
+      position:fixed;
+      top:0; left:0; right:0;
+      height:60px;
+      background:var(--azul);
+      color:var(--blanco);
+      display:flex;
+      align-items:center;
+      padding:8px 12px;
+      gap:10px;
+      z-index:10;
+      box-shadow:0 2px 6px rgba(0,0,0,.08);
+    }
+    header img{
+      width:40px; height:40px; border-radius:50%;
+      object-fit:cover; cursor:pointer; user-select:none;
+      border:2px solid rgba(255,255,255,.25);
+    }
+    header .title{
+      display:flex; flex-direction:column; line-height:1.15;
+    }
+    header .name{font-weight:700}
+    header .sub{opacity:.85; font-size:.85rem}
+
+    /* Área de chat */
+    #chat{
+      position:relative;
+      margin-top:60px;         /* altura del header */
+      margin-bottom:70px;      /* altura del input */
+      padding:12px 12px 24px;
+      height:calc(100vh - 130px);
+      overflow-y:auto;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .message{
+      max-width:78%;
+      padding:10px 12px;
+      border-radius:14px;
+      line-height:1.45;
+      word-wrap:break-word;
+      white-space:pre-wrap;    /* respeta saltos de línea */
+      border:1px solid transparent;
+    }
+    .message.user{
+      align-self:flex-end;
+      background:var(--azul-claro);
+      border-color:#b7d4ff;
+    }
+    .message.bot{
+      align-self:flex-start;
+      background:var(--blanco);
+      border-color:var(--gris-borde);
+    }
+
+    /* Barra de entrada */
+    #input-area{
+      position:fixed;
+      left:0; right:0; bottom:0;
+      display:flex; align-items:flex-end; gap:8px;
+      padding:10px 12px;
+      background:var(--blanco);
+      border-top:1px solid var(--gris-borde);
+      z-index:10;
+    }
+    #message-input{
+      flex:1;
+      min-height:40px;
+      max-height:160px;
+      padding:10px 12px;
+      border:1px solid var(--gris-borde);
+      border-radius:18px;
+      outline:none;
+      resize:none;
+      overflow-y:auto;
+      font-size:1rem;
+    }
+    #send-button{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:44px; height:44px;
+      border:none; border-radius:50%;
+      background:var(--azul); color:#fff;
+      font-size:1.2rem; cursor:pointer;
+      transition:transform .05s ease;
+    }
+    #send-button:active{ transform:scale(.98) }
+
+    /* Modal perfil completo */
+    .modal{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.5);
+      display:none; align-items:center; justify-content:center;
+      z-index:20; padding:16px;
+    }
+    .modal.open{ display:flex; }
+    .modal-card{
+      background:#fff; border-radius:16px; width:min(520px, 92vw);
+      box-shadow:0 12px 32px rgba(0,0,0,.22);
+      overflow:hidden;
+      animation:pop .12s ease-out;
+    }
+    @keyframes pop{ from{ transform:scale(.98); opacity:.9 } to{ transform:scale(1); opacity:1 } }
+    .modal-img{
+      width:100%; height:auto; display:block; background:#fafafa;
+    }
+    .modal-body{
+      padding:12px 16px 16px;
+      text-align:center;
+    }
+    .modal-title{ font-weight:700; color:var(--azul); }
+    .modal-phrase{ margin-top:6px; font-size:.98rem }
+    .modal-close{
+      position:absolute; top:10px; right:14px;
+      background:transparent; color:#fff; border:none;
+      font-size:28px; cursor:pointer; line-height:1;
+    }
+
+    /* Mensaje de estado (errores, tips) */
+    .status{
+      align-self:center; opacity:.7; font-size:.9rem; margin:6px 0 10px;
+    }
+
+    /* Responsive pequeños ajustes */
+    @media (max-width:480px){
+      .message{ max-width:86% }
+      header .sub{ display:none } /* simplificar header en móvil */
+    }
+  </style>
+</head>
+<body>
+  <!-- Header fijo -->
+  <header>
+    <img id="avatarMini" src="valeria-mini.jpg" alt="Valeria (avatar)">
+    <div class="title">
+      <span class="name">Valeria · Seguridad Alimentaria</span>
+      <span class="sub">Especialista · CAA · BPM · Procedimientos internos</span>
+    </div>
+  </header>
+
+  <!-- Chat -->
+  <main id="chat" aria-live="polite" aria-label="Conversación"></main>
+
+  <!-- Barra de entrada -->
+  <form id="input-area" autocomplete="off">
+    <textarea id="message-input" placeholder="Mensaje" rows="1"></textarea>
+    <button type="submit" id="send-button" title="Enviar">➤</button>
+  </form>
+
+  <!-- Modal Perfil Completo -->
+  <div class="modal" id="profileModal" aria-hidden="true" role="dialog" aria-label="Perfil de Valeria">
+    <button class="modal-close" id="closeModal" aria-label="Cerrar">×</button>
+    <div class="modal-card">
+      <img src="valeria-full.jpg" alt="Valeria · Seguridad Alimentaria" class="modal-img">
+      <div class="modal-body">
+        <div class="modal-title">Valeria · Seguridad Alimentaria</div>
+        <div class="modal-phrase">🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Elementos
+    const chat = document.getElementById("chat");
+    const form = document.getElementById("input-area");
+    const input = document.getElementById("message-input");
+    const sendBtn = document.getElementById("send-button");
+
+    const modal = document.getElementById("profileModal");
+    const avatarMini = document.getElementById("avatarMini");
+    const closeModalBtn = document.getElementById("closeModal");
+
+    // Utilidades
+    const scrollChatToBottom = () => { chat.scrollTop = chat.scrollHeight; };
+
+    function addMessage(text, sender) {
+      const msg = document.createElement("div");
+      msg.className = `message ${sender}`;
+      // Seguridad: evitar inyección HTML
+      msg.textContent = text;
+      chat.appendChild(msg);
+      scrollChatToBottom();
+    }
+
+    function addStatus(text){
+      const s = document.createElement("div");
+      s.className = "status";
+      s.textContent = text;
+      chat.appendChild(s);
+      scrollChatToBottom();
+    }
+
+    // Entrada auto-expandible
+    input.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 160) + "px";
+    });
+
+    // Enviar con Enter (Shift+Enter hace salto de línea)
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    // Envío de mensajes
+    let sending = false;
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text || sending) return;
+
+      addMessage(text, "user");
+      input.value = "";
+      input.style.height = "40px";
+
+      sending = true;
+      sendBtn.disabled = true;
+
+      try {
+        const res = await fetch("/api/valeria", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text })
+        });
+
+        if (!res.ok) throw new Error("Respuesta no OK");
+
+        const data = await res.json();
+        addMessage(data.reply || "No encontré una respuesta en este momento.", "bot");
+      } catch (err) {
+        addStatus("⚠️ No pude conectar con el servidor. Verificá tu conexión o intentá de nuevo.");
+      } finally {
+        sending = false;
+        sendBtn.disabled = false;
+      }
+    });
+
+    // Modal de perfil
+    function openModal(){
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden","false");
+    }
+    function closeModal(){
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden","true");
+    }
+    avatarMini.addEventListener("click", openModal);
+    closeModalBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+    window.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeModal(); });
+
+    // Sin saludo automático: Valeria espera a que el usuario escriba.
+  </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+[
+  {
+    "id": "intro-rol-valeria",
+    "title": "Rol y tono de Valeria",
+    "source": "identidad-interna",
+    "tags": ["identidad", "rol", "tono"],
+    "content": "Sos Valeria, especialista en seguridad alimentaria (Lic. en Tecnología de los Alimentos). Comunicás en tono profesional, claro y pedagógico, usando términos del BPM y del Código Alimentario Argentino (CAA). Adaptás el lenguaje a Argentina (ej.: carne vacuna, freezer). Respondés con pasos concretos y, cuando corresponde, ofrecés procedimientos como documento adjunto (✔️)."
+  },
+  {
+    "id": "sani-200ppm",
+    "title": "Sanitizante en tienda",
+    "source": "norma-interna-sanitizante",
+    "tags": ["sanitizante", "amonio cuaternario", "J-512", "200 ppm"],
+    "content": "En el supermercado se usa amonio cuaternario/J-512 a 200 ppm como sanitizante. Preparación según indicación del fabricante. Verificar concentración con tiras reactivas o equipo de medición y registrar el resultado. Aplicar sobre superficie previamente limpia y enjuagada si corresponde; respetar tiempo de contacto indicado por el proveedor. No se utiliza lavandina en esta operación."
+  },
+  {
+    "id": "gpg007",
+    "title": "G-PG-007 · Medición de sanitizante",
+    "source": "procedimiento-interno",
+    "tags": ["G-PG-007", "medición", "registro"],
+    "content": "Procedimiento G-PG-007: medir concentración del sanitizante al inicio de cada turno y cuando se prepara una nueva dilución. Usar tiras reactivas o equipo calibrado; registrar fecha, hora, responsable, concentración medida y lote del producto químico. Si el valor difiere del objetivo (200 ppm), ajustar y volver a medir. Archivar registro según política documental."
+  },
+  {
+    "id": "rg01-suc-ml-002",
+    "title": "RG 01-SUC-ML-002 · Registro de sucursales",
+    "source": "registro-interno",
+    "tags": ["registro", "trazabilidad"],
+    "content": "Registro RG 01-SUC-ML-002: documenta mediciones, correcciones y verificaciones en sala y depósito. Debe completarse en el momento de la tarea, con firma del responsable y legible. Se conserva según período definido por la política de registros."
+  },
+  {
+    "id": "retiro-anticipado",
+    "title": "Retiro anticipado por vencimiento",
+    "source": "norma-interna-retirante",
+    "tags": ["vencimiento", "retiro", "política-interna"],
+    "content": "Criterio interno: productos masivos y congelados se retiran 10 días antes de su vencimiento. Productos perecederos se retiran 2 días antes. Registrar retiro, ubicación (cuarentena/merma) y destino según procedimiento vigente."
+  },
+  {
+    "id": "queso-fraccionado",
+    "title": "Procedimiento de fraccionado de quesos",
+    "source": "procedimiento-interno",
+    "tags": ["quesos", "fraccionado", "etiquetado"],
+    "content": "Fraccionado de quesos: trabajar en sector higienizado y con BPM. Identificar cada fracción con etiqueta interna que incluya: nombre del producto, marca, lote/partida si aplica, fecha de fraccionamiento, fecha de vencimiento o vida útil remanente, condiciones de conservación (0–4 °C), peso neto, responsable. Tapar/proteger la fracción; almacenar refrigerado separado de crudos. Ante consulta, ofrecer el Procedimiento de Fraccionado de Quesos (PDF) ✔️."
+  },
+  {
+    "id": "etiquetado-sobrantes-queso",
+    "title": "Etiquetado visual para fracciones sobrantes",
+    "source": "instructivo-interno",
+    "tags": ["etiqueta interna", "sobrantes", "quesos"],
+    "content": "Etiqueta visual (ejemplo): 'Producto: Queso Tybo', 'Lote: 24-07-TYB', 'Fraccionado: 28/07/2025', 'Vto interno: 04/08/2025', 'Conservación: 0–4 °C', 'Responsable: APELLIDO', 'Observaciones: fracción de horma'. Debe ser legible, adherida y resistente a humedad."
+  },
+  {
+    "id": "pollo",
+    "title": "Procedimiento de pollo",
+    "source": "procedimiento-interno",
+    "tags": ["pollo", "manipulación", "temperaturas"],
+    "content": "Recepción a 0–4 °C, verificar integridad de envases y fechas. Almacenamiento en cámaras exclusivas o sectorizado. Evitar goteos cruzados. Preparación con utensilios y tablas exclusivas; higiene de manos y cambio de guantes entre tareas. Cocción segura ≥74 °C en el centro del producto. Mantener BPM y registros."
+  },
+  {
+    "id": "carne-ovina",
+    "title": "Manejo de carne ovina",
+    "source": "procedimiento-interno",
+    "tags": ["carne ovina", "frío", "rotación"],
+    "content": "Recepción con control de temperatura 0–4 °C y documentación sanitaria. Almacenamiento por especie y corte, rotación FEFO. Evitar contacto con listos para consumo. Limpieza y desinfección del área según plan. Registrar no conformidades y acciones."
+  },
+  {
+    "id": "carnes-rojas",
+    "title": "Manejo de carnes rojas",
+    "source": "procedimiento-interno",
+    "tags": ["carne vacuna", "bpm", "fefo"],
+    "content": "Carnes rojas (carne vacuna): control de temperatura 0–4 °C, integridad, rotación FEFO, separación de crudos y listos para consumo. Uso de cuchillos/mesadas higienizados. Evitar re-congelado. Señalizar mermas y retiros anticipados según política."
+  },
+  {
+    "id": "milanesas",
+    "title": "Procedimiento de milanesas",
+    "source": "procedimiento-interno",
+    "tags": ["milanesas", "manipulación"],
+    "content": "Elaborar milanesas en área limpia; materia prima refrigerada; batido y pan rallado protegidos. Trazabilidad por lote de carne y de insumos. Conservar producto terminado a 0–4 °C si es para venta refrigerada; para cocción inmediata, mantener cadena de frío hasta el proceso térmico."
+  },
+  {
+    "id": "dulces",
+    "title": "Fraccionado de dulces",
+    "source": "procedimiento-interno",
+    "tags": ["dulces", "fraccionado", "etiquetado"],
+    "content": "Fraccionado de dulces: usar envases grado alimentario, identificar fracción con nombre, lote, fecha de fraccionamiento, vto interno y condiciones de conservación. Evitar contaminación cruzada con alérgenos; utensilios exclusivos."
+  },
+  {
+    "id": "plan-accion",
+    "title": "Plan de acción ante no conformidades",
+    "source": "plan-accion-interno",
+    "tags": ["no conformidades", "acciones", "5 porqués", "espina de pescado"],
+    "content": "Clasificar no conformidades: menor, mayor y crítica. Acciones inmediatas: contener el riesgo (retener producto, señalizar, corregir práctica). Acciones preventivas: analizar causa raíz (5 porqués, espina de pescado), definir responsables, plazos y verificación de eficacia. Documentar todo en el registro correspondiente."
+  },
+  {
+    "id": "no-conformidades",
+    "title": "Definiciones de no conformidades",
+    "source": "criterios-internos",
+    "tags": ["definiciones", "clasificación"],
+    "content": "Menor: desviación sin impacto directo en inocuidad (p.ej., rótulo interno incompleto). Mayor: potencial impacto si no se corrige (p.ej., almacenamiento inadecuado). Crítica: impacto directo/alto riesgo (p.ej., ruptura de cadena de frío en perecederos). Priorizar gestión de las críticas."
+  },
+  {
+    "id": "vida-util-post-apertura",
+    "title": "Vida útil referencial tras apertura",
+    "source": "criterio-general",
+    "tags": ["vida útil", "post apertura"],
+    "content": "Definir vida útil tras apertura según etiqueta del fabricante y/o procedimiento interno. Conservar a 0–4 °C si corresponde y rotular con 'Abrio:' y 'Consumir antes de:'. En caso de duda, aplicar criterio de prudencia y consultar al responsable de Calidad."
+  },
+  {
+    "id": "bpm-basicos",
+    "title": "BPM básicos de manipulación",
+    "source": "manual-bpm",
+    "tags": ["BPM", "higiene", "manos"],
+    "content": "Lavado de manos efectivo, uso de guantes cuando aplique, uniforme limpio, cabello recogido y barbijo según tarea. Separación de crudos y listos para consumo. Limpieza y desinfección planificadas. Control de plagas y gestión de residuos. Capacitación periódica al personal."
+  },
+  {
+    "id": "temperaturas-clave",
+    "title": "Rangos de temperatura de seguridad",
+    "source": "referencia-tecnica",
+    "tags": ["temperaturas", "cadena de frío"],
+    "content": "Refrigeración: 0–4 °C. Congelación: ≤ -18 °C. Exhibición en caliente: ≥ 60 °C. Cocción segura orientativa: pollo ≥ 74 °C, carne molida ≥ 70 °C. Usar termómetro calibrado, registrar y verificar."
+  },
+  {
+    "id": "documentos-m1-m3",
+    "title": "Documentos M1, M2 y M3",
+    "source": "documentación-interna",
+    "tags": ["M1", "M2", "M3"],
+    "content": "Documentos M1, M2 y M3: materiales de soporte para capacitación y verificación operativa. Contienen listas de chequeo, criterios visuales y ejemplos de buenas prácticas. Consultarlos cuando se requiera evidencia operativa para auditoría."
+  },
+  {
+    "id": "adjuntos-pdf",
+    "title": "Disponibilidad de adjuntos",
+    "source": "nota-operativa",
+    "tags": ["adjuntos", "PDF"],
+    "content": "Si el usuario solicita un procedimiento específico (p.ej., 'mostrame el procedimiento de queso fraccionado'), responder con el paso a paso y ofrecer el archivo PDF correspondiente (✔️). Si el adjunto no está disponible en el momento, indicar que se puede compartir a pedido del responsable."
+  },
+  {
+    "id": "terminologia-ar",
+    "title": "Terminología local (Argentina)",
+    "source": "estandar-lenguaje",
+    "tags": ["terminologia", "argentina"],
+    "content": "Usar términos locales: carne vacuna (no 'carne de res'), freezer, heladera, franco, medio franco. Mantener precisión técnica y claridad operativa."
+  }
+]
