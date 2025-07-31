@@ -3,85 +3,96 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Valeria · Seguridad Alimentaria</title>
+  <title>Valeria · Especialista en Seguridad Alimentaria</title>
   <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
   <link rel="icon" href="/valeria-mini.jpg" />
 
   <style>
+    /* ======== PALETA PROFESIONAL (CLARA) ======== */
     :root{
-      --bg:#0b1220;     /* fondo general oscuro */
-      --panel:#111827;  /* panel cards */
-      --muted:#94a3b8;  /* texto secundario */
-      --text:#e2e8f0;   /* texto principal */
-      --accent:#22c55e; /* verde acción */
-      --bubble-user:#1f2937;
-      --bubble-bot:#0ea5e9;
-      --bubble-bot-text:#041019;
-      --error:#ef4444;
-      --border:#1f2937;
+      --brand-bg: #f5f7fb;         /* fondo general (claro) */
+      --brand-card: #ffffff;       /* paneles/burbujas claras */
+      --brand-text: #0f172a;       /* texto principal */
+      --brand-muted:#64748b;       /* texto secundario */
+      --brand-border:#e5e7eb;      /* bordes suaves */
+      --brand-accent:#2563eb;      /* acento (azul) */
+      --bubble-user:#eaf2ff;       /* burbuja del usuario */
+      --bubble-bot:#f1f5ff;        /* burbuja de Valeria */
+      --bubble-bot-text:#0f172a;
+      --error:#dc2626;
     }
+
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0; background:linear-gradient(180deg,#071026, #0b1220 40%, #0b1220 100%);
-      color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      margin:0; background:var(--brand-bg); color:var(--brand-text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       display:flex; flex-direction:column;
     }
+
     header{
-      padding:14px 18px; border-bottom:1px solid var(--border);
-      display:flex; align-items:center; gap:12px; background:rgba(17,24,39,.7); backdrop-filter: blur(6px);
+      padding:14px 18px; border-bottom:1px solid var(--brand-border);
+      display:flex; align-items:center; gap:12px; background:#ffffffd9; backdrop-filter: blur(4px);
       position:sticky; top:0; z-index:10;
     }
-    header img{width:36px; height:36px; border-radius:10px; object-fit:cover}
-    header .title{font-weight:700; letter-spacing:.2px}
-    header .sub{color:var(--muted); font-size:13px}
+    header img{width:40px; height:40px; border-radius:10px; object-fit:cover}
+    header .title{font-weight:800; letter-spacing:.2px; font-size:16px}
+
     main{flex:1; display:flex; justify-content:center}
-    .wrap{width:100%; max-width:920px; padding:16px}
+    .wrap{width:100%; max-width:900px; padding:16px}
     .chat{
-      background:rgba(17,24,39,.55); border:1px solid var(--border); border-radius:16px; padding:12px;
+      background:var(--brand-card); border:1px solid var(--brand-border); border-radius:16px; padding:12px;
       min-height:65vh; display:flex; flex-direction:column; gap:10px;
+      box-shadow:0 8px 24px rgba(15, 23, 42, .04);
     }
     .msgs{flex:1; overflow:auto; display:flex; flex-direction:column; gap:12px; padding:8px}
     .row{display:flex; gap:8px; align-items:flex-end}
     .row.user{justify-content:flex-end}
     .bubble{
-      max-width:80%; padding:10px 12px; border-radius:14px; line-height:1.4; white-space:pre-wrap;
-      border:1px solid var(--border); word-wrap:break-word;
+      max-width:80%; padding:12px 14px; border-radius:14px; line-height:1.5; white-space:pre-wrap;
+      border:1px solid var(--brand-border); word-wrap:break-word; font-size:15px;
     }
     .user .bubble{background:var(--bubble-user)}
     .bot .bubble{background:var(--bubble-bot); color:var(--bubble-bot-text)}
-    .error .bubble{background:#7f1d1d; border-color:#ef4444}
-    .meta{font-size:12px; color:var(--muted); margin-top:2px}
+    .error .bubble{background:#ffe4e6; border-color:#fda4af}
+
     .typing{display:inline-block; min-width:46px}
-    .dot{display:inline-block; width:6px; height:6px; margin:0 2px; border-radius:999px; background:#cbd5e1; opacity:.35; animation:blink 1.3s infinite}
+    .dot{display:inline-block; width:6px; height:6px; margin:0 2px; border-radius:999px; background:#94a3b8; opacity:.35; animation:blink 1.3s infinite}
     .dot:nth-child(2){animation-delay:.2s}
     .dot:nth-child(3){animation-delay:.4s}
     @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
 
     .composer{
-      display:flex; gap:10px; padding:10px; border-top:1px solid var(--border);
-      background:rgba(17,24,39,.75); border-radius:12px; margin-top:8px;
+      display:flex; gap:10px; padding:10px; border-top:1px solid var(--brand-border);
+      background:#ffffff; border-radius:12px; margin-top:8px;
     }
     textarea{
       flex:1; resize:vertical; min-height:68px; max-height:200px; padding:12px; border-radius:10px;
-      border:1px solid var(--border); background:#0f172a; color:var(--text); font-size:15px;
+      border:1px solid var(--brand-border); background:#ffffff; color:var(--brand-text); font-size:15px;
     }
     button{
-      background:var(--accent); color:#041019; border:0; border-radius:10px; padding:12px 16px;
-      font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 0 0 0 rgba(34,197,94,.5); transition:.2s;
+      background:var(--brand-accent); color:#fff; border:0; border-radius:10px; padding:12px 16px;
+      font-size:15px; font-weight:700; cursor:pointer; transition:filter .2s ease;
     }
-    button:disabled{opacity:.6; cursor:not-allowed}
-    .tips{color:var(--muted); font-size:13px; margin-top:6px}
-    a{color:#93c5fd}
+    button:hover{ filter: brightness(1.05); }
+    button:disabled{opacity:.7; cursor:not-allowed}
+
+    .tips{color:var(--brand-muted); font-size:13px; margin-top:6px}
+    a{color:var(--brand-accent)}
+
+    .attach{
+      display:inline-flex; align-items:center; gap:8px; margin-top:10px;
+      background:#eff6ff; border:1px solid #cfe2ff; color:#0f172a; padding:8px 10px; border-radius:10px;
+      text-decoration:none; font-weight:600; font-size:14px;
+    }
+    .attach:hover{ background:#e7f0ff; }
+    .attach svg{ width:16px; height:16px; }
   </style>
 </head>
 <body>
   <header>
     <img src="/valeria-mini.jpg" alt="Valeria" onerror="this.style.display='none'">
-    <div>
-      <div class="title">Valeria · Seguridad Alimentaria (AR)</div>
-      <div class="sub">Preguntá sobre CAA, BPM, POES, rotulado interno, no conformidades…</div>
-    </div>
+    <div class="title">Valeria. Especialista en Seguridad Alimentaria</div>
   </header>
 
   <main>
@@ -93,13 +104,13 @@
           <textarea id="box" placeholder="Escribí tu pregunta… (Shift+Enter hace salto de línea)"></textarea>
           <button id="send">Enviar</button>
         </div>
-        <div class="tips">Atajos: <b>Enter</b> envía · <b>Shift+Enter</b> salto de línea · Probar: <code>!!ping</code> o <code>!!info</code></div>
+        <div class="tips">Atajos: <b>Enter</b> envía · <b>Shift+Enter</b> salto de línea · Probá: <code>!!ping</code> o <code>!!info</code></div>
       </div>
     </div>
   </main>
 
   <script>
-    // -------- utilidades UI --------
+    // ===== utilidades UI =====
     const $ = s => document.querySelector(s);
     const msgs = $('#msgs');
     const box  = $('#box');
@@ -134,10 +145,21 @@
       if (bubble) bubble.textContent = newText;
     }
 
-    // -------- saludo inicial --------
-    addMsg('bot', '¡Hola! Soy Valeria. Preguntame sobre J-512 a 200 ppm, rotulado interno, FEFO, no conformidades, etc. 😉');
+    // ===== presentación a los 5s si no hay interacción =====
+    let interacted = false;
+    function mark(){ interacted = true; }
+    box.addEventListener('keydown', mark);
+    box.addEventListener('focus', mark);
+    btn.addEventListener('click', mark);
 
-    // -------- envío --------
+    setTimeout(()=>{
+      const userMsgs = msgs.querySelectorAll('.row.user').length;
+      if (!interacted && userMsgs === 0){
+        addMsg('bot','Hola, soy Valeria, Especialista en Seguridad Alimentaria. ¿En qué te puedo ayudar para fortalecer la cultura de inocuidad?');
+      }
+    }, 5000);
+
+    // ===== envío y respuesta =====
     async function sendMessage(){
       const text = box.value.trim();
       if (!text) return;
@@ -145,7 +167,6 @@
       box.value = '';
       box.focus();
 
-      // indicador
       btn.disabled = true;
       const typingRow = addTyping();
 
@@ -156,7 +177,6 @@
           body: JSON.stringify({ message: text })
         });
 
-        // Si el servidor devuelve algo no-200, mostramos un error legible
         if (!res.ok){
           const t = await res.text().catch(()=> '');
           replaceText(typingRow, `⚠️ Error del servidor (${res.status}). ${t.slice(0,200)}`);
@@ -169,8 +189,31 @@
 
         if (reply){
           replaceText(typingRow, reply);
+
+          // ===== adjuntar PDF si el usuario lo pidió (sanitizante/J-512/200 ppm) =====
+          const ask = text.toLowerCase();
+          const quierePDF = ask.includes('pdf');
+          const esSanitizante = ['sanitizante','j-512','j512','200 ppm','amonio cuaternario'].some(k => ask.includes(k));
+
+          if (quierePDF && esSanitizante){
+            const link = document.createElement('a');
+            link.href = '/sanitizante.pdf';  // Subí sanitizante.pdf a la raíz del repo
+            link.target = '_blank';
+            link.rel = 'noopener';
+            link.className = 'attach';
+            link.innerHTML = `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M7 7v10a5 5 0 0010 0V7a3 3 0 10-6 0v9a1 1 0 002 0V7" />
+              </svg>
+              Descargar PDF · Procedimiento Sanitizante (G-PG-007)
+            `;
+            const bubble = typingRow.querySelector('.bubble');
+            bubble.appendChild(document.createElement('br'));
+            bubble.appendChild(link);
+          }
+
         } else {
-          // <-- este era el caso que te mostraba “no se encontró…”. Ahora mostramos lo que realmente llegó.
           replaceText(typingRow, 'No llegó texto en "reply" ni en "answer". Verificá en Network → Response.');
           typingRow.classList.add('error');
         }
@@ -183,7 +226,6 @@
       }
     }
 
-    // botón y Enter
     btn.addEventListener('click', sendMessage);
     box.addEventListener('keydown', (e)=>{
       if (e.key === 'Enter' && !e.shiftKey){
