@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <!-- El teclado reduce el área de contenido, no mueve el header -->
+  <!-- El teclado reduce el contenido sin mover el header -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="theme-color" content="#0a2f73" />
-  <!-- PWA / iOS full screen -->
+  <!-- PWA / iOS -->
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -14,254 +14,143 @@
   <link rel="icon" href="/valeria-mini.jpg" />
   <style>
     :root{
-      /* Azul corporativo unificado (día y noche) */
-      --brand-blue: #0a2f73;
-
-      --header-bg: var(--brand-blue);
-      --header-fg: #ffffff;
-
-      /* Paleta clara */
-      --page-bg: #eef1f6;
-      --chat-bg: #f5f7fb;
-
-      --text:   #0f172a;
-      --muted:  #64748b;
-      --border: #e5e7eb;
-
-      /* Burbujas (día) */
-      --bubble-bot:       #dbeafe; /* Valeria */
-      --bubble-bot-text:  #0f172a;
-      --bubble-user:      #eef2f7; /* Usuario */
-      --bubble-user-text: #0f172a;
-
-      /* Adjuntos */
-      --attach-bg:   #eef2ff;
-      --attach-bd:   #cfe0ff;
-
-      /* Tipografía fluida */
-      --fs-body:  clamp(15px, 1.6vw, 16px);
-      --fs-name:  clamp(18px, 3vw, 22px);
-      --fs-role:  clamp(12px, 2vw, 14px);
-
-      /* Alturas dinámicas */
-      --header-h: 56px;
-      --composer-h: 52px;           /* fallback; se mide en JS */
-      --vhpx: 100svh;               /* fallback; se setea en JS */
+      --brand-blue:#0a2f73; --header-bg:var(--brand-blue); --header-fg:#fff;
+      --page-bg:#eef1f6; --chat-bg:#f5f7fb; --text:#0f172a; --muted:#64748b; --border:#e5e7eb;
+      --bubble-bot:#dbeafe; --bubble-bot-text:#0f172a;
+      --bubble-user:#eef2f7; --bubble-user-text:#0f172a;
+      --attach-bg:#eef2ff; --attach-bd:#cfe0ff;
+      --fs-body:clamp(15px,1.6vw,16px); --fs-name:clamp(18px,3vw,22px); --fs-role:clamp(12px,2vw,14px);
+      --header-h:56px; --vhpx:100svh;
     }
-
-    /* ===== Tema oscuro ===== */
     [data-theme="dark"]{
-      --header-bg: var(--brand-blue);
-      --header-fg: #e5e7eb;
-
-      --page-bg:  #0f172a;
-      --chat-bg:  #0b1220;
-      --text:     #e5e7eb;
-      --muted:    #9ca3af;
-      --border:   #1f2937;
-
-      /* Burbujas (noche) bien diferenciadas */
-      --bubble-bot:       #1b2d50;  /* Valeria */
-      --bubble-bot-text:  #e5e7eb;
-      --bubble-user:      #335694;  /* Usuario visible */
-      --bubble-user-text: #e5e7eb;
-
-      --attach-bg: #203764;
-      --attach-bd: #35528a;
+      --header-bg:var(--brand-blue); --header-fg:#e5e7eb;
+      --page-bg:#0f172a; --chat-bg:#0b1220; --text:#e5e7eb; --muted:#9ca3af; --border:#1f2937;
+      --bubble-bot:#1b2d50; --bubble-bot-text:#e5e7eb;
+      --bubble-user:#335694; --bubble-user-text:#e5e7eb;
+      --attach-bg:#203764; --attach-bd:#35528a;
     }
 
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    html, body{
-      margin:0;
-      background:var(--page-bg);
-      color:var(--text);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      font-size: var(--fs-body);
-      line-height:1.55;
-      /* Único scroll en .msgs -> header fijo real en iOS/Android */
-      overflow: hidden;
-      overscroll-behavior: none;
-      padding-top: env(safe-area-inset-top, 0px);
+    *{box-sizing:border-box} html,body{height:100%}
+    html,body{
+      margin:0; background:var(--page-bg); color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      font-size:var(--fs-body); line-height:1.55; padding-top:env(safe-area-inset-top,0);
     }
 
-    /* ===== Header fijo ===== */
+    /* ===== Dos modos de layout =====
+       data-standalone="true"  -> PWA / sin URL (scroll sólo en mensajes)
+       data-standalone="false" -> Navegador / con URL (scroll en la página para ocultarla)
+    */
+
+    /* ---- Encabezado ---- */
     header{
-      position: fixed; top: 0; left: 0; right: 0; z-index: 20;
       display:flex; align-items:center; gap:10px;
-      padding: max(8px, env(safe-area-inset-top)) 12px 8px 12px;
-      height: var(--header-h);
-      background: var(--header-bg);
-      color: var(--header-fg);
-      border-bottom: 1px solid rgba(255,255,255,.15);
-      transform: translateZ(0);
-      will-change: transform;
-      contain: layout style paint;
+      height:var(--header-h);
+      padding:max(8px,env(safe-area-inset-top)) 12px 8px 12px;
+      background:var(--header-bg); color:var(--header-fg);
+      border-bottom:1px solid rgba(255,255,255,.15);
+      z-index:20; transform:translateZ(0);
     }
-    @media (min-width: 768px){
-      :root{ --header-h: 64px; }
-      header{ padding: 12px 16px; }
-    }
+    /* Sticky en navegador (para que colapse la barra de URL) */
+    html[data-standalone="false"] header{ position: sticky; top: 0; }
+    /* Fijo en PWA */
+    html[data-standalone="true"]  header{ position: fixed; left:0; right:0; top:0; }
 
-    /* Avatar SIN deformación: background cover */
+    @media (min-width:768px){ :root{--header-h:64px} header{ padding:12px 16px } }
+
     .avatar-wrap{
-      width:40px; height:40px; border-radius:999px; overflow:hidden; flex:0 0 auto;
-      box-shadow: 0 2px 8px rgba(0,0,0,.12); cursor: zoom-in; user-select:none;
-      background-color:#ffffff;
-      background-image: url('/valeria-mini.jpg');
-      background-size: cover; background-position: center; background-repeat: no-repeat;
-      backface-visibility: hidden;
+      width:40px;height:40px;border-radius:999px;overflow:hidden;flex:0 0 auto;
+      background:#fff url('/valeria-mini.jpg') center/cover no-repeat; box-shadow:0 2px 8px rgba(0,0,0,.12);
+      cursor:zoom-in; user-select:none;
     }
-    @media (min-width: 768px){
-      .avatar-wrap{ width:44px; height:44px; }
-    }
-
-    .title{ display:flex; flex-direction:column; line-height:1.1; min-width:0; }
-    .title .name{
-      font-weight:800; font-size: var(--fs-name);
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-    .title .role{
-      font-weight:600; font-size: var(--fs-role); opacity:.95;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-
+    @media (min-width:768px){ .avatar-wrap{width:44px;height:44px} }
+    .title{display:flex;flex-direction:column;line-height:1.1;min-width:0}
+    .name{font-weight:800;font-size:var(--fs-name);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .role{font-weight:600;font-size:var(--fs-role);opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .spacer{flex:1 1 auto}
+    .themebtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:transparent;color:var(--header-fg);cursor:pointer}
+    .themebtn svg{width:20px;height:20px}
 
-    /* Toggle tema */
-    .themebtn{
-      display:inline-flex; align-items:center; justify-content:center;
-      width:40px; height:40px; border-radius:999px; border:1px solid rgba(255,255,255,.25);
-      background: transparent; color: var(--header-fg);
-      cursor:pointer; touch-action: manipulation;
-    }
-    .themebtn svg{ width:20px; height:20px }
-    .themebtn:focus{ outline:2px solid rgba(255,255,255,.6); outline-offset:2px }
+    /* ---- Main ---- */
+    main{overflow:hidden}
+    html[data-standalone="true"]  main{ padding-top:var(--header-h); height:calc(var(--vhpx) - var(--header-h)); }
+    html[data-standalone="false"] main{ padding-top:0; min-height:100svh; }
 
-    /* ===== Layout principal ===== */
-    main{
-      padding-top: var(--header-h);
-      /* Alto real del viewport (corrige iOS/Android, teclado, barras) */
-      height: calc(var(--vhpx) - var(--header-h));
-      overflow: hidden;
-    }
-    .wrap{width:100%; max-width:980px; margin:0 auto; padding:8px 8px 12px; height:100%}
+    /* Navegador: el scroll es del BODY para colapsar la URL */
+    html[data-standalone="false"] body{ overflow:auto; overscroll-behavior:auto; }
+    /* PWA: bloqueamos el scroll del body, sólo scrollea mensajes */
+    html[data-standalone="true"]  body{ overflow:hidden; overscroll-behavior:none; }
+
+    .wrap{width:100%;max-width:980px;margin:0 auto;padding:8px 8px 12px}
+    html[data-standalone="false"] .wrap{ padding-top:calc(var(--header-h) + 8px); } /* compensa header sticky */
+
+    /* ---- Chat ---- */
     .chat{
-      border:1px solid var(--border); border-radius:16px; overflow:hidden;
-      height: 100%;
-      background: var(--chat-bg);
-      box-shadow: 0 6px 18px rgba(15, 23, 42, .06);
-      contain: layout size style;
-
-      /* << WhatsApp-like: Grid: mensajes (1fr) + composer (auto) >> */
-      display: grid;
-      grid-template-rows: 1fr auto;
+      background:var(--chat-bg); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 18px rgba(15,23,42,.06);
+      contain:layout size style;
     }
 
-    /* ===== Mensajes (único scroll) ===== */
-    .msgs{
-      overflow:auto; display:flex; flex-direction:column;
-      gap:10px; padding: 12px 10px;
-      overscroll-behavior: contain;
-      -webkit-overflow-scrolling: touch;
+    /* PWA: grid 1fr(auto) con scroll sólo en mensajes */
+    html[data-standalone="true"] .chat{
+      height:100%; display:grid; grid-template-rows:1fr auto; overflow:hidden;
+    }
+    /* Navegador: el chat es flujo normal; composer sticky abajo, página scrollea */
+    html[data-standalone="false"] .chat{ min-height:calc(100svh - var(--header-h) - 16px); position:relative; }
+
+    /* ---- Mensajes ---- */
+    .msgs{ display:flex; flex-direction:column; gap:10px; padding:12px 10px; -webkit-overflow-scrolling:touch;
       background:
         radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 60%),
         radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 60%);
-      contain: strict;
     }
+    /* PWA: el único scroll vive aquí */
+    html[data-standalone="true"] .msgs{ overflow:auto; }
+    /* Navegador: sin overflow interno (scrollea la página) */
+    html[data-standalone="false"] .msgs{ overflow:visible; }
+
     [data-theme="dark"] .msgs{
       background:
         radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
         radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.05) 0%, rgba(255,255,255,0) 60%);
     }
 
-    .row{display:flex; gap:6px; align-items:flex-end}
+    .row{display:flex;gap:6px;align-items:flex-end}
     .row.user{justify-content:flex-end}
     .bubble{
-      max-width: 78%;
-      padding:10px 12px; border-radius:16px; white-space:pre-wrap;
-      border:1px solid var(--border); word-wrap:break-word;
-      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+      max-width:78%; padding:10px 12px; border-radius:16px; white-space:pre-wrap;
+      border:1px solid var(--border); word-wrap:break-word; box-shadow:0 1px 2px rgba(0,0,0,.04);
     }
-    .user .bubble{background:var(--bubble-user); color:var(--bubble-user-text)}
-    .bot  .bubble{background:var(--bubble-bot);  color:var(--bubble-bot-text)}
-    .row + .row{ margin-top: 2px; }
+    .user .bubble{background:var(--bubble-user);color:var(--bubble-user-text)}
+    .bot  .bubble{background:var(--bubble-bot); color:var(--bubble-bot-text)}
+    .bubble strong{font-weight:800} .bubble em{font-style:italic}
+    .bubble p{margin:0 0 8px} .bubble p:last-child{margin:0}
 
-    /* Formato interno */
-    .bubble strong{ font-weight:800; }
-    .bubble em{ font-style: italic; }
-    .bubble p{ margin:0 0 8px }
-    .bubble p:last-child{ margin:0 }
-
-    /* ===== Composer (siempre visible, tipo WhatsApp) ===== */
-    .composer{
-      display:flex; align-items:flex-end; gap:8px;
-      padding:8px;
-      padding-bottom: max(8px, env(safe-area-inset-bottom)); /* respeta safe area */
-      border-top:1px solid var(--border);
-      background:#ffffff;
-    }
+    /* ---- Composer (tipo WhatsApp) ---- */
+    .composer{ display:flex; align-items:flex-end; gap:8px; padding:8px; border-top:1px solid var(--border); background:#fff; }
     [data-theme="dark"] .composer{ background:#0b1220; }
-
-    .textarea-wrap{
-      flex:1; display:flex; align-items:center;
-      padding: 6px 12px; border:1px solid var(--border); border-radius:22px;
-      background:#fff;
-    }
+    .textarea-wrap{ flex:1; display:flex; align-items:center; padding:6px 12px; border:1px solid var(--border); border-radius:22px; background:#fff; }
     [data-theme="dark"] .textarea-wrap{ background:#0f172a; border-color:#374151; }
+    textarea{ flex:1; resize:none; border:0; background:transparent; color:var(--text); font:inherit; line-height:1.55;
+      min-height:24px; max-height:9.5em; padding:6px 0; outline:none }
+    textarea::placeholder{ color:#94a3b8 }
+    .sendbtn{ display:inline-flex;align-items:center;justify-content:center;background:var(--brand-blue);color:#fff;border:0;width:44px;height:44px;border-radius:999px;cursor:pointer;transition:transform .05s, filter .2s }
+    .sendbtn:active{ transform:scale(.98) } .sendbtn:hover{ filter:brightness(1.05) } .sendbtn svg{ width:20px;height:20px }
 
-    textarea{
-      flex:1; resize:none; border:0; background:transparent; color:var(--text);
-      font-family: inherit; font-size: var(--fs-body); line-height: 1.55;
-      min-height: 24px; max-height: 9.5em; /* ~6 líneas */
-      padding: 6px 0; outline:none;
-    }
-    textarea::placeholder{ color:#94a3b8; }
-
-    .sendbtn{
-      display:inline-flex; align-items:center; justify-content:center;
-      background:var(--brand-blue); color:#fff; border:0;
-      width: 44px; height: 44px; border-radius: 999px;
-      cursor:pointer; transition:transform .05s ease, filter .2s;
-      flex: 0 0 auto; touch-action: manipulation;
-    }
-    .sendbtn:active{ transform: scale(0.98) }
-    .sendbtn:hover{ filter: brightness(1.05) }
-    .sendbtn svg{ width:20px; height:20px }
-    .sendbtn[disabled]{ opacity:.6; cursor:not-allowed; }
-
-    /* Adjuntos */
-    .attach{
-      display:inline-flex; align-items:center; gap:8px; margin-top:10px;
-      background:var(--attach-bg); border:1px solid var(--attach-bd); color:var(--text);
-      padding:8px 10px; border-radius:10px; text-decoration:none; font-weight:600; font-size:14px;
-    }
-    .attach:hover{ filter:brightness(1.03); }
-    .attach svg{ width:16px; height:16px; }
+    /* Navegador: composer pegado abajo aunque scrollee la página */
+    html[data-standalone="false"] .composer{ position:sticky; bottom:0; z-index:10; padding-bottom:max(8px,env(safe-area-inset-bottom)); }
+    /* PWA: el composer es la fila inferior del grid */
+    html[data-standalone="true"]  .composer{ padding-bottom:max(8px,env(safe-area-inset-bottom)); }
 
     /* Viewer imagen */
-    .viewer{
-      position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
-      background: rgba(0,0,0,.52);
-      padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
-    }
-    .viewer.open{ display:flex; }
-    .viewer img{
-      max-width: min(92vw, 1024px);
-      max-height: 88vh;
-      border-radius:12px; object-fit: contain; box-shadow: 0 10px 40px rgba(0,0,0,.4);
-      background:#fff;
-    }
+    .viewer{ position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.52);
+      padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)) }
+    .viewer.open{ display:flex } .viewer img{ max-width:min(92vw,1024px); max-height:88vh; border-radius:12px; object-fit:contain; box-shadow:0 10px 40px rgba(0,0,0,.4); background:#fff }
   </style>
 </head>
 <body>
-  <!-- Header fijo -->
   <header>
     <div class="avatar-wrap" id="avatarWrap" title="Ver imagen"></div>
-    <div class="title">
-      <div class="name">Valeria</div>
-      <div class="role">Seguridad Alimentaria</div>
-    </div>
+    <div class="title"><div class="name">Valeria</div><div class="role">Seguridad Alimentaria</div></div>
     <div class="spacer"></div>
     <button id="themeToggle" class="themebtn" aria-label="Cambiar tema" title="Cambiar tema">
       <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
@@ -271,7 +160,6 @@
     </button>
   </header>
 
-  <!-- Visor de imagen -->
   <div id="viewer" class="viewer" aria-modal="true" role="dialog" tabindex="-1">
     <img src="/valeria-full.jpg" alt="Valeria" />
   </div>
@@ -280,11 +168,8 @@
     <div class="wrap">
       <div class="chat">
         <div id="msgs" class="msgs"></div>
-
         <div class="composer" id="composer">
-          <div class="textarea-wrap">
-            <textarea id="box" placeholder="Mensaje"></textarea>
-          </div>
+          <div class="textarea-wrap"><textarea id="box" placeholder="Mensaje"></textarea></div>
           <button id="send" class="sendbtn" aria-label="Enviar">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 0" />
@@ -297,280 +182,164 @@
 
   <script>
     const $ = s => document.querySelector(s);
-    const msgs = $('#msgs');
-    const box  = $('#box');
-    const btn  = $('#send');
-    const themeToggle = $('#themeToggle');
-    const themeIcon   = $('#themeIcon');
-    const composer    = $('#composer');
+    const msgs=$('#msgs'), box=$('#box'), btn=$('#send'), themeToggle=$('#themeToggle'), themeIcon=$('#themeIcon'), composer=$('#composer');
 
-    /* ===== Tema: sistema + preferencia usuario ===== */
-    const storageKey = 'valeria_theme';
-    function applyTheme(theme){
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (theme === 'dark'){ document.documentElement.setAttribute('data-theme','dark'); }
-      else if (theme === 'light'){ document.documentElement.removeAttribute('data-theme'); }
-      else { if (prefersDark) document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme'); }
-      themeIcon.innerHTML = (document.documentElement.getAttribute('data-theme') === 'dark')
-        ? '<path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" stroke-width="2" fill="none"/>'
-        : '<circle cx="12" cy="12" r="5" stroke-width="2"></circle><path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
+    /* ===== Detectar modo (PWA vs navegador) ===== */
+    function detectStandalone(){
+      const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
+        || navigator.standalone || document.referrer.startsWith('android-app://');
+      document.documentElement.setAttribute('data-standalone', isStandalone ? 'true' : 'false');
+      return isStandalone;
     }
-    function currentTheme(){ const t = localStorage.getItem(storageKey); return (t==='light'||t==='dark')?t:null; }
-    function toggleTheme(){ const t=currentTheme(); const next=t==='dark'?'light':'dark'; localStorage.setItem(storageKey,next); applyTheme(next); }
+    const STANDALONE = detectStandalone();
+
+    /* ===== Tema ===== */
+    const storageKey='valeria_theme';
+    function applyTheme(theme){
+      const prefersDark=window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if(theme==='dark'){document.documentElement.setAttribute('data-theme','dark');}
+      else if(theme==='light'){document.documentElement.removeAttribute('data-theme');}
+      else{ prefersDark?document.documentElement.setAttribute('data-theme','dark'):document.documentElement.removeAttribute('data-theme'); }
+      themeIcon.innerHTML=(document.documentElement.getAttribute('data-theme')==='dark')
+        ?'<path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" stroke-width="2" fill="none"/>'
+        :'<circle cx="12" cy="12" r="5" stroke-width="2"></circle><path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
+    }
+    function currentTheme(){const t=localStorage.getItem(storageKey);return(t==='light'||t==='dark')?t:null;}
+    function toggleTheme(){const t=currentTheme();const next=t==='dark'?'light':'dark';localStorage.setItem(storageKey,next);applyTheme(next);}
     applyTheme(currentTheme());
     themeToggle.addEventListener('click', toggleTheme);
-    if (window.matchMedia){
-      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if (currentTheme()===null) applyTheme(null); });
-    }
+    if(window.matchMedia){window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(currentTheme()===null)applyTheme(null);});}
 
-    /* ===== Alturas reales (viewport y composer) ===== */
+    /* ===== Viewport real (iOS/Android) ===== */
     function setVH(){
-      const vv = window.visualViewport;
-      const h = vv ? vv.height : (window.innerHeight || document.documentElement.clientHeight);
+      const vv=window.visualViewport;
+      const h=vv ? vv.height : (window.innerHeight||document.documentElement.clientHeight);
       document.documentElement.style.setProperty('--vhpx', h + 'px');
     }
-    function setComposerH(){
-      const h = composer?.getBoundingClientRect().height || 52;
-      document.documentElement.style.setProperty('--composer-h', Math.round(h) + 'px');
-    }
-    function reflowAll(){
-      setVH(); setComposerH();
-      // Header fijo: el documento nunca scrollea
-      document.scrollingElement && (document.scrollingElement.scrollTop = 0);
-      window.scrollTo(0,0);
-      // Mantener el final visible
+    function reflow(){
+      setVH();
+      if(STANDALONE){ document.scrollingElement && (document.scrollingElement.scrollTop=0); window.scrollTo(0,0); }
       msgs.scrollTop = msgs.scrollHeight;
     }
     function setupViewportListeners(){
-      reflowAll();
-      window.addEventListener('resize', reflowAll, { passive:true });
-      window.addEventListener('orientationchange', reflowAll, { passive:true });
-      if (window.visualViewport){
-        visualViewport.addEventListener('resize', reflowAll, { passive:true });
-        visualViewport.addEventListener('scroll', reflowAll, { passive:true });
+      reflow();
+      window.addEventListener('resize', reflow, {passive:true});
+      window.addEventListener('orientationchange', reflow, {passive:true});
+      if(window.visualViewport){
+        visualViewport.addEventListener('resize', reflow, {passive:true});
+        visualViewport.addEventListener('scroll', reflow, {passive:true});
       }
-      // Ajustar cuando el composer cambie de alto (textarea crece)
-      let lastHeight = 0;
-      const ro = new ResizeObserver(() => {
-        const h = composer.getBoundingClientRect().height;
-        if (Math.abs(h - lastHeight) > 1){ lastHeight = h; setComposerH(); }
-      });
+      // autosize textarea
+      const ro=new ResizeObserver(()=>{ msgs.scrollTop = msgs.scrollHeight; });
       ro.observe(composer);
     }
     setupViewportListeners();
 
-    // Autosize del textarea (tipo WhatsApp): hasta ~6 líneas, luego scrollea
+    /* ===== Autosize del textarea (tipo WhatsApp) ===== */
     function autosizeTextarea(){
-      box.style.height = 'auto';
-      const max = parseFloat(getComputedStyle(box).lineHeight) * 6 + 12; // 6 líneas aprox
-      box.style.height = Math.min(box.scrollHeight, max) + 'px';
-      msgs.scrollTop = msgs.scrollHeight; // mantener último mensaje visible
+      box.style.height='auto';
+      const lineH=parseFloat(getComputedStyle(box).lineHeight)||20;
+      const max=lineH*6 + 12; // ~6 líneas
+      box.style.height=Math.min(box.scrollHeight,max)+'px';
+      msgs.scrollTop=msgs.scrollHeight;
     }
     box.addEventListener('input', autosizeTextarea);
-    box.addEventListener('focus', ()=>{ setTimeout(()=>{ autosizeTextarea(); msgs.scrollTop = msgs.scrollHeight; }, 50); });
-    box.addEventListener('blur',  ()=> setTimeout(reflowAll, 50));
+    box.addEventListener('focus', ()=>{ setTimeout(()=>{ autosizeTextarea(); msgs.scrollTop=msgs.scrollHeight; }, 50); });
 
     /* ===== Helpers UI ===== */
-    function escapeHTML(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
-
-    // Emojis tipo WhatsApp (contextuales)
+    function escapeHTML(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
     function injectWhatsAppEmojis(html){
-      const patterns = [
-        { rx:/\bpdf\b/i, emoji:'📄' }, { rx:/\bprocedimiento(s)?\b/i, emoji:'📋' },
-        { rx:/\bsanitizante|j-?512|amonio cuaternario\b/i, emoji:'🧪' },
-        { rx:/\b200\s*ppm\b/i, emoji:'🧪' }, { rx:/\bfefo\b/i, emoji:'🔁' },
-        { rx:/\betiquet(ad|ad)o|rotulado\b/i, emoji:'🏷️' },
-        { rx:/\bauditor(i|í)a(s)?\b/i, emoji:'🔎' },
-        { rx:/\btemperatura|fr[ií]o|heladera|c[aá]mara\b/i, emoji:'🌡️' },
-        { rx:/\bcorrect(o|a)s?\b/i, emoji:'✅' }, { rx:/\bincorrect(o|a)s?\b/i, emoji:'❌' },
-        { rx:/\bimportante\b/i, emoji:'⭐' }, { rx:/\btiempo|minut(o|os)\b/i, emoji:'⏱️' },
-        { rx:/\bqueso(s)?|fraccionamiento de quesos\b/i, emoji:'🧀' }
+      const patterns=[
+        {rx:/\bpdf\b/i,emoji:'📄'},{rx:/\bprocedimiento(s)?\b/i,emoji:'📋'},
+        {rx:/\bsanitizante|j-?512|amonio cuaternario\b/i,emoji:'🧪'},{rx:/\b200\s*ppm\b/i,emoji:'🧪'},
+        {rx:/\bfefo\b/i,emoji:'🔁'},{rx:/\betiquet(ad|ad)o|rotulado\b/i,emoji:'🏷️'},
+        {rx:/\bauditor(i|í)a(s)?\b/i,emoji:'🔎'},{rx:/\btemperatura|fr[ií]o|heladera|c[aá]mara\b/i,emoji:'🌡️'},
+        {rx:/\bcorrect(o|a)s?\b/i,emoji:'✅'},{rx:/\bincorrect(o|a)s?\b/i,emoji:'❌'},
+        {rx:/\bimportante\b/i,emoji:'⭐'},{rx:/\btiempo|minut(o|os)\b/i,emoji:'⏱️'},
+        {rx:/\bqueso(s)?|fraccionamiento de quesos\b/i,emoji:'🧀'}
       ];
-      for (const {rx, emoji} of patterns){ html = html.replace(rx, (m)=> `${emoji} ${m}`); }
+      for(const {rx,emoji} of patterns){ html=html.replace(rx,(m)=>`${emoji} ${m}`); }
       return html;
     }
     function greetingPrefix(text){
-      const t = text.trim().toLowerCase();
-      if (/^hola[\s!,.¿?]/.test(t) || /^buen(d[ií]a|as tardes|as noches)/.test(t)) return '👋 ';
-      if (t.startsWith('gracias') || t.startsWith('muchas gracias')) return '🙂 ';
-      return '';
+      const t=text.trim().toLowerCase();
+      if(/^hola[\s!,.¿?]/.test(t)||/^buen(d[ií]a|as tardes|as noches)/.test(t))return'👋 ';
+      if(t.startsWith('gracias')||t.startsWith('muchas gracias'))return'🙂 ';
+      return'';
     }
-    function formatReply(text, userText=''){
-      if (!text) return '';
-      let out = escapeHTML(text);
-      out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      const emph = [
-        /(\b200\s*ppm\b)/gi, /\b(j-?512|amonio cuaternario|sanitizante)\b/gi,
-        /\b(bpm|bpa|poes|mip|5s)\b/gi, /\b(fefo)\b/gi,
-        /\b(retiro anticipado|pr[oó]ximo a vencer)\b/gi,
-        /\b(auditor[ií]a[s]?|registro[s]?)\b/gi,
-        /\b(acciones inmediatas|acciones preventivas|procedimiento)\b/gi
-      ];
-      emph.forEach(rx => { out = out.replace(rx, '<strong>$1</strong>'); });
-      out = out.replace(/^(\s*\**\s*Acciones inmediatas\s*\**)/gim, '✅ <strong>$1</strong>');
-      out = out.replace(/^(\s*\**\s*Acciones preventivas\s*\**)/gim, '🛡️ <strong>$1</strong>');
-      out = out.replace(/^(\s*\**\s*Procedimiento\s*\**)/gim, '📋 <strong>$1</strong>');
-      out = out.replace(/^(\s*\**\s*Análisis de causa raíz.*)/gim, '🔎 <strong>$1</strong>');
-      out = out.split('\n\n').map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
-      out = injectWhatsAppEmojis(out);
-      const lead = greetingPrefix(text);
-      return `${lead}${out}`;
-    }
-
-    /* ===== Mensajería (sin tocar lógica) ===== */
-    function addMsg(role, text){
-      const row = document.createElement('div');
-      row.className = `row ${role}`;
-      const bubble = document.createElement('div'); bubble.className = 'bubble';
-      if (role === 'bot'){ bubble.innerHTML = formatReply(String(text||''), lastUserText); }
-      else { bubble.textContent = text; }
-      row.appendChild(bubble); msgs.appendChild(row);
-      msgs.scrollTop = msgs.scrollHeight;
-      return row;
-    }
-
-    /* Presentación automática (sin “Licenciada…”, sin “pensando…”) */
-    let interacted = false, lastUserText = '';
-    function mark(){ interacted = true; }
-    box.addEventListener('keydown', mark);
-    box.addEventListener('focus', mark);
-    btn.addEventListener('click', mark);
-    setTimeout(()=>{
-      const userMsgs = msgs.querySelectorAll('.row.user').length;
-      if (!interacted && userMsgs === 0){
-        addMsg('bot','Hola, soy Valeria. ¿En qué te puedo ayudar para fortalecer la cultura de inocuidad?');
-      }
-    }, 5000);
-
-    /* === PDFs (misma lógica; no se toca) === */
-    let PDF_MAP = null;
-    async function ensurePdfMap(){
-      if (PDF_MAP) return PDF_MAP;
-      try{
-        const r = await fetch('/docs/keyword_to_file.json', { cache: 'no-store' });
-        if (!r.ok) throw new Error('No pude cargar keyword_to_file.json');
-        PDF_MAP = await r.json();
-      }catch(e){ PDF_MAP = {}; }
-      return PDF_MAP;
-    }
-    function wantsPdf(txt){
-      const t = (txt || '').toLowerCase();
-      return t.includes('pdf') || t.includes('adjunto') || t.includes('documento');
-    }
-    const PRIORITY_KEYS = [
-      'sanitizante','j-512','j512','200 ppm','amonio cuaternario','amonio',
-      'fefo','retiro anticipado','proximo a vencer',
-      'rotulado','etiquetado','fraccionamiento de quesos','quesos','queso',
-      'milanesas','pollo','carne vacuna','carne ovina',
-      'poes','bpm','bpa','mip','5s',
-      'reclamos','retiro de mercado'
-    ];
-    function bestMatch(txt, map){
-      const t = (txt || '').toLowerCase();
-      for (const key of PRIORITY_KEYS){ if (map[key] && t.includes(key.toLowerCase())) return map[key]; }
-      const keys = Object.keys(map).sort((a,b)=> b.length - a.length);
-      for (const k of keys){ if (t.includes(k.toLowerCase())) return map[k]; }
-      return 'index.html';
-    }
-    async function fileExists(url){ try{ const r = await fetch(url, { method:'HEAD', cache:'no-store' }); return r.ok; } catch{ return false; } }
-
-    function cleanReply(text){
-      if (!text) return text;
-      let out = text;
-      const remove = [
-        /verific(a|á)\s+en\s+la\s+ra[ií]z\s+del\s+proyecto[^.\n]*[.\n]?/gi,
-        /revisa(r)?\s+la\s+ra[ií]z\s+del\s+proyecto[^.\n]*[.\n]?/gi,
-        /busc(a|á)rlo\s+en\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi,
-        /en\s+el\s+servicio\s+de\s+almacenamiento\s+seguro[^.\n]*[.\n]?/gi,
-        /no\s+puedo\s+enviar\s+archivos[^.\n]*[.\n]?/gi
-      ];
-      remove.forEach(rx => out = out.replace(rx, ''));
-      out = out.replace(/\s+o\s+$/gi, ' ').replace(/\s+o\s*\n/gi, '\n');
-      const replacePairs = [
-        { rx:/Licenciada\s+en\s+Tecnolog[ií]a\s+de\s+los\s+Alimentos/gi, to:'especialista en seguridad alimentaria' },
-        { rx:/especialista\s+en\s+seguridad\s+alimentaria,\s*especializada\s+en\s+seguridad\s+alimentaria/gi, to:'especialista en seguridad alimentaria' }
-      ];
-      replacePairs.forEach(({rx,to})=> out = out.replace(rx, to));
-      out = out.replace(/\n{3,}/g, '\n\n').trim();
-      if (!out) out = "Aquí tienes el material solicitado:";
+    function formatReply(text){
+      if(!text)return''; let out=escapeHTML(text);
+      out=out.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      const emph=[/(\b200\s*ppm\b)/gi,/\b(j-?512|amonio cuaternario|sanitizante)\b/gi,/\b(bpm|bpa|poes|mip|5s)\b/gi,/\b(fefo)\b/gi,/\b(retiro anticipado|pr[oó]ximo a vencer)\b/gi,/\b(auditor[ií]a[s]?|registro[s]?)\b/gi,/\b(acciones inmediatas|acciones preventivas|procedimiento)\b/gi];
+      emph.forEach(rx=>{out=out.replace(rx,'<strong>$1</strong>');});
+      out=out.replace(/^(\s*\**\s*Acciones inmediatas\s*\**)/gim,'✅ <strong>$1</strong>')
+             .replace(/^(\s*\**\s*Acciones preventivas\s*\**)/gim,'🛡️ <strong>$1</strong>')
+             .replace(/^(\s*\**\s*Procedimiento\s*\**)/gim,'📋 <strong>$1</strong>')
+             .replace(/^(\s*\**\s*Análisis de causa raíz.*)/gim,'🔎 <strong>$1</strong>');
+      out=out.split('\n\n').map(p=>`<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+      out=injectWhatsAppEmojis(out);
       return out;
     }
 
-    async function sendMessage(){
-      const text = box.value.trim();
-      if (!text) return;
-      lastUserText = text;
-      addMsg('user', text);
-      box.value = ''; autosizeTextarea();
-      btn.disabled = true;
+    /* ===== Mensajería (UI) ===== */
+    let interacted=false,lastUserText='';
+    function addMsg(role,text){
+      const row=document.createElement('div'); row.className=`row ${role}`;
+      const bubble=document.createElement('div'); bubble.className='bubble';
+      if(role==='bot'){ bubble.innerHTML=formatReply(String(text||'')); } else { bubble.textContent=text; }
+      row.appendChild(bubble); msgs.appendChild(row); msgs.scrollTop=msgs.scrollHeight; return row;
+    }
+    function mark(){interacted=true;}
+    box.addEventListener('keydown',mark); box.addEventListener('focus',mark); btn.addEventListener('click',mark);
+    setTimeout(()=>{ if(!interacted && !msgs.querySelector('.row.user')) addMsg('bot','Hola, soy Valeria. ¿En qué te puedo ayudar para fortalecer la cultura de inocuidad?'); },5000);
 
-      try{
-        const res = await fetch('/.netlify/functions/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text })
-        });
+    /* ===== Lógica de envío (no se toca) ===== */
+    async function ensurePdfMap(){ try{const r=await fetch('/docs/keyword_to_file.json',{cache:'no-store'}); return r.ok?await r.json():{}; }catch{return{};} }
+    function wantsPdf(t){t=(t||'').toLowerCase();return t.includes('pdf')||t.includes('adjunto')||t.includes('documento');}
+    const PRIORITY_KEYS=['sanitizante','j-512','j512','200 ppm','amonio cuaternario','amonio','fefo','retiro anticipado','proximo a vencer','rotulado','etiquetado','fraccionamiento de quesos','quesos','queso','milanesas','pollo','carne vacuna','carne ovina','poes','bpm','bpa','mip','5s','reclamos','retiro de mercado'];
+    function bestMatch(txt,map){const t=(txt||'').toLowerCase();for(const k of PRIORITY_KEYS){if(map[k]&&t.includes(k.toLowerCase()))return map[k];}const keys=Object.keys(map).sort((a,b)=>b.length-a.length);for(const k of keys){if(t.includes(k.toLowerCase()))return map[k];}return'index.html';}
+    async function fileExists(url){try{const r=await fetch(url,{method:'HEAD',cache:'no-store'});return r.ok;}catch{return false;}}
 
-        if (!res.ok){
-          const t = await res.text().catch(()=> '');
-          addMsg('bot', `⚠️ Error del servidor (${res.status}). ${t.slice(0,200)}`);
-          return;
-        }
-
-        const data = await res.json().catch(()=> ({}));
-        let reply = data.reply || data.answer || '';
-        reply = cleanReply(reply);
-
-        const userWantsPdf = wantsPdf(text);
-
-        if (reply){
-          const botRow = addMsg('bot', reply);
-          if (userWantsPdf){
-            const map = await ensurePdfMap();
-            const chosen = bestMatch(text, map);
-            const isIndex = chosen.toLowerCase() === 'index.html';
-            const url = isIndex ? '/docs/index.html' : `/docs/${chosen}`;
-            const ok = await fileExists(url);
-            const bubble = botRow.querySelector('.bubble');
-            bubble.appendChild(document.createElement('br'));
-            const a = document.createElement('a');
-            a.href = ok ? url : '/docs/index.html';
-            a.target = '_blank'; a.rel='noopener'; a.className='attach';
-            a.innerHTML = `
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M7 7v10a5 5 0 0010 0V7a3 3 0 10-6 0v9a1 1 0 002 0V7" />
-              </svg>
-              ${ok ? (isIndex ? 'Ver todos los PDFs' : ('Descargar PDF · ' + chosen.replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\b\w/g, c => c.toUpperCase())))
-                   : 'Ver todos los PDFs'}
-            `;
-            bubble.appendChild(a);
-          }
-        } else {
-          addMsg('bot', 'No llegó texto en "reply" ni en "answer". Verificá en Network → Response.');
-        }
-      } catch(e){
-        addMsg('bot', '❌ Error de red. ¿Estás online?');
-      } finally{
-        btn.disabled = false;
-        msgs.scrollTop = msgs.scrollHeight;
-      }
+    function cleanReply(text){
+      if(!text)return text; let out=text;
+      [ /verific(a|á)\s+en\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi, /revisa(r)?\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi, /busc(a|á)rlo\s+en\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi, /en\s+el\s+servicio\s+de\s+almacenamiento\s+seguro[^.\n]*[.\n]?/gi, /no\s+puedo\s+enviar\s+archivos[^.\n]*[.\n]?/gi ]
+        .forEach(rx=>out=out.replace(rx,''));
+      out=out.replace(/\s+o\s+$/gi,' ').replace(/\s+o\s*\n/gi,'\n');
+      out=out.replace(/Licenciada\s+en\s+Tecnolog[ií]a\s+de\s+los\s+Alimentos/gi,'especialista en seguridad alimentaria')
+             .replace(/especialista\s+en\s+seguridad\s+alimentaria,\s*especializada\s+en\s+seguridad\s+alimentaria/gi,'especialista en seguridad alimentaria');
+      out=out.replace(/\n{3,}/g,'\n\n').trim(); if(!out) out="Aquí tienes el material solicitado:"; return out;
     }
 
-    btn.addEventListener('click', sendMessage);
-    box.addEventListener('keydown', (e)=>{
-      if (e.key === 'Enter' && !e.shiftKey){
-        e.preventDefault(); sendMessage();
-      }
-    });
+    async function sendMessage(){
+      const text=box.value.trim(); if(!text) return;
+      lastUserText=text; addMsg('user',text); box.value=''; autosizeTextarea(); btn.disabled=true;
+      try{
+        const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});
+        if(!res.ok){const t=await res.text().catch(()=> ''); addMsg('bot',`⚠️ Error del servidor (${res.status}). ${t.slice(0,200)}`); return;}
+        const data=await res.json().catch(()=> ({})); let reply=data.reply||data.answer||''; reply=cleanReply(reply);
+        const userWantsPdf=wantsPdf(text);
+        if(reply){
+          const botRow=addMsg('bot',reply);
+          if(userWantsPdf){
+            const map=await ensurePdfMap(); const chosen=bestMatch(text,map);
+            const isIndex=chosen.toLowerCase()==='index.html'; const url=isIndex?'/docs/index.html':`/docs/${chosen}`; const ok=await fileExists(url);
+            const bubble=botRow.querySelector('.bubble'); bubble.appendChild(document.createElement('br'));
+            const a=document.createElement('a'); a.href=ok?url:'/docs/index.html'; a.target='_blank'; a.rel='noopener'; a.className='attach';
+            a.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7v10a5 5 0 0010 0V7a3 3 0 10-6 0v9a1 1 0 002 0V7"/></svg>
+                         ${ok?(isIndex?'Ver todos los PDFs':('Descargar PDF · '+chosen.replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\b\w/g,c=>c.toUpperCase()))):'Ver todos los PDFs'}`;
+            bubble.appendChild(a);
+          }
+        }else{ addMsg('bot','No llegó texto en "reply" ni en "answer". Verificá en Network → Response.'); }
+      }catch(e){ addMsg('bot','❌ Error de red. ¿Estás online?'); }
+      finally{ btn.disabled=false; msgs.scrollTop=msgs.scrollHeight; }
+    }
+    btn.addEventListener('click',sendMessage);
+    box.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 
-    /* Viewer imagen */
-    const viewer  = document.getElementById('viewer');
-    document.getElementById('avatarWrap').addEventListener('click', openViewer);
-    function openViewer(){ viewer.classList.add('open'); viewer.focus(); document.body.style.overflow = 'hidden'; }
-    function closeViewer(){ viewer.classList.remove('open'); viewer.focus(); document.body.style.overflow = ''; }
-    viewer.addEventListener('click', closeViewer);
-    viewer.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') closeViewer(); });
+    /* Viewer */
+    const viewer=document.getElementById('viewer'); document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.classList.add('open');document.body.style.overflow='hidden';});
+    viewer.addEventListener('click',()=>{viewer.classList.remove('open');document.body.style.overflow='';});
+    viewer.addEventListener('keydown',e=>{ if(e.key==='Escape') viewer.classList.remove('open'); });
   </script>
 </body>
 </html>
