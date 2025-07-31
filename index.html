@@ -2,60 +2,93 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Valeria · Especialista en Seguridad Alimentaria</title>
   <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
   <link rel="icon" href="/valeria-mini.jpg" />
 
   <style>
     :root{
-      --header-bg: #0d6efd;     /* azul barra superior */
-      --header-fg: #ffffff;     /* texto blanco en header */
-      --page-bg:   #f5f7fb;     /* fondo general claro */
-      --card-bg:   #ffffff;     /* panel/chat */
-      --text:      #0f172a;     /* texto principal */
-      --muted:     #64748b;     /* texto secundario */
-      --border:    #e5e7eb;     /* bordes suaves */
-      --bubble-bot:       #f1f5ff;  /* Valeria */
+      /* Azul uniforme (ajustable). Si querés otro exacto, cambiá esta variable. */
+      --brand-blue: #0056d2;
+
+      --header-bg: var(--brand-blue);
+      --header-fg: #ffffff;
+
+      --page-bg:   #f5f7fb;
+      --card-bg:   #ffffff;
+      --text:      #0f172a;
+      --muted:     #64748b;
+      --border:    #e5e7eb;
+
+      /* Burbujas diferenciadas */
+      --bubble-bot:       #eef4ff;  /* Valeria: azul muy suave */
       --bubble-bot-text:  #0f172a;
-      --bubble-user:      #eaf2ff;  /* Usuario */
+      --bubble-user:      #eaf7f0;  /* Usuario: verde suave */
       --bubble-user-text: #0f172a;
-      --error:  #dc2626;
+
+      --error: #dc2626;
+
+      /* Tipografías responsivas */
+      --fs-body: clamp(15px, 1.6vw, 16px);
+      --fs-title: clamp(16px, 2.2vw, 18px);
+
+      /* Altura del header (para cálculos de alto) */
+      --header-h: 64px;
     }
+
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0; background:var(--page-bg); color:var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-size: var(--fs-body);
+      line-height:1.45;
       display:flex; flex-direction:column;
+      padding-top: calc(env(safe-area-inset-top, 0px));
     }
-    /* Header azul */
-    header{
-      position:sticky; top:0; z-index:10;
-      display:flex; align-items:center; gap:12px;
-      padding:12px 16px;
-      background:var(--header-bg);
-      color:var(--header-fg);
-    }
-    header img{width:40px; height:40px; border-radius:10px; object-fit:cover}
-    header .title{font-weight:800; letter-spacing:.2px; font-size:16px}
 
-    /* Layout */
+    /* ===== Header fijo ===== */
+    header{
+      position: sticky; top: 0; z-index: 20;
+      display:flex; align-items:center; gap:12px;
+      padding: max(10px, env(safe-area-inset-top)) 16px 10px 16px;
+      height: var(--header-h);
+      background: var(--header-bg);
+      color: var(--header-fg);
+    }
+    .title{
+      font-weight:800; letter-spacing:.2px; font-size: var(--fs-title);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .avatar{
+      width:44px; height:44px; border-radius:999px; flex:0 0 auto;
+      object-fit: cover; object-position: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,.15);
+      cursor: zoom-in; user-select:none;
+    }
+
+    /* ===== Layout principal: el scroll SOLO ocurre en .msgs ===== */
     main{flex:1; display:flex; justify-content:center}
-    .wrap{width:100%; max-width:960px; padding:16px}
+    .wrap{width:100%; max-width:960px; padding:12px 12px 16px}
     .chat{
       background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:12px;
-      min-height:64vh; display:flex; flex-direction:column; gap:10px;
+      height: calc(100vh - var(--header-h) - 28px - env(safe-area-inset-bottom, 0px));
+      display:flex; flex-direction:column; gap:10px;
       box-shadow:0 8px 24px rgba(15, 23, 42, .04);
     }
 
-    /* Mensajes */
-    .msgs{flex:1; overflow:auto; display:flex; flex-direction:column; gap:12px; padding:8px}
+    /* ===== Mensajes (scroll interno) ===== */
+    .msgs{
+      flex:1; overflow:auto; display:flex; flex-direction:column;
+      gap:12px; padding:8px; overscroll-behavior: contain;
+    }
     .row{display:flex; gap:8px; align-items:flex-end}
     .row.user{justify-content:flex-end}
     .bubble{
-      max-width:85%; padding:12px 14px; border-radius:14px; line-height:1.5; white-space:pre-wrap;
-      border:1px solid var(--border); word-wrap:break-word; font-size:15px;
+      max-width: 88%;
+      padding:12px 14px; border-radius:16px; line-height:1.55; white-space:pre-wrap;
+      border:1px solid var(--border); word-wrap:break-word;
     }
     .user .bubble{background:var(--bubble-user); color:var(--bubble-user-text)}
     .bot  .bubble{background:var(--bubble-bot);  color:var(--bubble-bot-text)}
@@ -71,15 +104,17 @@
     /* Composer */
     .composer{
       display:flex; gap:10px; padding:10px; border-top:1px solid var(--border);
-      background:#ffffff; border-radius:12px; margin-top:8px;
+      background:#ffffff; border-radius:12px; margin-top:4px;
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
     }
     textarea{
       flex:1; resize:vertical; min-height:56px; max-height:220px; padding:12px 12px 12px 14px; border-radius:10px;
-      border:1px solid var(--border); background:#ffffff; color:var(--text); font-size:15px;
+      border:1px solid var(--border); background:#ffffff; color:var(--text);
+      font-size:inherit;
     }
     .sendbtn{
       display:inline-flex; align-items:center; justify-content:center;
-      background:var(--header-bg); color:#fff; border:0; border-radius:12px; width:52px; height:52px;
+      background:var(--brand-blue); color:#fff; border:0; border-radius:12px; width:52px; height:52px;
       cursor:pointer; transition:transform .05s ease, filter .2s;
     }
     .sendbtn:active{ transform: scale(0.98) }
@@ -95,20 +130,42 @@
     .attach:hover{ background:#e7f0ff; }
     .attach svg{ width:16px; height:16px; }
 
-    /* Responsive */
+    /* Viewer (imagen expandida) */
+    .viewer{
+      position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+      background: rgba(0,0,0,.52);
+      padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    }
+    .viewer.open{ display:flex; }
+    .viewer img{
+      max-width: min(92vw, 1024px);
+      max-height: 88vh;
+      border-radius:12px; object-fit: contain; box-shadow: 0 10px 40px rgba(0,0,0,.4);
+      background:#fff;
+    }
+    .viewer:focus{ outline: none; }
+
+    /* Responsive chico */
     @media (max-width: 640px){
       .wrap{padding:10px}
-      .bubble{max-width:95%}
+      .chat{height: calc(100vh - var(--header-h) - 20px - env(safe-area-inset-bottom, 0px));}
+      .bubble{max-width: 95%}
       .sendbtn{width:48px; height:48px}
       textarea{min-height:52px}
     }
   </style>
 </head>
 <body>
+  <!-- Header fijo -->
   <header>
-    <img src="/valeria-mini.jpg" alt="Valeria" onerror="this.style.display='none'">
+    <img id="avatar" class="avatar" src="/valeria-mini.jpg" alt="Valeria" title="Ver imagen" />
     <div class="title">Valeria. Especialista en Seguridad Alimentaria</div>
   </header>
+
+  <!-- Visor de imagen expandida -->
+  <div id="viewer" class="viewer" aria-modal="true" role="dialog" tabindex="-1">
+    <img src="/valeria-full.jpg" alt="Valeria" />
+  </div>
 
   <main>
     <div class="wrap">
@@ -194,7 +251,6 @@
       return t.includes('pdf') || t.includes('adjunto') || t.includes('documento');
     }
 
-    // Orden de prioridad para elegir un solo PDF si hay varias coincidencias
     const PRIORITY_KEYS = [
       'sanitizante','j-512','j512','200 ppm','amonio cuaternario','amonio',
       'fefo','retiro anticipado','proximo a vencer',
@@ -203,19 +259,15 @@
       'poes','bpm','bpa','mip','5s',
       'reclamos','retiro de mercado'
     ];
-
     function bestMatch(txt, map){
       const t = (txt || '').toLowerCase();
-      // 1) match por prioridad explícita
       for (const key of PRIORITY_KEYS){
         if (map[key] && t.includes(key.toLowerCase())) return map[key];
       }
-      // 2) match por claves restantes (más largas primero)
       const keys = Object.keys(map).sort((a,b)=> b.length - a.length);
       for (const k of keys){
         if (t.includes(k.toLowerCase())) return map[k];
       }
-      // 3) fallback: índice general
       return 'index.html';
     }
 
@@ -236,10 +288,7 @@
         /te recomiendo buscarlo en la ra[ií]z[^.\n]*[.\n]?/i,
         /en el servicio de almacenamiento seguro[^.\n]*[.\n]?/i
       ];
-      for (const p of patterns){
-        out = out.replace(p, '');
-      }
-      // Limpio líneas vacías múltiples
+      for (const p of patterns){ out = out.replace(p, ''); }
       out = out.replace(/\n{3,}/g, '\n\n').trim();
       if (!out) out = "Aquí tienes el material solicitado:";
       return out;
@@ -249,8 +298,7 @@
       const text = box.value.trim();
       if (!text) return;
       addMsg('user', text);
-      box.value = '';
-      box.focus();
+      box.value = ''; box.focus();
 
       btn.disabled = true;
       const typingRow = addTyping();
@@ -272,11 +320,7 @@
         const data = await res.json().catch(()=> ({}));
         let reply = data.reply || data.answer || '';
         const userWantsPdf = wantsPdf(text);
-
-        // Limpiar frases (solo si vamos a adjuntar PDF)
-        if (userWantsPdf){
-          reply = cleanReply(reply);
-        }
+        if (userWantsPdf) reply = cleanReply(reply);
 
         if (reply){
           replaceText(typingRow, reply);
@@ -284,8 +328,6 @@
           if (userWantsPdf){
             const map = await ensurePdfMap();
             const chosen = bestMatch(text, map);
-
-            // Si es índice general, muestro el link al índice; si es archivo, muestro solo ese
             const isIndex = chosen.toLowerCase() === 'index.html';
             const url = isIndex ? '/docs/index.html' : `/docs/${chosen}`;
             const ok = await fileExists(url);
@@ -306,7 +348,6 @@
                 : 'Ver todos los PDFs'}
             `;
             bubble.appendChild(a);
-            // **No** agregamos más opciones: solo 1 botón.
           }
 
         } else {
@@ -325,10 +366,27 @@
     btn.addEventListener('click', sendMessage);
     box.addEventListener('keydown', (e)=>{
       if (e.key === 'Enter' && !e.shiftKey){
-        e.preventDefault();
-        sendMessage();
+        e.preventDefault(); sendMessage();
       }
     });
+
+    /* ====== Viewer (imagen expandible) ====== */
+    const avatar = document.getElementById('avatar');
+    const viewer = document.getElementById('viewer');
+
+    function openViewer(){
+      viewer.classList.add('open');
+      viewer.focus();
+      document.body.style.overflow = 'hidden';
+    }
+    function closeViewer(){
+      viewer.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    avatar.addEventListener('click', openViewer);
+    viewer.addEventListener('click', closeViewer);
+    viewer.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') closeViewer(); });
   </script>
 </body>
 </html>
