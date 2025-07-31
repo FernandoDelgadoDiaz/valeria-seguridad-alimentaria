@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Valeria · Seguridad Alimentaria</title>
 
-  <!-- Icono de pestaña -->
+  <!-- Icono -->
   <link rel="icon" href="favicon.jpg" type="image/jpeg">
   <meta name="theme-color" content="#004080">
 
@@ -27,7 +27,7 @@
       background:var(--fondo);
     }
 
-    /* Header tipo WhatsApp */
+    /* Header */
     header{
       position:fixed; inset:0 0 auto 0; height:60px;
       background:var(--azul); color:#fff;
@@ -57,7 +57,7 @@
       border-radius:14px;
       line-height:1.45;
       word-wrap:break-word;
-      white-space:pre-wrap; /* respeta saltos de línea */
+      white-space:pre-wrap;
       border:1px solid transparent;
     }
     .message.user{
@@ -74,7 +74,7 @@
       align-self:center; opacity:.75; font-size:.92rem; margin:6px 0 10px;
     }
 
-    /* Barra de entrada */
+    /* Input */
     #input-area{
       position:fixed; inset:auto 0 0 0;
       display:flex; align-items:flex-end; gap:8px;
@@ -150,7 +150,7 @@
   </div>
 
   <script>
-    // Elementos base
+    // Elementos
     const chat = document.getElementById("chat");
     const form = document.getElementById("input-area");
     const input = document.getElementById("message-input");
@@ -159,14 +159,13 @@
     const avatarMini = document.getElementById("avatarMini");
     const closeModalBtn = document.getElementById("closeModal");
 
-    // Utilidades
+    // Utiles
     const scrollChatToBottom = () => { chat.scrollTop = chat.scrollHeight; };
 
     function addMessage(text, sender) {
       const msg = document.createElement("div");
       msg.className = `message ${sender}`;
-      // Evitar inyección HTML
-      msg.textContent = text;
+      msg.textContent = text; // evita inyección HTML
       chat.appendChild(msg);
       scrollChatToBottom();
     }
@@ -178,7 +177,7 @@
       scrollChatToBottom();
     }
 
-    // Auto-presentación a los 5s (si el usuario no escribió nada)
+    // Auto-presentación a los 5s (si el usuario no escribió)
     let userHasTyped = false;
     const autoHelloTimer = setTimeout(() => {
       if (!userHasTyped && chat.childElementCount === 0) {
@@ -187,7 +186,7 @@
     }, 5000);
     input.addEventListener("input", () => { userHasTyped = true; });
 
-    // Textarea auto-expandible y Enter para enviar
+    // Textarea auto-expandible + Enter para enviar
     input.addEventListener("input", () => {
       input.style.height = "auto";
       input.style.height = Math.min(input.scrollHeight, 160) + "px";
@@ -199,7 +198,7 @@
       }
     });
 
-    // Enviar mensaje
+    // Envío de mensaje
     let sending = false;
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -233,22 +232,13 @@
       }
     });
 
-    // Modal de perfil
-    function openModal(){
-      modal.classList.add("open");
-      modal.setAttribute("aria-hidden","false");
-    }
-    function closeModal(){
-      modal.classList.remove("open");
-      modal.setAttribute("aria-hidden","true");
-    }
+    // Modal perfil
+    function openModal(){ modal.classList.add("open"); modal.setAttribute("aria-hidden","false"); }
+    function closeModal(){ modal.classList.remove("open"); modal.setAttribute("aria-hidden","true"); }
     avatarMini.addEventListener("click", openModal);
     closeModalBtn.addEventListener("click", closeModal);
     modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
     window.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeModal(); });
-
-    // No mostramos saludo automático si ya hubo interacción de usuario
-    // (controlado por userHasTyped)
   </script>
 </body>
 </html>
