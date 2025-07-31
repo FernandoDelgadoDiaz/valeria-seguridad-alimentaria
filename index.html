@@ -8,78 +8,85 @@
   <link rel="icon" href="/valeria-mini.jpg" />
 
   <style>
-    /* ======== PALETA PROFESIONAL (CLARA) ======== */
     :root{
-      --brand-bg: #f5f7fb;         /* fondo general (claro) */
-      --brand-card: #ffffff;       /* paneles/burbujas claras */
-      --brand-text: #0f172a;       /* texto principal */
-      --brand-muted:#64748b;       /* texto secundario */
-      --brand-border:#e5e7eb;      /* bordes suaves */
-      --brand-accent:#2563eb;      /* acento (azul) */
-      --bubble-user:#eaf2ff;       /* burbuja del usuario */
-      --bubble-bot:#f1f5ff;        /* burbuja de Valeria */
-      --bubble-bot-text:#0f172a;
-      --error:#dc2626;
+      --header-bg: #0d6efd;     /* azul barra superior */
+      --header-fg: #ffffff;     /* texto blanco en header */
+      --page-bg:   #f5f7fb;     /* fondo general claro */
+      --card-bg:   #ffffff;     /* panel/chat */
+      --text:      #0f172a;     /* texto principal */
+      --muted:     #64748b;     /* texto secundario */
+      --border:    #e5e7eb;     /* bordes suaves */
+      --bubble-bot:       #f1f5ff;  /* Valeria */
+      --bubble-bot-text:  #0f172a;
+      --bubble-user:      #eaf2ff;  /* Usuario */
+      --bubble-user-text: #0f172a;
+      --error:  #dc2626;
     }
-
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0; background:var(--brand-bg); color:var(--brand-text);
+      margin:0; background:var(--page-bg); color:var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       display:flex; flex-direction:column;
     }
-
+    /* Header azul */
     header{
-      padding:14px 18px; border-bottom:1px solid var(--brand-border);
-      display:flex; align-items:center; gap:12px; background:#ffffffd9; backdrop-filter: blur(4px);
       position:sticky; top:0; z-index:10;
+      display:flex; align-items:center; gap:12px;
+      padding:12px 16px;
+      background:var(--header-bg);
+      color:var(--header-fg);
     }
     header img{width:40px; height:40px; border-radius:10px; object-fit:cover}
     header .title{font-weight:800; letter-spacing:.2px; font-size:16px}
 
+    /* Layout */
     main{flex:1; display:flex; justify-content:center}
-    .wrap{width:100%; max-width:900px; padding:16px}
+    .wrap{width:100%; max-width:960px; padding:16px}
     .chat{
-      background:var(--brand-card); border:1px solid var(--brand-border); border-radius:16px; padding:12px;
-      min-height:65vh; display:flex; flex-direction:column; gap:10px;
+      background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:12px;
+      min-height:64vh; display:flex; flex-direction:column; gap:10px;
       box-shadow:0 8px 24px rgba(15, 23, 42, .04);
     }
+
+    /* Mensajes */
     .msgs{flex:1; overflow:auto; display:flex; flex-direction:column; gap:12px; padding:8px}
     .row{display:flex; gap:8px; align-items:flex-end}
     .row.user{justify-content:flex-end}
     .bubble{
-      max-width:80%; padding:12px 14px; border-radius:14px; line-height:1.5; white-space:pre-wrap;
-      border:1px solid var(--brand-border); word-wrap:break-word; font-size:15px;
+      max-width:85%; padding:12px 14px; border-radius:14px; line-height:1.5; white-space:pre-wrap;
+      border:1px solid var(--border); word-wrap:break-word; font-size:15px;
     }
-    .user .bubble{background:var(--bubble-user)}
-    .bot .bubble{background:var(--bubble-bot); color:var(--bubble-bot-text)}
+    .user .bubble{background:var(--bubble-user); color:var(--bubble-user-text)}
+    .bot  .bubble{background:var(--bubble-bot);  color:var(--bubble-bot-text)}
     .error .bubble{background:#ffe4e6; border-color:#fda4af}
 
-    .typing{display:inline-block; min-width:46px}
-    .dot{display:inline-block; width:6px; height:6px; margin:0 2px; border-radius:999px; background:#94a3b8; opacity:.35; animation:blink 1.3s infinite}
+    /* Pensando */
+    .typing{display:inline-flex; align-items:center; gap:8px}
+    .dot{display:inline-block; width:6px; height:6px; border-radius:999px; background:#94a3b8; opacity:.35; animation:blink 1.3s infinite}
     .dot:nth-child(2){animation-delay:.2s}
     .dot:nth-child(3){animation-delay:.4s}
     @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
 
+    /* Composer */
     .composer{
-      display:flex; gap:10px; padding:10px; border-top:1px solid var(--brand-border);
+      display:flex; gap:10px; padding:10px; border-top:1px solid var(--border);
       background:#ffffff; border-radius:12px; margin-top:8px;
     }
     textarea{
-      flex:1; resize:vertical; min-height:68px; max-height:200px; padding:12px; border-radius:10px;
-      border:1px solid var(--brand-border); background:#ffffff; color:var(--brand-text); font-size:15px;
+      flex:1; resize:vertical; min-height:56px; max-height:220px; padding:12px 12px 12px 14px; border-radius:10px;
+      border:1px solid var(--border); background:#ffffff; color:var(--text); font-size:15px;
     }
-    button{
-      background:var(--brand-accent); color:#fff; border:0; border-radius:10px; padding:12px 16px;
-      font-size:15px; font-weight:700; cursor:pointer; transition:filter .2s ease;
+    .sendbtn{
+      display:inline-flex; align-items:center; justify-content:center;
+      background:var(--header-bg); color:#fff; border:0; border-radius:12px; width:52px; height:52px;
+      cursor:pointer; transition:transform .05s ease, filter .2s;
     }
-    button:hover{ filter: brightness(1.05); }
-    button:disabled{opacity:.7; cursor:not-allowed}
+    .sendbtn:active{ transform: scale(0.98) }
+    .sendbtn:hover{ filter: brightness(1.05) }
+    .sendbtn svg{ width:22px; height:22px }
 
-    .tips{color:var(--brand-muted); font-size:13px; margin-top:6px}
-    a{color:var(--brand-accent)}
-
+    /* Adjuntos */
     .attach{
       display:inline-flex; align-items:center; gap:8px; margin-top:10px;
       background:#eff6ff; border:1px solid #cfe2ff; color:#0f172a; padding:8px 10px; border-radius:10px;
@@ -87,6 +94,14 @@
     }
     .attach:hover{ background:#e7f0ff; }
     .attach svg{ width:16px; height:16px; }
+
+    /* Responsive */
+    @media (max-width: 640px){
+      .wrap{padding:10px}
+      .bubble{max-width:95%}
+      .sendbtn{width:48px; height:48px}
+      textarea{min-height:52px}
+    }
   </style>
 </head>
 <body>
@@ -101,16 +116,20 @@
         <div id="msgs" class="msgs"></div>
 
         <div class="composer">
-          <textarea id="box" placeholder="Escribí tu pregunta… (Shift+Enter hace salto de línea)"></textarea>
-          <button id="send">Enviar</button>
+          <textarea id="box" placeholder="Mensaje"></textarea>
+          <button id="send" class="sendbtn" aria-label="Enviar">
+            <!-- Flecha tipo WhatsApp -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 0" />
+            </svg>
+          </button>
         </div>
-        <div class="tips">Atajos: <b>Enter</b> envía · <b>Shift+Enter</b> salto de línea · Probá: <code>!!ping</code> o <code>!!info</code></div>
       </div>
     </div>
   </main>
 
   <script>
-    // ===== utilidades UI =====
     const $ = s => document.querySelector(s);
     const msgs = $('#msgs');
     const box  = $('#box');
@@ -127,7 +146,6 @@
       msgs.scrollTop = msgs.scrollHeight;
       return row;
     }
-
     function addTyping(){
       const row = document.createElement('div');
       row.className = 'row bot';
@@ -139,19 +157,17 @@
       msgs.scrollTop = msgs.scrollHeight;
       return row;
     }
-
     function replaceText(row, newText){
       const bubble = row.querySelector('.bubble');
       if (bubble) bubble.textContent = newText;
     }
 
-    // ===== presentación a los 5s si no hay interacción =====
+    /* Presentación automática a los 5s si no hay interacción */
     let interacted = false;
     function mark(){ interacted = true; }
     box.addEventListener('keydown', mark);
     box.addEventListener('focus', mark);
     btn.addEventListener('click', mark);
-
     setTimeout(()=>{
       const userMsgs = msgs.querySelectorAll('.row.user').length;
       if (!interacted && userMsgs === 0){
@@ -159,7 +175,44 @@
       }
     }, 5000);
 
-    // ===== envío y respuesta =====
+    /* Carga del mapa de PDFs */
+    let PDF_MAP = null;
+    async function ensurePdfMap(){
+      if (PDF_MAP) return PDF_MAP;
+      try{
+        const r = await fetch('/docs/keyword_to_file.json', { cache: 'no-store' });
+        if (!r.ok) throw new Error('No pude cargar keyword_to_file.json');
+        PDF_MAP = await r.json();
+      }catch(e){
+        PDF_MAP = {}; // fallback vacío
+      }
+      return PDF_MAP;
+    }
+
+    function wantsPdf(txt){
+      const t = (txt || '').toLowerCase();
+      return t.includes('pdf') || t.includes('adjunto') || t.includes('documento');
+    }
+
+    function findCandidates(txt, map){
+      const t = (txt || '').toLowerCase();
+      const out = new Set();
+      for (const key of Object.keys(map)){
+        if (t.includes(key.toLowerCase())){
+          out.add(map[key]);
+        }
+      }
+      if (out.size === 0) out.add('index.html'); // fallback: ver todos
+      return Array.from(out);
+    }
+
+    async function fileExists(path){
+      try{
+        const r = await fetch(path, { method: 'HEAD', cache: 'no-store' });
+        return r.ok;
+      }catch{ return false; }
+    }
+
     async function sendMessage(){
       const text = box.value.trim();
       if (!text) return;
@@ -185,32 +238,63 @@
         }
 
         const data = await res.json().catch(()=> ({}));
-        const reply = data.reply || data.answer || '';
+        let reply = data.reply || data.answer || '';
+
+        // Si el modelo trae “no puedo enviar archivos…” y nosotros vamos a adjuntar, limpiamos esa línea.
+        const willAttach = wantsPdf(text);
+        if (willAttach && /no puedo enviar archivos/i.test(reply)){
+          reply = reply.replace(/.*no puedo enviar archivos.*(\n)?/i, '').trim();
+          if (!reply) reply = "Aquí tienes el material solicitado:";
+        }
 
         if (reply){
           replaceText(typingRow, reply);
 
-          // ===== adjuntar PDF si el usuario lo pidió (sanitizante/J-512/200 ppm) =====
-          const ask = text.toLowerCase();
-          const quierePDF = ask.includes('pdf');
-          const esSanitizante = ['sanitizante','j-512','j512','200 ppm','amonio cuaternario'].some(k => ask.includes(k));
-
-          if (quierePDF && esSanitizante){
-            const link = document.createElement('a');
-            link.href = '/sanitizante.pdf';  // Subí sanitizante.pdf a la raíz del repo
-            link.target = '_blank';
-            link.rel = 'noopener';
-            link.className = 'attach';
-            link.innerHTML = `
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M7 7v10a5 5 0 0010 0V7a3 3 0 10-6 0v9a1 1 0 002 0V7" />
-              </svg>
-              Descargar PDF · Procedimiento Sanitizante (G-PG-007)
-            `;
+          // Adjuntar PDFs (con verificación)
+          if (willAttach){
+            const map = await ensurePdfMap();
+            const candidates = findCandidates(text, map);
             const bubble = typingRow.querySelector('.bubble');
-            bubble.appendChild(document.createElement('br'));
-            bubble.appendChild(link);
+
+            let shown = 0;
+            for (const file of candidates){
+              const isIndex = file.toLowerCase() === 'index.html';
+              const url = isIndex ? '/docs/index.html' : `/docs/${file}`;
+              const ok = await fileExists(url);
+              if (!ok && !isIndex) continue; // si el PDF no existe, saltamos
+
+              const a = document.createElement('a');
+              a.href = url;
+              a.target = '_blank'; a.rel='noopener';
+              a.className='attach';
+              a.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M7 7v10a5 5 0 0010 0V7a3 3 0 10-6 0v9a1 1 0 002 0V7" />
+                </svg>
+                ${isIndex ? 'Ver todos los PDFs' : ('Descargar PDF · ' + file.replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\b\w/g, c => c.toUpperCase()))}
+              `;
+              if (shown === 0) bubble.appendChild(document.createElement('br'));
+              bubble.appendChild(a);
+              shown++;
+            }
+
+            // Si no se pudo mostrar ninguno (nombres no coinciden), al menos muestro el índice general
+            if (shown === 0){
+              const a = document.createElement('a');
+              a.href = '/docs/index.html';
+              a.target = '_blank'; a.rel='noopener';
+              a.className='attach';
+              a.innerHTML = `
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M7 7v10a5 5 0 0010 0V7a3 3 0 10-6 0v9a1 1 0 002 0V7" />
+                </svg>
+                Ver todos los PDFs
+              `;
+              bubble.appendChild(document.createElement('br'));
+              bubble.appendChild(a);
+            }
           }
 
         } else {
