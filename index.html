@@ -194,23 +194,55 @@
       return t.includes('pdf') || t.includes('adjunto') || t.includes('documento');
     }
 
-    function findCandidates(txt, map){
+    // Orden de prioridad para elegir un solo PDF si hay varias coincidencias
+    const PRIORITY_KEYS = [
+      'sanitizante','j-512','j512','200 ppm','amonio cuaternario','amonio',
+      'fefo','retiro anticipado','proximo a vencer',
+      'rotulado','etiquetado','fraccionamiento de quesos','quesos','queso',
+      'milanesas','pollo','carne vacuna','carne ovina',
+      'poes','bpm','bpa','mip','5s',
+      'reclamos','retiro de mercado'
+    ];
+
+    function bestMatch(txt, map){
       const t = (txt || '').toLowerCase();
-      const out = new Set();
-      for (const key of Object.keys(map)){
-        if (t.includes(key.toLowerCase())){
-          out.add(map[key]);
-        }
+      // 1) match por prioridad explícita
+      for (const key of PRIORITY_KEYS){
+        if (map[key] && t.includes(key.toLowerCase())) return map[key];
       }
-      if (out.size === 0) out.add('index.html'); // fallback: ver todos
-      return Array.from(out);
+      // 2) match por claves restantes (más largas primero)
+      const keys = Object.keys(map).sort((a,b)=> b.length - a.length);
+      for (const k of keys){
+        if (t.includes(k.toLowerCase())) return map[k];
+      }
+      // 3) fallback: índice general
+      return 'index.html';
     }
 
-    async function fileExists(path){
+    async function fileExists(url){
       try{
-        const r = await fetch(path, { method: 'HEAD', cache: 'no-store' });
+        const r = await fetch(url, { method: 'HEAD', cache: 'no-store' });
         return r.ok;
       }catch{ return false; }
+    }
+
+    // Limpia frases indeseadas del modelo
+    function cleanReply(text){
+      if (!text) return text;
+      let out = text;
+      const patterns = [
+        /no puedo enviar archivos directamente[^.\n]*[.\n]?/i,
+        /no puedo enviar archivos[^.\n]*[.\n]?/i,
+        /te recomiendo buscarlo en la ra[ií]z[^.\n]*[.\n]?/i,
+        /en el servicio de almacenamiento seguro[^.\n]*[.\n]?/i
+      ];
+      for (const p of patterns){
+        out = out.replace(p, '');
+      }
+      // Limpio líneas vacías múltiples
+      out = out.replace(/\n{3,}/g, '\n\n').trim();
+      if (!out) out = "Aquí tienes el material solicitado:";
+      return out;
     }
 
     async function sendMessage(){
@@ -239,62 +271,42 @@
 
         const data = await res.json().catch(()=> ({}));
         let reply = data.reply || data.answer || '';
+        const userWantsPdf = wantsPdf(text);
 
-        // Si el modelo trae “no puedo enviar archivos…” y nosotros vamos a adjuntar, limpiamos esa línea.
-        const willAttach = wantsPdf(text);
-        if (willAttach && /no puedo enviar archivos/i.test(reply)){
-          reply = reply.replace(/.*no puedo enviar archivos.*(\n)?/i, '').trim();
-          if (!reply) reply = "Aquí tienes el material solicitado:";
+        // Limpiar frases (solo si vamos a adjuntar PDF)
+        if (userWantsPdf){
+          reply = cleanReply(reply);
         }
 
         if (reply){
           replaceText(typingRow, reply);
 
-          // Adjuntar PDFs (con verificación)
-          if (willAttach){
+          if (userWantsPdf){
             const map = await ensurePdfMap();
-            const candidates = findCandidates(text, map);
+            const chosen = bestMatch(text, map);
+
+            // Si es índice general, muestro el link al índice; si es archivo, muestro solo ese
+            const isIndex = chosen.toLowerCase() === 'index.html';
+            const url = isIndex ? '/docs/index.html' : `/docs/${chosen}`;
+            const ok = await fileExists(url);
+
             const bubble = typingRow.querySelector('.bubble');
-
-            let shown = 0;
-            for (const file of candidates){
-              const isIndex = file.toLowerCase() === 'index.html';
-              const url = isIndex ? '/docs/index.html' : `/docs/${file}`;
-              const ok = await fileExists(url);
-              if (!ok && !isIndex) continue; // si el PDF no existe, saltamos
-
-              const a = document.createElement('a');
-              a.href = url;
-              a.target = '_blank'; a.rel='noopener';
-              a.className='attach';
-              a.innerHTML = `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M7 7v10a5 5 0 0010 0V7a3 3 0 10-6 0v9a1 1 0 002 0V7" />
-                </svg>
-                ${isIndex ? 'Ver todos los PDFs' : ('Descargar PDF · ' + file.replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\b\w/g, c => c.toUpperCase()))}
-              `;
-              if (shown === 0) bubble.appendChild(document.createElement('br'));
-              bubble.appendChild(a);
-              shown++;
-            }
-
-            // Si no se pudo mostrar ninguno (nombres no coinciden), al menos muestro el índice general
-            if (shown === 0){
-              const a = document.createElement('a');
-              a.href = '/docs/index.html';
-              a.target = '_blank'; a.rel='noopener';
-              a.className='attach';
-              a.innerHTML = `
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M7 7v10a5 5 0 0010 0V7a3 3 0 10-6 0v9a1 1 0 002 0V7" />
-                </svg>
-                Ver todos los PDFs
-              `;
-              bubble.appendChild(document.createElement('br'));
-              bubble.appendChild(a);
-            }
+            bubble.appendChild(document.createElement('br'));
+            const a = document.createElement('a');
+            a.href = ok ? url : '/docs/index.html';
+            a.target = '_blank'; a.rel='noopener';
+            a.className='attach';
+            a.innerHTML = `
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M7 7v10a5 5 0 0010 0V7a3 3 0 10-6 0v9a1 1 0 002 0V7" />
+              </svg>
+              ${ok
+                ? (isIndex ? 'Ver todos los PDFs' : ('Descargar PDF · ' + chosen.replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\b\w/g, c => c.toUpperCase())))
+                : 'Ver todos los PDFs'}
+            `;
+            bubble.appendChild(a);
+            // **No** agregamos más opciones: solo 1 botón.
           }
 
         } else {
