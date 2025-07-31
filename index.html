@@ -9,28 +9,28 @@
   <style>
     :root{
       /* Paleta clara (sin verdes) */
-      --brand-blue: #0056d2;             /* azul corporativo (header, botón) */
+      --brand-blue: #0056d2;             /* azul header/botón */
       --header-bg: var(--brand-blue);
       --header-fg: #ffffff;
 
-      --page-bg: #eef1f6;                /* gris-azulado muy claro (fondo general) */
-      --chat-bg: #f5f7fb;                /* gris-azulado claro (área de chat) */
+      --page-bg: #eef1f6;                /* fondo general */
+      --chat-bg: #f5f7fb;                /* área de chat */
 
-      --text:   #0f172a;                 /* gris muy oscuro para texto */
-      --muted:  #64748b;                 /* gris medio */
-      --border: #e5e7eb;                 /* gris claro bordes */
+      --text:   #0f172a;                 /* texto */
+      --muted:  #64748b;
+      --border: #e5e7eb;
 
-      /* Burbujas (azules/grises) */
-      --bubble-bot:       #e7efff;       /* Valeria: azul muy claro */
+      /* Burbujas: más contraste entre bot y usuario */
+      --bubble-bot:       #dbeafe;       /* Valeria: azul claro (más azulado) */
       --bubble-bot-text:  #0f172a;
-      --bubble-user:      #f0f4ff;       /* Usuario: azul-gris claro */
+      --bubble-user:      #eef2f7;       /* Usuario: gris azulado claro */
       --bubble-user-text: #0f172a;
 
       /* Adjuntos */
       --attach-bg:   #eef2ff;
       --attach-bd:   #cfe0ff;
 
-      /* Tipografías fluidas */
+      /* Tipografía fluida */
       --fs-body:  clamp(15px, 1.6vw, 16px);
       --fs-name:  clamp(18px, 3vw, 22px);
       --fs-role:  clamp(12px, 2vw, 14px);
@@ -40,7 +40,7 @@
       --composer-h: 50px;
     }
 
-    /* ===== Tema oscuro (opcional) ===== */
+    /* ===== Tema oscuro ===== */
     [data-theme="dark"]{
       --header-bg: #0a2f73;
       --header-fg: #e5e7eb;
@@ -51,9 +51,9 @@
       --muted:    #9ca3af;
       --border:   #1f2937;
 
-      --bubble-bot:       #15243e;
+      --bubble-bot:       #1b2d50;       /* Valeria en oscuro */
       --bubble-bot-text:  #e5e7eb;
-      --bubble-user:      #1a2a4d;
+      --bubble-user:      #111a2f;       /* Usuario más oscuro que fondo pero distinto de bot */
       --bubble-user-text: #e5e7eb;
 
       --attach-bg: #16284a;
@@ -91,9 +91,7 @@
       box-shadow: 0 2px 8px rgba(0,0,0,.12); cursor: zoom-in; user-select:none;
       background-color:#ffffff;
       background-image: url('/valeria-mini.jpg');
-      background-size: cover;       /* recorta sin deformar */
-      background-position: center;
-      background-repeat: no-repeat;
+      background-size: cover; background-position: center; background-repeat: no-repeat;
       backface-visibility: hidden;
     }
     @media (min-width: 768px){
@@ -339,9 +337,8 @@
       return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
     }
 
-    // Enriquecimiento con emojis estilo WhatsApp (moderado y contextual)
+    // Emojis estilo WhatsApp (contextuales, sin “viñeta” fija)
     function injectWhatsAppEmojis(html){
-      // Reemplazos suaves (solo primera ocurrencia por término)
       const patterns = [
         { rx:/\bpdf\b/i, emoji:'📄' },
         { rx:/\bprocedimiento(s)?\b/i, emoji:'📋' },
@@ -350,7 +347,7 @@
         { rx:/\bfefo\b/i, emoji:'🔁' },
         { rx:/\betiquet(ad|ad)o|rotulado\b/i, emoji:'🏷️' },
         { rx:/\bauditor(i|í)a(s)?\b/i, emoji:'🔎' },
-        { rx:/\btemperatura|frío|heladera\b/i, emoji:'🌡️' },
+        { rx:/\btemperatura|fr[ií]o|heladera|c[aá]mara\b/i, emoji:'🌡️' },
         { rx:/\bcorrect(o|a)s?\b/i, emoji:'✅' },
         { rx:/\bincorrect(o|a)s?\b/i, emoji:'❌' },
         { rx:/\bimportante\b/i, emoji:'⭐' },
@@ -363,7 +360,15 @@
       return html;
     }
 
-    // Emojis + negritas coherentes (solo UI; sin tocar lógica)
+    // Detección de saludo para prefijar 👋/🙂 sólamente cuando corresponde
+    function greetingPrefix(text){
+      const t = text.trim().toLowerCase();
+      if (/^hola[\s!,.¿?]/.test(t) || /^buen(d[ií]a|as tardes|as noches)/.test(t)) return '👋 ';
+      if (t.startsWith('gracias') || t.startsWith('muchas gracias')) return '🙂 ';
+      return ''; // no prefijo por defecto
+    }
+
+    // Emojis + negritas (solo UI; sin tocar lógica)
     function formatReply(text, userText=''){
       if (!text) return '';
       let out = escapeHTML(text);
@@ -389,22 +394,12 @@
       out = out.replace(/^(\s*\**\s*Procedimiento\s*\**)/gim, '📋 <strong>$1</strong>');
       out = out.replace(/^(\s*\**\s*Análisis de causa raíz.*)/gim, '🔎 <strong>$1</strong>');
 
-      // Emoji contextual al inicio (sin “Guía”)
-      const u = (userText || '').toLowerCase();
-      let lead = '';
-      if (u.includes('200') || u.includes('ppm') || u.includes('j-512') || u.includes('j512') || u.includes('sanitizante')) lead = '🧪 ';
-      else if (u.includes('fefo') || u.includes('rotaci')) lead = '🔁 ';
-      else if (u.includes('vencid')) lead = '⛔ ';
-      else if (u.includes('auditor')) lead = '📋 ';
-      else if (u.includes('rotulado') || u.includes('etiquet')) lead = '🏷️ ';
-      else if (u.includes('poes') || u.includes('mip') || u.includes('bpm')) lead = '🧼 ';
-      else lead = '💬 ';
-
-      // Párrafos y enriquecimiento
+      // Párrafos + emojis contextuales dentro del texto
       out = out.split('\n\n').map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
       out = injectWhatsAppEmojis(out);
 
-      // Prefijo emoji
+      // Prefijo solo si es saludo o agradecimiento
+      const lead = greetingPrefix(text);
       return `${lead}${out}`;
     }
 
@@ -434,7 +429,7 @@
       }
     }, 5000);
 
-    /* === PDFs (misma lógica; no se toca) === */
+    /* === PDFs (misma lógica) === */
     let PDF_MAP = null;
     async function ensurePdfMap(){
       if (PDF_MAP) return PDF_MAP;
@@ -476,7 +471,7 @@
       if (!text) return text;
       let out = text;
 
-      // Frases a eliminar
+      // Quitar frases que confunden
       const removePatterns = [
         /verific(a|á)\s+en\s+la\s+ra[ií]z\s+del\s+proyecto[^.\n]*[.\n]?/gi,
         /revisa(r)?\s+la\s+ra[ií]z\s+del\s+proyecto[^.\n]*[.\n]?/gi,
@@ -491,7 +486,8 @@
 
       // Reemplazos de estilo
       const replacePairs = [
-        { rx:/Licenciada\s+en\s+Tecnolog[ií]a\s+de\s+los\s+Alimentos/gi, to:'especialista en seguridad alimentaria' }
+        { rx:/Licenciada\s+en\s+Tecnolog[ií]a\s+de\s+los\s+Alimentos/gi, to:'especialista en seguridad alimentaria' },
+        { rx:/especialista\s+en\s+seguridad\s+alimentaria,\s*especializada\s+en\s+seguridad\s+alimentaria/gi, to:'especialista en seguridad alimentaria' }
       ];
       replacePairs.forEach(({rx,to})=> out = out.replace(rx, to));
 
@@ -533,7 +529,7 @@
         if (reply){
           const botRow = addMsg('bot', reply);
 
-          // Adjuntar PDF si corresponde (misma lógica)
+          // Adjuntar PDF si corresponde (sin cambios de lógica)
           if (userWantsPdf){
             const map = await ensurePdfMap();
             const chosen = bestMatch(text, map);
