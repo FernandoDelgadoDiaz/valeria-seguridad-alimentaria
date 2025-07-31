@@ -10,22 +10,21 @@
 
   <style>
     :root{
-      --brand-blue: #0056d2;     /* azul uniforme del header y botón */
-
+      --brand-blue: #0056d2;     /* azul del uniforme */
       --header-bg: var(--brand-blue);
       --header-fg: #ffffff;
 
       --page-bg: #eceff3;        /* fondo general */
-      --chat-bg: #e9f3ef;        /* fondo del área de diálogo estilo WhatsApp */
+      --chat-bg: #e9f3ef;        /* fondo estilo WhatsApp */
 
       --text:  #0f172a;
       --muted: #64748b;
       --border:#e5e7eb;
 
-      /* Burbujas armoniosas */
-      --bubble-bot:       #eaf2ff;  /* Valeria: azul muy suave */
+      /* Burbujas */
+      --bubble-bot:       #eaf2ff;  /* Valeria */
       --bubble-bot-text:  #0f172a;
-      --bubble-user:      #e6f7ec;  /* Usuario: verde suave */
+      --bubble-user:      #e6f7ec;  /* Usuario */
       --bubble-user-text: #0f172a;
 
       --fs-body:  clamp(15px, 1.6vw, 16px);
@@ -43,7 +42,7 @@
       margin:0; background:var(--page-bg); color:var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       font-size: var(--fs-body); line-height:1.55;
-      overflow: hidden;
+      overflow: hidden; /* el scroll vive en .msgs */
       padding-top: env(safe-area-inset-top, 0px);
     }
 
@@ -63,16 +62,16 @@
       header{ padding: 12px 16px; }
     }
 
-    /* Avatar sin deformación */
+    /* Avatar SIN deformación: fondo con cover */
     .avatar-wrap{
       width:40px; height:40px; border-radius:999px; overflow:hidden; flex:0 0 auto;
       box-shadow: 0 2px 8px rgba(0,0,0,.12); cursor: zoom-in; user-select:none;
-      background:#fff;
-    }
-    .avatar{
-      width:100%; height:100%; display:block;
-      object-fit: cover; object-position: center;
-      backface-visibility: hidden; image-orientation: from-image;
+      background-color:#ffffff;
+      background-image: url('/valeria-mini.jpg');
+      background-size: cover;           /* recorta sin deformar */
+      background-position: center center;
+      background-repeat: no-repeat;
+      backface-visibility: hidden;
     }
     @media (min-width: 768px){
       .avatar-wrap{ width:44px; height:44px; }
@@ -126,34 +125,24 @@
     .bot  .bubble{background:var(--bubble-bot);  color:var(--bubble-bot-text)}
     .row + .row{ margin-top: 2px; }
 
-    /* Formato dentro de la burbuja (cuando usamos innerHTML) */
+    /* Formato interno (cuando usamos innerHTML) */
     .bubble strong{ font-weight:800; }
     .bubble em{ font-style: italic; }
     .bubble p{ margin:0 0 8px }
     .bubble p:last-child{ margin:0 }
     .bubble .tag{ display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; font-weight:700; font-size:12px; background:#eef2ff; border:1px solid #c7d2fe; }
 
-    /* Indicador “pensando” */
-    .typing{display:inline-flex; align-items:center; gap:8px}
-    .dot{display:inline-block; width:6px; height:6px; border-radius:999px; background:#94a3b8; opacity:.35; animation:blink 1.3s infinite}
-    .dot:nth-child(2){animation-delay:.2s}
-    .dot:nth-child(3){animation-delay:.4s}
-    @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
-
     /* ===== Composer ===== */
     .composer{
       display:flex; align-items:center; gap:8px;
       padding:8px; border-top:1px solid var(--border);
-      background:#ffffff;
-      min-height: var(--composer-h);
-      flex: 0 0 auto;
+      background:#ffffff; min-height: var(--composer-h); flex: 0 0 auto;
     }
     textarea{
       flex:1; resize:none;
       min-height: 40px; max-height: 120px;
       padding: 10px 12px;
-      border-radius: 22px;
-      border:1px solid var(--border);
+      border-radius: 22px; border:1px solid var(--border);
       background:#f9fafb; color:var(--text);
       font-family: inherit; font-size: var(--fs-body); line-height: 1.55;
       outline:none;
@@ -199,9 +188,8 @@
 <body>
   <!-- Header fijo -->
   <header>
-    <div class="avatar-wrap" id="avatarWrap">
-      <img id="avatar" class="avatar" src="/valeria-mini.jpg" alt="Valeria" title="Ver imagen" />
-    </div>
+    <!-- Avatar como background cover (no se deforma) -->
+    <div class="avatar-wrap" id="avatarWrap" title="Ver imagen"></div>
     <div class="title">
       <div class="name">Valeria</div>
       <div class="role">Seguridad Alimentaria</div>
@@ -241,7 +229,6 @@
       const header = document.querySelector('header');
       const headerH = header.getBoundingClientRect().height;
       document.documentElement.style.setProperty('--header-h', headerH + 'px');
-
       const vh = (window.visualViewport?.height) ? window.visualViewport.height : window.innerHeight;
       const appH = Math.max(260, vh - headerH);
       document.documentElement.style.setProperty('--app-h', appH + 'px');
@@ -264,17 +251,12 @@
       return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
     }
 
-    // Inserta emojis y negritas de forma sensible
+    // Emojis + negritas siempre
     function formatReply(text, userText=''){
       if (!text) return '';
-
-      // 1) Escapar todo para evitar HTML no deseado
       let out = escapeHTML(text);
-
-      // 2) Respetar negritas si vinieran tipo **...**
       out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
-      // 3) Énfasis automático en conceptos clave
       const emph = [
         /(\b200\s*ppm\b)/gi,
         /\b(j-?512|amonio cuaternario|sanitizante)\b/gi,
@@ -286,15 +268,15 @@
       ];
       emph.forEach(rx => { out = out.replace(rx, '<strong>$1</strong>'); });
 
-      // 4) Títulos con emojis (línea completa)
+      // Títulos con emojis
       out = out.replace(/^(\s*\**\s*Acciones inmediatas\s*\**)/gim, '✅ <strong>$1</strong>');
       out = out.replace(/^(\s*\**\s*Acciones preventivas\s*\**)/gim, '🛡️ <strong>$1</strong>');
       out = out.replace(/^(\s*\**\s*Procedimiento\s*\**)/gim, '📋 <strong>$1</strong>');
       out = out.replace(/^(\s*\**\s*Análisis de causa raíz.*)/gim, '🔎 <strong>$1</strong>');
 
-      // 5) Emoji contextual según tema detectado (una “etiqueta” al inicio)
+      // Emoji contextual SIEMPRE (default 💬)
       const u = (userText || '').toLowerCase();
-      let tag = '';
+      let tag = '💬';
       if (u.includes('200') || u.includes('ppm') || u.includes('j-512') || u.includes('j512') || u.includes('sanitizante')) tag = '🧪';
       else if (u.includes('fefo') || u.includes('rotaci')) tag = '🔁';
       else if (u.includes('vencid')) tag = '⛔';
@@ -302,55 +284,28 @@
       else if (u.includes('rotulado') || u.includes('etiquet')) tag = '🏷️';
       else if (u.includes('poes') || u.includes('mip') || u.includes('bpm')) tag = '🧼';
 
-      if (tag){
-        out = `<span class="tag">${tag} Guía</span><br>${out}`;
-      }
+      out = `<span class="tag">${tag} Guía</span><br>${out}`;
 
-      // 6) Convertir dobles saltos a párrafos y simples a <br>
+      // Párrafos
       out = out.split('\n\n').map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
-
       return out;
     }
 
-    function addMsg(role, text, cls=''){
+    function addMsg(role, text){
       const row = document.createElement('div');
-      row.className = `row ${role} ${cls}`;
+      row.className = `row ${role}`;
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
-
-      // Usuario en texto plano; Valeria con HTML formateado
-      if (role === 'bot'){
-        bubble.innerHTML = formatReply(String(text || ''));
-      }else{
-        bubble.textContent = text;
-      }
-
+      if (role === 'bot'){ bubble.innerHTML = formatReply(String(text||''), lastUserText); }
+      else { bubble.textContent = text; }
       row.appendChild(bubble);
       msgs.appendChild(row);
       msgs.scrollTop = msgs.scrollHeight;
       return row;
-    }
-
-    function addTyping(){
-      const row = document.createElement('div');
-      row.className = 'row bot';
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.innerHTML = `<span class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span> Valeria está pensando…`;
-      row.appendChild(bubble);
-      msgs.appendChild(row);
-      msgs.scrollTop = msgs.scrollHeight;
-      return row;
-    }
-    function replaceText(row, newText, asHTML=false){
-      const bubble = row.querySelector('.bubble');
-      if (!bubble) return;
-      if (asHTML) bubble.innerHTML = newText;
-      else bubble.textContent = newText;
     }
 
     /* Presentación automática (sin “Licenciada…”) */
-    let interacted = false;
+    let interacted = false, lastUserText = '';
     function mark(){ interacted = true; }
     box.addEventListener('keydown', mark);
     box.addEventListener('focus', mark);
@@ -362,7 +317,7 @@
       }
     }, 5000);
 
-    /* === PDFs (sin cambios de lógica) === */
+    /* PDFs (misma lógica de antes) */
     let PDF_MAP = null;
     async function ensurePdfMap(){
       if (PDF_MAP) return PDF_MAP;
@@ -389,23 +344,15 @@
     ];
     function bestMatch(txt, map){
       const t = (txt || '').toLowerCase();
-      for (const key of PRIORITY_KEYS){
-        if (map[key] && t.includes(key.toLowerCase())) return map[key];
-      }
+      for (const key of PRIORITY_KEYS){ if (map[key] && t.includes(key.toLowerCase())) return map[key]; }
       const keys = Object.keys(map).sort((a,b)=> b.length - a.length);
-      for (const k of keys){
-        if (t.includes(k.toLowerCase())) return map[k];
-      }
+      for (const k of keys){ if (t.includes(k.toLowerCase())) return map[k]; }
       return 'index.html';
     }
     async function fileExists(url){
-      try{
-        const r = await fetch(url, { method: 'HEAD', cache: 'no-store' });
-        return r.ok;
-      }catch{ return false; }
+      try{ const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); return r.ok; }
+      catch{ return false; }
     }
-
-    // Limpia frases indeseadas del modelo
     function cleanReply(text){
       if (!text) return text;
       let out = text;
@@ -424,10 +371,9 @@
     async function sendMessage(){
       const text = box.value.trim();
       if (!text) return;
+      lastUserText = text;
       addMsg('user', text);
       box.value = ''; box.focus();
-
-      const typingRow = addTyping();
       btn.disabled = true;
 
       try{
@@ -439,8 +385,7 @@
 
         if (!res.ok){
           const t = await res.text().catch(()=> '');
-          replaceText(typingRow, `⚠️ Error del servidor (${res.status}). ${t.slice(0,200)}`);
-          typingRow.classList.add('error');
+          addMsg('bot', `⚠️ Error del servidor (${res.status}). ${t.slice(0,200)}`);
           return;
         }
 
@@ -450,11 +395,7 @@
         if (userWantsPdf) reply = cleanReply(reply);
 
         if (reply){
-          // Formato con negritas + emojis
-          const html = formatReply(reply, text);
-          replaceText(typingRow, html, /*asHTML*/ true);
-
-          // Adjuntar PDF si corresponde
+          const botRow = addMsg('bot', reply);
           if (userWantsPdf){
             const map = await ensurePdfMap();
             const chosen = bestMatch(text, map);
@@ -462,7 +403,7 @@
             const url = isIndex ? '/docs/index.html' : `/docs/${chosen}`;
             const ok = await fileExists(url);
 
-            const bubble = typingRow.querySelector('.bubble');
+            const bubble = botRow.querySelector('.bubble');
             bubble.appendChild(document.createElement('br'));
             const a = document.createElement('a');
             a.href = ok ? url : '/docs/index.html';
@@ -479,14 +420,11 @@
             `;
             bubble.appendChild(a);
           }
-
         } else {
-          replaceText(typingRow, 'No llegó texto en "reply" ni en "answer". Verificá en Network → Response.');
-          typingRow.classList.add('error');
+          addMsg('bot', 'No llegó texto en "reply" ni en "answer". Verificá en Network → Response.');
         }
       } catch(e){
-        replaceText(typingRow, '❌ Error de red. ¿Estás online?');
-        typingRow.classList.add('error');
+        addMsg('bot', '❌ Error de red. ¿Estás online?');
       } finally{
         btn.disabled = false;
         msgs.scrollTop = msgs.scrollHeight;
