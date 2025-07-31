@@ -2,41 +2,46 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <!-- iOS: el teclado reduce el área de contenido (no superpone) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>Valeria · Especialista en Seguridad Alimentaria</title>
   <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
   <link rel="icon" href="/valeria-mini.jpg" />
 
   <style>
     :root{
-      /* Azul del uniforme (cambiá acá si querés otro HEX exacto) */
+      /* Azul uniforme (flecha + barra) */
       --brand-blue: #0056d2;
 
       --header-bg: var(--brand-blue);
       --header-fg: #ffffff;
 
-      --page-bg:   #eceff3;     /* fondo estilo app de mensajería */
-      --card-bg:   #ffffff;
-      --text:      #0f172a;
-      --muted:     #64748b;
-      --border:    #e5e7eb;
+      /* Fondo general de la app (gris muy suave) */
+      --page-bg: #eceff3;
+
+      /* Fondo del área de diálogo (estilo WhatsApp) */
+      --chat-bg: #e7f3ee; /* verde/beige muy claro, no blanco */
+
+      --text:  #0f172a;
+      --muted: #64748b;
+      --border:#e5e7eb;
 
       /* Burbujas tipo WhatsApp */
-      --bubble-bot:       #e8f0ff;  /* Valeria: azul muy suave */
+      --bubble-bot:       #e8f0ff; /* Valeria: azul muy suave */
       --bubble-bot-text:  #0f172a;
-      --bubble-user:      #dff7e8;  /* Usuario: verde suave */
+      --bubble-user:      #dff7e8; /* Usuario: verde suave */
       --bubble-user-text: #0f172a;
 
       --error: #dc2626;
 
-      /* Tipografías responsivas (mantenemos pila de sistema) */
-      --fs-body: clamp(15px, 1.6vw, 16px);
+      /* Tipografías responsivas (pila sistema para verse como WhatsApp nativo) */
+      --fs-body:  clamp(15px, 1.6vw, 16px);
       --fs-title: clamp(16px, 2.2vw, 18px);
 
-      /* Alturas (JS las ajusta en vivo para teclado móvil) */
-      --app-h: 70vh;          /* fallback */
-      --header-h: 56px;       /* header móvil ~WhatsApp */
-      --composer-h: 50px;     /* input bar ~WhatsApp */
+      /* Alturas (JS las ajusta en vivo con el teclado) */
+      --app-h: 70vh;     /* fallback */
+      --header-h: 56px;  /* header móvil ~WhatsApp */
+      --composer-h: 50px;
     }
 
     *{box-sizing:border-box}
@@ -44,8 +49,7 @@
     body{
       margin:0; background:var(--page-bg); color:var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      font-size: var(--fs-body);
-      line-height:1.45;
+      font-size: var(--fs-body); line-height:1.55;
 
       /* El scroll del documento queda bloqueado: solo scrollean los mensajes */
       overflow: hidden;
@@ -61,23 +65,23 @@
       background: var(--header-bg);
       color: var(--header-fg);
       border-bottom: 1px solid rgba(255,255,255,.15);
+      will-change: transform; /* evita saltos en iOS al abrir teclado */
     }
     @media (min-width: 768px){
       :root{ --header-h: 64px; }
       header{ padding: 12px 16px; }
     }
-
     .title{
       font-weight:800; letter-spacing:.2px; font-size: var(--fs-title);
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .avatar{
-      width:40px; height:40px; /* WhatsApp ~40px */
-      aspect-ratio: 1 / 1;
+      width:40px; height:40px; aspect-ratio: 1 / 1;
       border-radius:999px; flex:0 0 auto;
       object-fit: cover; object-position: center;
       box-shadow: 0 2px 8px rgba(0,0,0,.12);
       cursor: zoom-in; user-select:none;
+      backface-visibility: hidden; /* evita deformación sutil en iOS */
     }
     @media (min-width: 768px){
       .avatar{ width:44px; height:44px; }
@@ -91,13 +95,11 @@
     }
     .wrap{width:100%; max-width:980px; margin:0 auto; padding:8px 8px 12px}
     .chat{
-      background:var(--card-bg);
-      border:1px solid var(--border); border-radius:16px;
-      padding:0; /* WhatsApp no tiene marco interior grande */
+      border:1px solid var(--border); border-radius:16px; overflow:hidden;
       height: var(--app-h);
       display:flex; flex-direction:column;
       box-shadow: 0 6px 18px rgba(15, 23, 42, .06);
-      overflow:hidden; /* para que header/composer internos encajen visualmente */
+      background: var(--chat-bg);
     }
 
     /* ===== Área de mensajes (scroll) ===== */
@@ -105,24 +107,24 @@
       flex:1; overflow:auto; display:flex; flex-direction:column;
       gap:10px; padding: 12px 10px; overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
+      /* Sutil “papel tapiz” */
       background:
-        radial-gradient(ellipse at top left, #ffffff 0%, #f8fafc 60%, #eef2f7 100%);
+        radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.65) 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 60%);
     }
 
-    /* Mensajes con ancho máximo ~78% + espaciado tipo WhatsApp */
+    /* Mensajes con ancho máx ~78% (estilo WhatsApp) */
     .row{display:flex; gap:6px; align-items:flex-end}
     .row.user{justify-content:flex-end}
     .bubble{
       max-width: 78%;
-      padding:10px 12px; border-radius:16px; line-height:1.55; white-space:pre-wrap;
+      padding:10px 12px; border-radius:16px; white-space:pre-wrap;
       border:1px solid var(--border); word-wrap:break-word;
       box-shadow: 0 1px 2px rgba(0,0,0,.04);
     }
     .user .bubble{background:var(--bubble-user); color:var(--bubble-user-text)}
     .bot  .bubble{background:var(--bubble-bot);  color:var(--bubble-bot-text)}
     .error .bubble{background:#ffe4e6; border-color:#fda4af}
-
-    /* Sutil separación vertical entre bloques como WhatsApp */
     .row + .row{ margin-top: 2px; }
 
     /* Indicador “pensando” */
@@ -132,7 +134,7 @@
     .dot:nth-child(3){animation-delay:.4s}
     @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
 
-    /* ===== Composer (input) compacto tipo WhatsApp ===== */
+    /* ===== Composer compacto tipo WhatsApp ===== */
     .composer{
       display:flex; align-items:center; gap:8px;
       padding:8px; border-top:1px solid var(--border);
@@ -147,9 +149,13 @@
       border-radius: 22px; /* pill */
       border:1px solid var(--border);
       background:#f9fafb; color:var(--text);
-      font-size:inherit; line-height:1.4;
+      /* Igual que las burbujas */
+      font-family: inherit;
+      font-size: var(--fs-body);
+      line-height: 1.55;
       outline:none;
     }
+    textarea::placeholder{ color:#94a3b8; }
     textarea:focus{ background:#fff; border-color:#cbd5e1; }
 
     .sendbtn{
@@ -224,24 +230,37 @@
     const box  = $('#box');
     const btn  = $('#send');
 
-    /* ===== Altura dinámica: header fijo + teclado móvil ===== */
+    /* ===== Altura dinámica robusta (iOS/Android + teclado) ===== */
     function setHeights(){
       const header = document.querySelector('header');
       const headerH = header.getBoundingClientRect().height;
       document.documentElement.style.setProperty('--header-h', headerH + 'px');
 
       const vh = (window.visualViewport?.height) ? window.visualViewport.height : window.innerHeight;
-      // Deja margen interior y respeta teclado en móviles
+      // margen pequeño para respiros visuales
       const appH = Math.max(260, vh - headerH);
       document.documentElement.style.setProperty('--app-h', appH + 'px');
     }
-    setHeights();
-    window.addEventListener('resize', setHeights);
-    window.addEventListener('orientationchange', setHeights);
-    if (window.visualViewport){
-      window.visualViewport.addEventListener('resize', setHeights);
-      window.visualViewport.addEventListener('scroll', setHeights);
+    function setupViewportListeners(){
+      setHeights();
+      window.addEventListener('resize', setHeights);
+      window.addEventListener('orientationchange', setHeights);
+      if (window.visualViewport){
+        window.visualViewport.addEventListener('resize', setHeights);
+        window.visualViewport.addEventListener('scroll', setHeights);
+      }
     }
+    setupViewportListeners();
+
+    // En iOS, al enfocar el textarea recalculamos y “fijamos” el header
+    box.addEventListener('focus', ()=> {
+      setTimeout(setHeights, 50);
+      setTimeout(setHeights, 250);
+    });
+    box.addEventListener('blur', ()=> {
+      setTimeout(setHeights, 50);
+      setTimeout(setHeights, 250);
+    });
 
     function addMsg(role, text, cls=''){
       const row = document.createElement('div');
