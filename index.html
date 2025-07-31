@@ -36,8 +36,8 @@
     }
 
     /* ===== Dos modos =====
-       data-standalone="true"  -> PWA (sin URL): header fijo y scroll solo en mensajes
-       data-standalone="false" -> Navegador (con URL): header sticky y el BODY scrollea para ocultarla
+       data-standalone="true"  -> PWA (sin URL): header fijo
+       data-standalone="false" -> Navegador (con URL): header sticky
     */
 
     /* Header */
@@ -70,43 +70,37 @@
     /* Main */
     main{overflow:hidden}
     html[data-standalone="true"]  main{ padding-top:var(--header-h); height:calc(var(--vhpx) - var(--header-h)); }
-    html[data-standalone="false"] main{ padding-top:0; min-height:100dvh; } /* ← dvh para llenar hasta el borde visible actual */
+    html[data-standalone="false"] main{ padding-top:0; min-height:100dvh; }
 
-    /* Navegador: scrollea la página para colapsar URL */
-    html[data-standalone="false"] body{ overflow:auto; overscroll-behavior:auto; }
-    /* PWA: bloqueamos scroll del body */
+    /* Navegador: el body puede scrollear si hace falta (colapsa URL). */
+    html[data-standalone="false"] body{ overflow:auto; }
+    /* PWA: bloqueamos scroll del body; solo scrollean mensajes. */
     html[data-standalone="true"]  body{ overflow:hidden; overscroll-behavior:none; }
 
     .wrap{width:100%;max-width:980px;margin:0 auto;padding:8px 8px 12px}
-    /* En navegador quitamos padding inferior para que el chat llegue al borde */
     html[data-standalone="false"] .wrap{ padding-top:calc(var(--header-h) + 8px); padding-bottom:0; }
 
+    /* Chat SIEMPRE en Grid: mensajes (1fr) + composer (auto) */
     .chat{
       background:var(--chat-bg); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 18px rgba(15,23,42,.06);
-      contain:layout size style;
+      display:grid; grid-template-rows:1fr auto; overflow:hidden; contain:layout size style;
     }
-
-    /* PWA: grid 1fr/auto, scroll solo en mensajes */
-    html[data-standalone="true"] .chat{
-      height:100%; display:grid; grid-template-rows:1fr auto; overflow:hidden;
-    }
-    /* Navegador: ocupar toda la altura visible actual (dvh), composer sticky abajo */
+    /* PWA: el chat ocupa toda la altura del main */
+    html[data-standalone="true"] .chat{ height:100%; }
+    /* Navegador: altura visible actual (dvh) para que el composer quede abajo */
     html[data-standalone="false"] .chat{
-      min-height:calc(100dvh - var(--header-h) - 8px - 8px); /* header + padding .wrap */
-      position:relative; display:flex; flex-direction:column;
+      height:calc(100dvh - var(--header-h) - 8px - 8px); /* header + paddings .wrap */
     }
 
-    /* Mensajes */
+    /* Mensajes: SIEMPRE con overflow:auto -> el panel de lectura scrollea */
     .msgs{
-      display:flex; flex-direction:column; gap:10px; padding:12px 10px; -webkit-overflow-scrolling:touch;
+      overflow:auto; display:flex; flex-direction:column;
+      gap:10px; padding:12px 10px; -webkit-overflow-scrolling:touch;
       background:
         radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 60%),
         radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 60%);
-      flex:1 1 auto;
+      contain:strict;
     }
-    html[data-standalone="true"]  .msgs{ overflow:auto; }
-    html[data-standalone="false"] .msgs{ overflow:visible; } /* scrollea el body */
-
     [data-theme="dark"] .msgs{
       background:
         radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
@@ -134,10 +128,6 @@
     textarea::placeholder{ color:#94a3b8 }
     .sendbtn{ display:inline-flex;align-items:center;justify-content:center;background:var(--brand-blue);color:#fff;border:0;width:44px;height:44px;border-radius:999px;cursor:pointer;transition:transform .05s, filter .2s }
     .sendbtn:active{ transform:scale(.98) } .sendbtn:hover{ filter:brightness(1.05) } .sendbtn svg{ width:20px;height:20px }
-
-    /* Pegado al borde inferior en ambos modos */
-    html[data-standalone="false"] .composer{ position:sticky; bottom:0; z-index:10; padding-bottom:max(8px,env(safe-area-inset-bottom)); }
-    html[data-standalone="true"]  .composer{ padding-bottom:max(8px,env(safe-area-inset-bottom)); }
 
     /* Viewer imagen */
     .viewer{ position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.52);
@@ -190,9 +180,9 @@
       document.documentElement.setAttribute('data-standalone', isStandalone ? 'true' : 'false');
       return isStandalone;
     }
-    const STANDALONE = detectStandalone();
+    detectStandalone();
 
-    /* Tema (sin cambios de lógica) */
+    /* Tema (sin tocar lógica) */
     const storageKey='valeria_theme';
     function applyTheme(theme){
       const prefersDark=window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -217,7 +207,7 @@
     }
     function reflow(){
       setVH();
-      if(STANDALONE){ document.scrollingElement && (document.scrollingElement.scrollTop=0); window.scrollTo(0,0); }
+      // Llevar siempre al final cuando cambia el viewport/teclado
       msgs.scrollTop = msgs.scrollHeight;
     }
     function setupViewportListeners(){
@@ -280,12 +270,14 @@
     }
 
     /* UI de mensajes (lógica intacta) */
-    let interacted=false,lastUserText='';
+    let interacted=false;
     function addMsg(role,text){
       const row=document.createElement('div'); row.className=`row ${role}`;
       const bubble=document.createElement('div'); bubble.className='bubble';
       if(role==='bot'){ bubble.innerHTML=formatReply(String(text||'')); } else { bubble.textContent=text; }
-      row.appendChild(bubble); msgs.appendChild(row); msgs.scrollTop=msgs.scrollHeight; return row;
+      row.appendChild(bubble); msgs.appendChild(row);
+      msgs.scrollTop=msgs.scrollHeight; // SIEMPRE baja al último
+      return row;
     }
     function mark(){interacted=true;}
     box.addEventListener('keydown',mark); box.addEventListener('focus',mark); btn.addEventListener('click',mark);
@@ -310,7 +302,7 @@
 
     async function sendMessage(){
       const text=box.value.trim(); if(!text) return;
-      lastUserText=text; addMsg('user',text); box.value=''; autosizeTextarea(); btn.disabled=true;
+      addMsg('user',text); box.value=''; autosizeTextarea(); btn.disabled=true;
       try{
         const res=await fetch('/.netlify/functions/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});
         if(!res.ok){const t=await res.text().catch(()=> ''); addMsg('bot',`⚠️ Error del servidor (${res.status}). ${t.slice(0,200)}`); return;}
