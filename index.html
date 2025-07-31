@@ -2,8 +2,11 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <!-- iOS: que el teclado reduzca el contenido (no empuje el header) -->
+  <!-- iOS: que el teclado reduzca el contenido sin mover el header -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#0a2f73" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Valeria · Seguridad Alimentaria</title>
   <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
   <link rel="icon" href="/valeria-mini.jpg" />
@@ -15,9 +18,9 @@
       --header-bg: var(--brand-blue);
       --header-fg: #ffffff;
 
-      /* Paleta clara (sin verdes) */
-      --page-bg: #eef1f6;        /* fondo general */
-      --chat-bg: #f5f7fb;        /* área de chat */
+      /* Paleta clara */
+      --page-bg: #eef1f6;
+      --chat-bg: #f5f7fb;
 
       --text:   #0f172a;
       --muted:  #64748b;
@@ -38,14 +41,14 @@
       --fs-name:  clamp(18px, 3vw, 22px);
       --fs-role:  clamp(12px, 2vw, 14px);
 
-      --app-h: 70vh;
+      /* Alturas dinámicas */
       --header-h: 56px;
-      --composer-h: 50px;
+      --composer-h: 52px;           /* fallback; se mide en JS */
+      --vhpx: 100svh;               /* fallback; se setea en JS */
     }
 
     /* ===== Tema oscuro ===== */
     [data-theme="dark"]{
-      /* Mismo azul del modo día en encabezado y botón */
       --header-bg: var(--brand-blue);
       --header-fg: #e5e7eb;
 
@@ -75,9 +78,9 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       font-size: var(--fs-body);
       line-height:1.55;
-      /* Bloqueo el scroll del documento para que solo scrollee el área de mensajes */
+      /* El único scroll es en .msgs (evita que el header se mueva en iOS) */
       overflow: hidden;
-      overscroll-behavior: none; /* evita “elastic scroll” que mueve el header en iOS */
+      overscroll-behavior: none;
       padding-top: env(safe-area-inset-top, 0px);
     }
 
@@ -90,7 +93,6 @@
       background: var(--header-bg);
       color: var(--header-fg);
       border-bottom: 1px solid rgba(255,255,255,.15);
-      /* En iOS ayuda a que NO “viaje” cuando cambia el viewport con el teclado */
       transform: translateZ(0);
       will-change: transform;
       contain: layout style paint;
@@ -130,25 +132,22 @@
       display:inline-flex; align-items:center; justify-content:center;
       width:40px; height:40px; border-radius:999px; border:1px solid rgba(255,255,255,.25);
       background: transparent; color: var(--header-fg);
-      cursor:pointer;
-      touch-action: manipulation;
+      cursor:pointer; touch-action: manipulation;
     }
     .themebtn svg{ width:20px; height:20px }
     .themebtn:focus{ outline:2px solid rgba(255,255,255,.6); outline-offset:2px }
 
     /* ===== Layout principal ===== */
     main{
-      /* El contenido queda debajo del header fijo */
       padding-top: var(--header-h);
-      /* Usamos dvh/svh para estabilidad en iOS y Android */
-      height: calc(100dvh - var(--header-h));
-      height: calc(100svh - var(--header-h));
-      overflow: hidden; /* Nada fuera de .msgs debe scrollear */
+      /* Altura real del viewport (corrige iOS/Android, teclado, barras) */
+      height: calc(var(--vhpx) - var(--header-h));
+      overflow: hidden;
     }
-    .wrap{width:100%; max-width:980px; margin:0 auto; padding:8px 8px 12px}
+    .wrap{width:100%; max-width:980px; margin:0 auto; padding:8px 8px 12px; height:100%}
     .chat{
       border:1px solid var(--border); border-radius:16px; overflow:hidden;
-      height: var(--app-h);
+      height: 100%;
       display:flex; flex-direction:column;
       box-shadow: 0 6px 18px rgba(15, 23, 42, .06);
       background: var(--chat-bg);
@@ -160,6 +159,8 @@
       flex:1; overflow:auto; display:flex; flex-direction:column;
       gap:10px; padding: 12px 10px; overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
+      /* Dejo espacio para que el último mensaje no quede escondido tras el composer */
+      padding-bottom: calc(var(--composer-h) + max(8px, env(safe-area-inset-bottom)));
       background:
         radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 60%),
         radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 60%);
@@ -189,11 +190,13 @@
     .bubble p{ margin:0 0 8px }
     .bubble p:last-child{ margin:0 }
 
-    /* ===== Composer ===== */
+    /* ===== Composer (siempre visible) ===== */
     .composer{
       display:flex; align-items:center; gap:8px;
-      padding:8px; border-top:1px solid var(--border);
-      background:#ffffff; min-height: var(--composer-h); flex: 0 0 auto;
+      padding:8px;
+      padding-bottom: max(8px, env(safe-area-inset-bottom)); /* evita quedar oculto por la barrita */
+      border-top:1px solid var(--border);
+      background:#ffffff; flex: 0 0 auto;
       contain: content;
     }
     [data-theme="dark"] .composer{ background:#0b1220; }
@@ -216,8 +219,7 @@
       background:var(--brand-blue); color:#fff; border:0;  /* mismo azul en ambos modos */
       width: 44px; height: 44px; border-radius: 999px;
       cursor:pointer; transition:transform .05s ease, filter .2s;
-      flex: 0 0 auto;
-      touch-action: manipulation;
+      flex: 0 0 auto; touch-action: manipulation;
     }
     .sendbtn:active{ transform: scale(0.98) }
     .sendbtn:hover{ filter: brightness(1.05) }
@@ -276,7 +278,7 @@
       <div class="chat">
         <div id="msgs" class="msgs"></div>
 
-        <div class="composer">
+        <div class="composer" id="composer">
           <textarea id="box" placeholder="Mensaje"></textarea>
           <button id="send" class="sendbtn" aria-label="Enviar">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -295,10 +297,11 @@
     const btn  = $('#send');
     const themeToggle = $('#themeToggle');
     const themeIcon   = $('#themeIcon');
+    const composer    = $('#composer');
 
     /* ===== Tema: sistema + preferencia usuario ===== */
     const storageKey = 'valeria_theme';
-    function applyTheme(theme){ // 'light' | 'dark' | null (auto)
+    function applyTheme(theme){
       const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (theme === 'dark'){ document.documentElement.setAttribute('data-theme','dark'); }
       else if (theme === 'light'){ document.documentElement.removeAttribute('data-theme'); }
@@ -327,41 +330,60 @@
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ if (currentTheme() === null) applyTheme(null); });
     }
 
-    /* ===== Altura dinámica y “header fijo” real en iOS ===== */
-    function setHeights(){
-      const header = document.querySelector('header');
-      const headerH = header.getBoundingClientRect().height;
-      document.documentElement.style.setProperty('--header-h', headerH + 'px');
-
+    /* ===== Alturas reales (viewport y composer) ===== */
+    function setVH(){
       const vv = window.visualViewport;
-      const vh = vv ? vv.height : (window.innerHeight || document.documentElement.clientHeight);
-      const appH = Math.max(260, vh - headerH);
-      document.documentElement.style.setProperty('--app-h', appH + 'px');
-
-      // Mantener el documento “anclado” arriba para que el header no se mueva
+      const h = vv ? vv.height : (window.innerHeight || document.documentElement.clientHeight);
+      document.documentElement.style.setProperty('--vhpx', h + 'px');
+    }
+    function setComposerH(){
+      const h = composer?.getBoundingClientRect().height || 52;
+      document.documentElement.style.setProperty('--composer-h', Math.round(h) + 'px');
+    }
+    function reflowAll(){
+      setVH(); setComposerH();
+      // “Anclar” el documento para que el header no se mueva
       document.scrollingElement && (document.scrollingElement.scrollTop = 0);
       window.scrollTo(0,0);
+      // Llevar el scroll de mensajes al final
+      msgs.scrollTop = msgs.scrollHeight;
     }
+
+    // Listeners de viewport (iOS/Android, teclado y barras)
     function setupViewportListeners(){
-      setHeights();
-      window.addEventListener('resize', setHeights, { passive:true });
-      window.addEventListener('orientationchange', setHeights, { passive:true });
+      reflowAll();
+      window.addEventListener('resize', reflowAll, { passive:true });
+      window.addEventListener('orientationchange', reflowAll, { passive:true });
       if (window.visualViewport){
-        visualViewport.addEventListener('resize', setHeights, { passive:true });
-        visualViewport.addEventListener('scroll', setHeights, { passive:true });
+        visualViewport.addEventListener('resize', reflowAll, { passive:true });
+        visualViewport.addEventListener('scroll', reflowAll, { passive:true });
       }
+      // Recalcular cuando cambie el tamaño del composer (p.ej., varias líneas)
+      let lastHeight = 0;
+      const ro = new ResizeObserver(() => {
+        const h = composer.getBoundingClientRect().height;
+        if (Math.abs(h - lastHeight) > 1){ lastHeight = h; setComposerH(); }
+      });
+      ro.observe(composer);
     }
     setupViewportListeners();
 
-    // Enfocar/blur en iOS: recalcular y reanclar
-    function reAnchor(){ setTimeout(setHeights, 50); setTimeout(setHeights, 250); setTimeout(setHeights, 500); }
-    box.addEventListener('focus', reAnchor);
-    box.addEventListener('blur',  reAnchor);
+    // Asegurar visibilidad del campo al enfocarlo (iOS Safari)
+    function ensureBoxVisible(){
+      setTimeout(()=>{
+        setComposerH();
+        msgs.scrollTop = msgs.scrollHeight; // mueve el timeline arriba del teclado
+      }, 50);
+      setTimeout(()=>{ msgs.scrollTop = msgs.scrollHeight; }, 250);
+    }
+    box.addEventListener('focus', ensureBoxVisible);
+    box.addEventListener('input', ensureBoxVisible);
+    box.addEventListener('blur',  ()=> setTimeout(reflowAll, 50));
 
     /* ===== Helpers UI ===== */
     function escapeHTML(s){ return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 
-    // Emojis estilo WhatsApp (contextuales, sin “viñeta” fija)
+    // Emojis tipo WhatsApp (contextuales)
     function injectWhatsAppEmojis(html){
       const patterns = [
         { rx:/\bpdf\b/i, emoji:'📄' },
@@ -382,7 +404,6 @@
       return html;
     }
 
-    // Detección de saludo para prefijar 👋/🙂 sólo cuando corresponde
     function greetingPrefix(text){
       const t = text.trim().toLowerCase();
       if (/^hola[\s!,.¿?]/.test(t) || /^buen(d[ií]a|as tardes|as noches)/.test(t)) return '👋 ';
@@ -390,15 +411,10 @@
       return '';
     }
 
-    // Emojis + negritas (solo UI; sin tocar lógica)
     function formatReply(text, userText=''){
       if (!text) return '';
       let out = escapeHTML(text);
-
-      // Respetar **negritas**
       out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-      // Énfasis automático
       const emph = [
         /(\b200\s*ppm\b)/gi,
         /\b(j-?512|amonio cuaternario|sanitizante)\b/gi,
@@ -409,18 +425,12 @@
         /\b(acciones inmediatas|acciones preventivas|procedimiento)\b/gi
       ];
       emph.forEach(rx => { out = out.replace(rx, '<strong>$1</strong>'); });
-
-      // Títulos con emojis
       out = out.replace(/^(\s*\**\s*Acciones inmediatas\s*\**)/gim, '✅ <strong>$1</strong>');
       out = out.replace(/^(\s*\**\s*Acciones preventivas\s*\**)/gim, '🛡️ <strong>$1</strong>');
       out = out.replace(/^(\s*\**\s*Procedimiento\s*\**)/gim, '📋 <strong>$1</strong>');
       out = out.replace(/^(\s*\**\s*Análisis de causa raíz.*)/gim, '🔎 <strong>$1</strong>');
-
-      // Párrafos + emojis contextuales
       out = out.split('\n\n').map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
       out = injectWhatsAppEmojis(out);
-
-      // Prefijo sólo si es saludo/agradecimiento
       const lead = greetingPrefix(text);
       return `${lead}${out}`;
     }
@@ -492,8 +502,6 @@
     function cleanReply(text){
       if (!text) return text;
       let out = text;
-
-      // Quitar frases que confunden
       const removePatterns = [
         /verific(a|á)\s+en\s+la\s+ra[ií]z\s+del\s+proyecto[^.\n]*[.\n]?/gi,
         /revisa(r)?\s+la\s+ra[ií]z\s+del\s+proyecto[^.\n]*[.\n]?/gi,
@@ -502,18 +510,12 @@
         /no\s+puedo\s+enviar\s+archivos[^.\n]*[.\n]?/gi
       ];
       removePatterns.forEach(rx => out = out.replace(rx, ''));
-
-      // Quita “o ” residual antes de adjunto
       out = out.replace(/\s+o\s+$/gi, ' ').replace(/\s+o\s*\n/gi, '\n');
-
-      // Reemplazos de estilo
       const replacePairs = [
         { rx:/Licenciada\s+en\s+Tecnolog[ií]a\s+de\s+los\s+Alimentos/gi, to:'especialista en seguridad alimentaria' },
         { rx:/especialista\s+en\s+seguridad\s+alimentaria,\s*especializada\s+en\s+seguridad\s+alimentaria/gi, to:'especialista en seguridad alimentaria' }
       ];
       replacePairs.forEach(({rx,to})=> out = out.replace(rx, to));
-
-      // Normaliza saltos
       out = out.replace(/\n{3,}/g, '\n\n').trim();
       if (!out) out = "Aquí tienes el material solicitado:";
       return out;
@@ -525,6 +527,7 @@
       lastUserText = text;
       addMsg('user', text);
       box.value = ''; box.focus();
+      ensureBoxVisible();
       btn.disabled = true;
 
       try{
@@ -551,7 +554,6 @@
         if (reply){
           const botRow = addMsg('bot', reply);
 
-          // Adjuntar PDF si corresponde (misma lógica)
           if (userWantsPdf){
             const map = await ensurePdfMap();
             const chosen = bestMatch(text, map);
