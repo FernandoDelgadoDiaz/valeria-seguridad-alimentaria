@@ -2,10 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <!-- El teclado reduce el contenido sin mover el header -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="theme-color" content="#0a2f73" />
-  <!-- PWA / iOS -->
   <link rel="manifest" href="/manifest.webmanifest" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -37,12 +35,12 @@
       font-size:var(--fs-body); line-height:1.55; padding-top:env(safe-area-inset-top,0);
     }
 
-    /* ===== Dos modos de layout =====
-       data-standalone="true"  -> PWA / sin URL (scroll sólo en mensajes)
-       data-standalone="false" -> Navegador / con URL (scroll en la página para ocultarla)
+    /* ===== Dos modos =====
+       data-standalone="true"  -> PWA (sin URL): header fijo y scroll solo en mensajes
+       data-standalone="false" -> Navegador (con URL): header sticky y el BODY scrollea para ocultarla
     */
 
-    /* ---- Encabezado ---- */
+    /* Header */
     header{
       display:flex; align-items:center; gap:10px;
       height:var(--header-h);
@@ -51,9 +49,7 @@
       border-bottom:1px solid rgba(255,255,255,.15);
       z-index:20; transform:translateZ(0);
     }
-    /* Sticky en navegador (para que colapse la barra de URL) */
     html[data-standalone="false"] header{ position: sticky; top: 0; }
-    /* Fijo en PWA */
     html[data-standalone="true"]  header{ position: fixed; left:0; right:0; top:0; }
 
     @media (min-width:768px){ :root{--header-h:64px} header{ padding:12px 16px } }
@@ -71,42 +67,45 @@
     .themebtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:transparent;color:var(--header-fg);cursor:pointer}
     .themebtn svg{width:20px;height:20px}
 
-    /* ---- Main ---- */
+    /* Main */
     main{overflow:hidden}
     html[data-standalone="true"]  main{ padding-top:var(--header-h); height:calc(var(--vhpx) - var(--header-h)); }
-    html[data-standalone="false"] main{ padding-top:0; min-height:100svh; }
+    html[data-standalone="false"] main{ padding-top:0; min-height:100dvh; } /* ← dvh para llenar hasta el borde visible actual */
 
-    /* Navegador: el scroll es del BODY para colapsar la URL */
+    /* Navegador: scrollea la página para colapsar URL */
     html[data-standalone="false"] body{ overflow:auto; overscroll-behavior:auto; }
-    /* PWA: bloqueamos el scroll del body, sólo scrollea mensajes */
+    /* PWA: bloqueamos scroll del body */
     html[data-standalone="true"]  body{ overflow:hidden; overscroll-behavior:none; }
 
     .wrap{width:100%;max-width:980px;margin:0 auto;padding:8px 8px 12px}
-    html[data-standalone="false"] .wrap{ padding-top:calc(var(--header-h) + 8px); } /* compensa header sticky */
+    /* En navegador quitamos padding inferior para que el chat llegue al borde */
+    html[data-standalone="false"] .wrap{ padding-top:calc(var(--header-h) + 8px); padding-bottom:0; }
 
-    /* ---- Chat ---- */
     .chat{
       background:var(--chat-bg); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 18px rgba(15,23,42,.06);
       contain:layout size style;
     }
 
-    /* PWA: grid 1fr(auto) con scroll sólo en mensajes */
+    /* PWA: grid 1fr/auto, scroll solo en mensajes */
     html[data-standalone="true"] .chat{
       height:100%; display:grid; grid-template-rows:1fr auto; overflow:hidden;
     }
-    /* Navegador: el chat es flujo normal; composer sticky abajo, página scrollea */
-    html[data-standalone="false"] .chat{ min-height:calc(100svh - var(--header-h) - 16px); position:relative; }
+    /* Navegador: ocupar toda la altura visible actual (dvh), composer sticky abajo */
+    html[data-standalone="false"] .chat{
+      min-height:calc(100dvh - var(--header-h) - 8px - 8px); /* header + padding .wrap */
+      position:relative; display:flex; flex-direction:column;
+    }
 
-    /* ---- Mensajes ---- */
-    .msgs{ display:flex; flex-direction:column; gap:10px; padding:12px 10px; -webkit-overflow-scrolling:touch;
+    /* Mensajes */
+    .msgs{
+      display:flex; flex-direction:column; gap:10px; padding:12px 10px; -webkit-overflow-scrolling:touch;
       background:
         radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 60%),
         radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 60%);
+      flex:1 1 auto;
     }
-    /* PWA: el único scroll vive aquí */
-    html[data-standalone="true"] .msgs{ overflow:auto; }
-    /* Navegador: sin overflow interno (scrollea la página) */
-    html[data-standalone="false"] .msgs{ overflow:visible; }
+    html[data-standalone="true"]  .msgs{ overflow:auto; }
+    html[data-standalone="false"] .msgs{ overflow:visible; } /* scrollea el body */
 
     [data-theme="dark"] .msgs{
       background:
@@ -125,7 +124,7 @@
     .bubble strong{font-weight:800} .bubble em{font-style:italic}
     .bubble p{margin:0 0 8px} .bubble p:last-child{margin:0}
 
-    /* ---- Composer (tipo WhatsApp) ---- */
+    /* Composer */
     .composer{ display:flex; align-items:flex-end; gap:8px; padding:8px; border-top:1px solid var(--border); background:#fff; }
     [data-theme="dark"] .composer{ background:#0b1220; }
     .textarea-wrap{ flex:1; display:flex; align-items:center; padding:6px 12px; border:1px solid var(--border); border-radius:22px; background:#fff; }
@@ -136,9 +135,8 @@
     .sendbtn{ display:inline-flex;align-items:center;justify-content:center;background:var(--brand-blue);color:#fff;border:0;width:44px;height:44px;border-radius:999px;cursor:pointer;transition:transform .05s, filter .2s }
     .sendbtn:active{ transform:scale(.98) } .sendbtn:hover{ filter:brightness(1.05) } .sendbtn svg{ width:20px;height:20px }
 
-    /* Navegador: composer pegado abajo aunque scrollee la página */
+    /* Pegado al borde inferior en ambos modos */
     html[data-standalone="false"] .composer{ position:sticky; bottom:0; z-index:10; padding-bottom:max(8px,env(safe-area-inset-bottom)); }
-    /* PWA: el composer es la fila inferior del grid */
     html[data-standalone="true"]  .composer{ padding-bottom:max(8px,env(safe-area-inset-bottom)); }
 
     /* Viewer imagen */
@@ -168,6 +166,7 @@
     <div class="wrap">
       <div class="chat">
         <div id="msgs" class="msgs"></div>
+
         <div class="composer" id="composer">
           <div class="textarea-wrap"><textarea id="box" placeholder="Mensaje"></textarea></div>
           <button id="send" class="sendbtn" aria-label="Enviar">
@@ -184,16 +183,16 @@
     const $ = s => document.querySelector(s);
     const msgs=$('#msgs'), box=$('#box'), btn=$('#send'), themeToggle=$('#themeToggle'), themeIcon=$('#themeIcon'), composer=$('#composer');
 
-    /* ===== Detectar modo (PWA vs navegador) ===== */
+    /* Detectar PWA vs navegador */
     function detectStandalone(){
-      const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
+      const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
         || navigator.standalone || document.referrer.startsWith('android-app://');
       document.documentElement.setAttribute('data-standalone', isStandalone ? 'true' : 'false');
       return isStandalone;
     }
     const STANDALONE = detectStandalone();
 
-    /* ===== Tema ===== */
+    /* Tema (sin cambios de lógica) */
     const storageKey='valeria_theme';
     function applyTheme(theme){
       const prefersDark=window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -210,7 +209,7 @@
     themeToggle.addEventListener('click', toggleTheme);
     if(window.matchMedia){window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(currentTheme()===null)applyTheme(null);});}
 
-    /* ===== Viewport real (iOS/Android) ===== */
+    /* Viewport real */
     function setVH(){
       const vv=window.visualViewport;
       const h=vv ? vv.height : (window.innerHeight||document.documentElement.clientHeight);
@@ -229,24 +228,23 @@
         visualViewport.addEventListener('resize', reflow, {passive:true});
         visualViewport.addEventListener('scroll', reflow, {passive:true});
       }
-      // autosize textarea
       const ro=new ResizeObserver(()=>{ msgs.scrollTop = msgs.scrollHeight; });
       ro.observe(composer);
     }
     setupViewportListeners();
 
-    /* ===== Autosize del textarea (tipo WhatsApp) ===== */
+    /* Autosize textarea (tipo WhatsApp) */
     function autosizeTextarea(){
       box.style.height='auto';
       const lineH=parseFloat(getComputedStyle(box).lineHeight)||20;
-      const max=lineH*6 + 12; // ~6 líneas
+      const max=lineH*6 + 12; /* ~6 líneas */
       box.style.height=Math.min(box.scrollHeight,max)+'px';
       msgs.scrollTop=msgs.scrollHeight;
     }
     box.addEventListener('input', autosizeTextarea);
     box.addEventListener('focus', ()=>{ setTimeout(()=>{ autosizeTextarea(); msgs.scrollTop=msgs.scrollHeight; }, 50); });
 
-    /* ===== Helpers UI ===== */
+    /* Helpers UI */
     function escapeHTML(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
     function injectWhatsAppEmojis(html){
       const patterns=[
@@ -281,7 +279,7 @@
       return out;
     }
 
-    /* ===== Mensajería (UI) ===== */
+    /* UI de mensajes (lógica intacta) */
     let interacted=false,lastUserText='';
     function addMsg(role,text){
       const row=document.createElement('div'); row.className=`row ${role}`;
@@ -293,7 +291,7 @@
     box.addEventListener('keydown',mark); box.addEventListener('focus',mark); btn.addEventListener('click',mark);
     setTimeout(()=>{ if(!interacted && !msgs.querySelector('.row.user')) addMsg('bot','Hola, soy Valeria. ¿En qué te puedo ayudar para fortalecer la cultura de inocuidad?'); },5000);
 
-    /* ===== Lógica de envío (no se toca) ===== */
+    /* —— Lógica de envío / PDFs (sin cambios) —— */
     async function ensurePdfMap(){ try{const r=await fetch('/docs/keyword_to_file.json',{cache:'no-store'}); return r.ok?await r.json():{}; }catch{return{};} }
     function wantsPdf(t){t=(t||'').toLowerCase();return t.includes('pdf')||t.includes('adjunto')||t.includes('documento');}
     const PRIORITY_KEYS=['sanitizante','j-512','j512','200 ppm','amonio cuaternario','amonio','fefo','retiro anticipado','proximo a vencer','rotulado','etiquetado','fraccionamiento de quesos','quesos','queso','milanesas','pollo','carne vacuna','carne ovina','poes','bpm','bpa','mip','5s','reclamos','retiro de mercado'];
