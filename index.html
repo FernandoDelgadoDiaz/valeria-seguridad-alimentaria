@@ -9,7 +9,7 @@
 
   <style>
     :root{
-      /* Azul uniforme (ajustable). Si querés otro exacto, cambiá esta variable. */
+      /* Azul del uniforme: si querés otro HEX exacto, reemplazalo acá. */
       --brand-blue: #0056d2;
 
       --header-bg: var(--brand-blue);
@@ -33,8 +33,9 @@
       --fs-body: clamp(15px, 1.6vw, 16px);
       --fs-title: clamp(16px, 2.2vw, 18px);
 
-      /* Altura del header (para cálculos de alto) */
-      --header-h: 64px;
+      /* Alturas dinámicas: JS setea --app-h y --header-h */
+      --app-h: 70vh;   /* fallback */
+      --header-h: 64px;/* fallback */
     }
 
     *{box-sizing:border-box}
@@ -44,13 +45,15 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       font-size: var(--fs-body);
       line-height:1.45;
-      display:flex; flex-direction:column;
-      padding-top: calc(env(safe-area-inset-top, 0px));
+
+      /* Evita que el body se desplace: el scroll solo ocurre en .msgs */
+      overflow: hidden;
+      padding-top: env(safe-area-inset-top, 0px);
     }
 
-    /* ===== Header fijo ===== */
+    /* ===== Header fijo (siempre visible) ===== */
     header{
-      position: sticky; top: 0; z-index: 20;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 20;
       display:flex; align-items:center; gap:12px;
       padding: max(10px, env(safe-area-inset-top)) 16px 10px 16px;
       height: var(--header-h);
@@ -62,26 +65,39 @@
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .avatar{
-      width:44px; height:44px; border-radius:999px; flex:0 0 auto;
+      width:44px; height:44px;
+      /* Garantiza círculo perfecto y evita deformación */
+      aspect-ratio: 1 / 1;
+      border-radius:999px; flex:0 0 auto;
       object-fit: cover; object-position: center;
       box-shadow: 0 2px 10px rgba(0,0,0,.15);
       cursor: zoom-in; user-select:none;
     }
 
-    /* ===== Layout principal: el scroll SOLO ocurre en .msgs ===== */
-    main{flex:1; display:flex; justify-content:center}
-    .wrap{width:100%; max-width:960px; padding:12px 12px 16px}
+    /* ===== Layout principal ===== */
+    main{
+      /* deja espacio para el header fijo */
+      padding-top: var(--header-h);
+      height: calc(100dvh - var(--header-h));
+      /* fallback para navegadores sin dvh (JS lo corrige con --app-h) */
+      height: calc(100vh - var(--header-h));
+    }
+    .wrap{width:100%; max-width:960px; margin:0 auto; padding:12px 12px 16px}
     .chat{
       background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:12px;
-      height: calc(100vh - var(--header-h) - 28px - env(safe-area-inset-bottom, 0px));
+
+      /* Altura ajustada en vivo (incluye teclado en móviles) */
+      height: var(--app-h);
+
       display:flex; flex-direction:column; gap:10px;
       box-shadow:0 8px 24px rgba(15, 23, 42, .04);
     }
 
-    /* ===== Mensajes (scroll interno) ===== */
+    /* ===== Mensajes: único contenedor con scroll ===== */
     .msgs{
       flex:1; overflow:auto; display:flex; flex-direction:column;
       gap:12px; padding:8px; overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
     }
     .row{display:flex; gap:8px; align-items:flex-end}
     .row.user{justify-content:flex-end}
@@ -101,11 +117,12 @@
     .dot:nth-child(3){animation-delay:.4s}
     @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
 
-    /* Composer */
+    /* Composer (siempre visible dentro del panel) */
     .composer{
       display:flex; gap:10px; padding:10px; border-top:1px solid var(--border);
       background:#ffffff; border-radius:12px; margin-top:4px;
       padding-bottom: max(10px, env(safe-area-inset-bottom));
+      flex: 0 0 auto;
     }
     textarea{
       flex:1; resize:vertical; min-height:56px; max-height:220px; padding:12px 12px 12px 14px; border-radius:10px;
@@ -142,16 +159,6 @@
       max-height: 88vh;
       border-radius:12px; object-fit: contain; box-shadow: 0 10px 40px rgba(0,0,0,.4);
       background:#fff;
-    }
-    .viewer:focus{ outline: none; }
-
-    /* Responsive chico */
-    @media (max-width: 640px){
-      .wrap{padding:10px}
-      .chat{height: calc(100vh - var(--header-h) - 20px - env(safe-area-inset-bottom, 0px));}
-      .bubble{max-width: 95%}
-      .sendbtn{width:48px; height:48px}
-      textarea{min-height:52px}
     }
   </style>
 </head>
@@ -191,6 +198,24 @@
     const msgs = $('#msgs');
     const box  = $('#box');
     const btn  = $('#send');
+
+    /* ===== Altura dinámica: header fijo + teclado móvil ===== */
+    function setHeights(){
+      const header = document.querySelector('header');
+      const headerH = header.getBoundingClientRect().height;
+      document.documentElement.style.setProperty('--header-h', headerH + 'px');
+
+      const vh = (window.visualViewport?.height) ? window.visualViewport.height : window.innerHeight;
+      const appH = Math.max(240, vh - headerH - 16); // resta padding interior aproximado
+      document.documentElement.style.setProperty('--app-h', appH + 'px');
+    }
+    setHeights();
+    window.addEventListener('resize', setHeights);
+    window.addEventListener('orientationchange', setHeights);
+    if (window.visualViewport){
+      window.visualViewport.addEventListener('resize', setHeights);
+      window.visualViewport.addEventListener('scroll', setHeights);
+    }
 
     function addMsg(role, text, cls=''){
       const row = document.createElement('div');
@@ -300,8 +325,8 @@
       addMsg('user', text);
       box.value = ''; box.focus();
 
-      btn.disabled = true;
       const typingRow = addTyping();
+      btn.disabled = true;
 
       try{
         const res = await fetch('/.netlify/functions/chat', {
