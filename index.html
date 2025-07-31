@@ -16,16 +16,21 @@
       --page-bg:#eef1f6; --chat-bg:#f5f7fb; --text:#0f172a; --muted:#64748b; --border:#e5e7eb;
       --bubble-bot:#dbeafe; --bubble-bot-text:#0f172a;
       --bubble-user:#eef2f7; --bubble-user-text:#0f172a;
-      --attach-bg:#eef2ff; --attach-bd:#cfe0ff;
       --fs-body:clamp(15px,1.6vw,16px); --fs-name:clamp(18px,3vw,22px); --fs-role:clamp(12px,2vw,14px);
       --header-h:56px; --vhpx:100svh;
+
+      /* Adjunto compacto */
+      --attach-bg:#ffffff; --attach-bd:#d9e1f2; --attach-fg:#0f172a;
+      --attach-bg-hover:#f3f6ff;
     }
     [data-theme="dark"]{
       --header-bg:var(--brand-blue); --header-fg:#e5e7eb;
       --page-bg:#0f172a; --chat-bg:#0b1220; --text:#e5e7eb; --muted:#9ca3af; --border:#1f2937;
       --bubble-bot:#1b2d50; --bubble-bot-text:#e5e7eb;
       --bubble-user:#335694; --bubble-user-text:#e5e7eb;
-      --attach-bg:#203764; --attach-bd:#35528a;
+
+      --attach-bg:#0f172a; --attach-bd:#344465; --attach-fg:#e5e7eb;
+      --attach-bg-hover:#132042;
     }
 
     *{box-sizing:border-box} html,body{height:100%}
@@ -85,12 +90,8 @@
       background:var(--chat-bg); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 18px rgba(15,23,42,.06);
       display:grid; grid-template-rows:1fr auto; overflow:hidden; contain:layout size style;
     }
-    /* PWA: el chat ocupa toda la altura del main */
-    html[data-standalone="true"] .chat{ height:100%; }
-    /* Navegador: altura visible actual (dvh) para que el composer quede abajo */
-    html[data-standalone="false"] .chat{
-      height:calc(100dvh - var(--header-h) - 8px - 8px); /* header + paddings .wrap */
-    }
+    html[data-standalone="true"]  .chat{ height:100%; }
+    html[data-standalone="false"] .chat{ height:calc(100dvh - var(--header-h) - 8px - 8px); }
 
     /* Mensajes: SIEMPRE con overflow:auto -> el panel de lectura scrollea */
     .msgs{
@@ -118,6 +119,9 @@
     .bubble strong{font-weight:800} .bubble em{font-style:italic}
     .bubble p{margin:0 0 8px} .bubble p:last-child{margin:0}
 
+    /* ⚠️ Imágenes dentro de la burbuja (por si el backend manda alguna) -> nunca gigantes */
+    .bubble img{ max-width:100%; height:auto; border-radius:8px; display:block; }
+
     /* Composer */
     .composer{ display:flex; align-items:flex-end; gap:8px; padding:8px; border-top:1px solid var(--border); background:#fff; }
     [data-theme="dark"] .composer{ background:#0b1220; }
@@ -129,10 +133,20 @@
     .sendbtn{ display:inline-flex;align-items:center;justify-content:center;background:var(--brand-blue);color:#fff;border:0;width:44px;height:44px;border-radius:999px;cursor:pointer;transition:transform .05s, filter .2s }
     .sendbtn:active{ transform:scale(.98) } .sendbtn:hover{ filter:brightness(1.05) } .sendbtn svg{ width:20px;height:20px }
 
-    /* Viewer imagen */
-    .viewer{ position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.52);
-      padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left)) }
-    .viewer.open{ display:flex } .viewer img{ max-width:min(92vw,1024px); max-height:88vh; border-radius:12px; object-fit:contain; box-shadow:0 10px 40px rgba(0,0,0,.4); background:#fff }
+    /* === Adjunto compacto: "📎 Procedimiento de pollos" === */
+    .attach{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:4px 8px; border-radius:999px;
+      font-size:13px; font-weight:700; text-decoration:none;
+      background:var(--attach-bg); color:var(--attach-fg);
+      border:1px solid var(--attach-bd);
+      max-width: 80vw;
+    }
+    .attach:hover{ background: var(--attach-bg-hover); }
+    .attach .clip{ font-size:14px; line-height:1; }
+    .attach .name{
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
   </style>
 </head>
 <body>
@@ -207,8 +221,7 @@
     }
     function reflow(){
       setVH();
-      // Llevar siempre al final cuando cambia el viewport/teclado
-      msgs.scrollTop = msgs.scrollHeight;
+      msgs.scrollTop = msgs.scrollHeight; // Mantener últimos mensajes a la vista
     }
     function setupViewportListeners(){
       reflow();
@@ -249,12 +262,6 @@
       for(const {rx,emoji} of patterns){ html=html.replace(rx,(m)=>`${emoji} ${m}`); }
       return html;
     }
-    function greetingPrefix(text){
-      const t=text.trim().toLowerCase();
-      if(/^hola[\s!,.¿?]/.test(t)||/^buen(d[ií]a|as tardes|as noches)/.test(t))return'👋 ';
-      if(t.startsWith('gracias')||t.startsWith('muchas gracias'))return'🙂 ';
-      return'';
-    }
     function formatReply(text){
       if(!text)return''; let out=escapeHTML(text);
       out=out.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
@@ -283,7 +290,7 @@
     box.addEventListener('keydown',mark); box.addEventListener('focus',mark); btn.addEventListener('click',mark);
     setTimeout(()=>{ if(!interacted && !msgs.querySelector('.row.user')) addMsg('bot','Hola, soy Valeria. ¿En qué te puedo ayudar para fortalecer la cultura de inocuidad?'); },5000);
 
-    /* —— Lógica de envío / PDFs (sin cambios) —— */
+    /* —— Lógica de envío / PDFs (sin cambios de lógica) —— */
     async function ensurePdfMap(){ try{const r=await fetch('/docs/keyword_to_file.json',{cache:'no-store'}); return r.ok?await r.json():{}; }catch{return{};} }
     function wantsPdf(t){t=(t||'').toLowerCase();return t.includes('pdf')||t.includes('adjunto')||t.includes('documento');}
     const PRIORITY_KEYS=['sanitizante','j-512','j512','200 ppm','amonio cuaternario','amonio','fefo','retiro anticipado','proximo a vencer','rotulado','etiquetado','fraccionamiento de quesos','quesos','queso','milanesas','pollo','carne vacuna','carne ovina','poes','bpm','bpa','mip','5s','reclamos','retiro de mercado'];
@@ -310,24 +317,46 @@
         const userWantsPdf=wantsPdf(text);
         if(reply){
           const botRow=addMsg('bot',reply);
+
           if(userWantsPdf){
-            const map=await ensurePdfMap(); const chosen=bestMatch(text,map);
-            const isIndex=chosen.toLowerCase()==='index.html'; const url=isIndex?'/docs/index.html':`/docs/${chosen}`; const ok=await fileExists(url);
-            const bubble=botRow.querySelector('.bubble'); bubble.appendChild(document.createElement('br'));
-            const a=document.createElement('a'); a.href=ok?url:'/docs/index.html'; a.target='_blank'; a.rel='noopener'; a.className='attach';
-            a.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7v10a5 5 0 0010 0V7a3 3 0 10-6 0v9a1 1 0 002 0V7"/></svg>
-                         ${ok?(isIndex?'Ver todos los PDFs':('Descargar PDF · '+chosen.replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\b\w/g,c=>c.toUpperCase()))):'Ver todos los PDFs'}`;
+            const map=await ensurePdfMap();
+            const chosen=bestMatch(text,map);
+            const isIndex=chosen.toLowerCase()==='index.html';
+            const url=isIndex?'/docs/index.html':`/docs/${chosen}`;
+            const ok=await fileExists(url);
+
+            // Título prolijo: "Procedimiento de pollos"
+            const prettyName = (isIndex ? 'Ver todos los PDFs'
+              : chosen.replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\s+/g,' ').trim()
+              ).replace(/\b\w/g,c=>c.toUpperCase());
+
+            // Inserto adjunto compacto: 📎 + título, sin SVG gigante
+            const bubble=botRow.querySelector('.bubble');
+            bubble.appendChild(document.createElement('br'));
+            const a=document.createElement('a');
+            a.href = ok ? url : '/docs/index.html';
+            a.target = '_blank'; a.rel='noopener';
+            a.className = 'attach';
+            a.innerHTML = `<span class="clip">📎</span><span class="name">${prettyName}</span>`;
             bubble.appendChild(a);
           }
-        }else{ addMsg('bot','No llegó texto en "reply" ni en "answer". Verificá en Network → Response.'); }
-      }catch(e){ addMsg('bot','❌ Error de red. ¿Estás online?'); }
-      finally{ btn.disabled=false; msgs.scrollTop=msgs.scrollHeight; }
+
+        }else{
+          addMsg('bot','No llegó texto en "reply" ni en "answer". Verificá en Network → Response.');
+        }
+      }catch(e){
+        addMsg('bot','❌ Error de red. ¿Estás online?');
+      }finally{
+        btn.disabled=false;
+        msgs.scrollTop=msgs.scrollHeight;
+      }
     }
     btn.addEventListener('click',sendMessage);
     box.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 
     /* Viewer */
-    const viewer=document.getElementById('viewer'); document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.classList.add('open');document.body.style.overflow='hidden';});
+    const viewer=document.getElementById('viewer');
+    document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.classList.add('open');document.body.style.overflow='hidden';});
     viewer.addEventListener('click',()=>{viewer.classList.remove('open');document.body.style.overflow='';});
     viewer.addEventListener('keydown',e=>{ if(e.key==='Escape') viewer.classList.remove('open'); });
   </script>
