@@ -1,9 +1,0 @@
-// functions/chat.js
-// Proxy simple: reusa la lógica de la Function "valeria".
-// No cambia tu estructura ni tu front: /.netlify/functions/chat va a responder igual que /valeria.
-
-const valeria = require('./valeria.js');
-
-exports.handler = async (event, context) => {
-  return valeria.handler(event, context);
-};
