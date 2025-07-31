@@ -1,8 +1,6 @@
 [functions]
-  # Tu carpeta de functions es "functions" (según tu repo)
   directory = "functions"
   node_bundler = "esbuild"
-  # Incluimos data/** por si tu función lee textos locales (no cambia tu estructura)
   included_files = ["data/**"]
 
 [[headers]]
@@ -12,14 +10,7 @@
     Access-Control-Allow-Headers = "Content-Type, Authorization"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
 
-# --- REDIRECTS (clave) ---
-# Si tu front llama a /.netlify/functions/chat, lo enviamos a la única Function activa: /valeria
-[[redirects]]
-  from = "/.netlify/functions/chat"
-  to = "/.netlify/functions/valeria"
-  status = 200
-
-# Si en algún lugar usás /api/chat (o /api/loque sea), lo mapeamos a Functions automáticamente
+# (opcional) Si en algún lugar usás /api/..., esto lo mapea a Functions
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
