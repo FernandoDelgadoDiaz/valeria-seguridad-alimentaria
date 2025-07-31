@@ -2,38 +2,62 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <!-- iOS: el teclado reduce el área de contenido -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>Valeria · Seguridad Alimentaria</title>
   <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
   <link rel="icon" href="/valeria-mini.jpg" />
-
   <style>
     :root{
-      --brand-blue: #0056d2;     /* azul del uniforme */
+      /* Paleta clara (sin verdes) */
+      --brand-blue: #0056d2;             /* azul corporativo (header, botón) */
       --header-bg: var(--brand-blue);
       --header-fg: #ffffff;
 
-      --page-bg: #eceff3;        /* fondo general */
-      --chat-bg: #e9f3ef;        /* fondo estilo WhatsApp */
+      --page-bg: #eef1f6;                /* gris-azulado muy claro (fondo general) */
+      --chat-bg: #f5f7fb;                /* gris-azulado claro (área de chat) */
 
-      --text:  #0f172a;
-      --muted: #64748b;
-      --border:#e5e7eb;
+      --text:   #0f172a;                 /* gris muy oscuro para texto */
+      --muted:  #64748b;                 /* gris medio */
+      --border: #e5e7eb;                 /* gris claro bordes */
 
-      /* Burbujas */
-      --bubble-bot:       #eaf2ff;  /* Valeria */
+      /* Burbujas (azules/grises) */
+      --bubble-bot:       #e7efff;       /* Valeria: azul muy claro */
       --bubble-bot-text:  #0f172a;
-      --bubble-user:      #e6f7ec;  /* Usuario */
+      --bubble-user:      #f0f4ff;       /* Usuario: azul-gris claro */
       --bubble-user-text: #0f172a;
 
+      /* Botón adjunto */
+      --attach-bg:   #eef2ff;
+      --attach-bd:   #cfe0ff;
+
+      /* Tipografías fluidas */
       --fs-body:  clamp(15px, 1.6vw, 16px);
-      --fs-name:  clamp(17px, 2.6vw, 20px);
-      --fs-role:  clamp(12px, 1.8vw, 14px);
+      --fs-name:  clamp(18px, 3vw, 22px);
+      --fs-role:  clamp(12px, 2vw, 14px);
 
       --app-h: 70vh;
       --header-h: 56px;
       --composer-h: 50px;
+    }
+
+    /* ===== Tema oscuro (opcional) ===== */
+    [data-theme="dark"]{
+      --header-bg: #0a2f73;              /* azul profundo */
+      --header-fg: #e5e7eb;
+
+      --page-bg:  #0f172a;               /* slate-900 */
+      --chat-bg:  #0b1220;               /* azul muy oscuro */
+      --text:     #e5e7eb;               /* texto claro */
+      --muted:    #9ca3af;
+      --border:   #1f2937;
+
+      --bubble-bot:       #15243e;       /* azul grisáceo oscuro */
+      --bubble-bot-text:  #e5e7eb;
+      --bubble-user:      #1a2a4d;       /* azul un toque más claro que bot */
+      --bubble-user-text: #e5e7eb;
+
+      --attach-bg: #16284a;
+      --attach-bd: #24427a;
     }
 
     *{box-sizing:border-box}
@@ -55,21 +79,20 @@
       background: var(--header-bg);
       color: var(--header-fg);
       border-bottom: 1px solid rgba(255,255,255,.15);
-      will-change: transform;
     }
     @media (min-width: 768px){
       :root{ --header-h: 64px; }
       header{ padding: 12px 16px; }
     }
 
-    /* Avatar SIN deformación: fondo con cover */
+    /* Avatar SIN deformación: fondo cover en contenedor circular */
     .avatar-wrap{
       width:40px; height:40px; border-radius:999px; overflow:hidden; flex:0 0 auto;
       box-shadow: 0 2px 8px rgba(0,0,0,.12); cursor: zoom-in; user-select:none;
       background-color:#ffffff;
-      background-image: url('/valeria-mini.jpg');
-      background-size: cover;           /* recorta sin deformar */
-      background-position: center center;
+      background-image: url('/valeria-mini.jpg'); /* mini */
+      background-size: cover;       /* recorta sin deformar */
+      background-position: center;
       background-repeat: no-repeat;
       backface-visibility: hidden;
     }
@@ -77,7 +100,6 @@
       .avatar-wrap{ width:44px; height:44px; }
     }
 
-    /* Título a dos líneas */
     .title{ display:flex; flex-direction:column; line-height:1.1; min-width:0; }
     .title .name{
       font-weight:800; font-size: var(--fs-name);
@@ -87,6 +109,18 @@
       font-weight:600; font-size: var(--fs-role); opacity:.95;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
+
+    .spacer{flex:1 1 auto}
+
+    /* Toggle tema */
+    .themebtn{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:40px; height:40px; border-radius:999px; border:1px solid rgba(255,255,255,.25);
+      background: transparent; color: var(--header-fg);
+      cursor:pointer;
+    }
+    .themebtn svg{ width:20px; height:20px }
+    .themebtn:focus{ outline:2px solid rgba(255,255,255,.6); outline-offset:2px }
 
     /* ===== Layout principal ===== */
     main{
@@ -109,8 +143,13 @@
       gap:10px; padding: 12px 10px; overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
       background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.65) 0%, rgba(255,255,255,0) 60%),
-        radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 60%);
+        radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 60%);
+    }
+    [data-theme="dark"] .msgs{
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.05) 0%, rgba(255,255,255,0) 60%);
     }
 
     .row{display:flex; gap:6px; align-items:flex-end}
@@ -130,7 +169,7 @@
     .bubble em{ font-style: italic; }
     .bubble p{ margin:0 0 8px }
     .bubble p:last-child{ margin:0 }
-    .bubble .tag{ display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; font-weight:700; font-size:12px; background:#eef2ff; border:1px solid #c7d2fe; }
+    .bubble .tag{ display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; font-weight:700; font-size:12px; background:var(--attach-bg); border:1px solid var(--attach-bd); }
 
     /* ===== Composer ===== */
     .composer{
@@ -138,6 +177,7 @@
       padding:8px; border-top:1px solid var(--border);
       background:#ffffff; min-height: var(--composer-h); flex: 0 0 auto;
     }
+    [data-theme="dark"] .composer{ background:#0b1220; }
     textarea{
       flex:1; resize:none;
       min-height: 40px; max-height: 120px;
@@ -147,8 +187,10 @@
       font-family: inherit; font-size: var(--fs-body); line-height: 1.55;
       outline:none;
     }
+    [data-theme="dark"] textarea{ background:#0f172a; }
     textarea::placeholder{ color:#94a3b8; }
     textarea:focus{ background:#fff; border-color:#cbd5e1; }
+    [data-theme="dark"] textarea:focus{ background:#111827; border-color:#374151; }
 
     .sendbtn{
       display:inline-flex; align-items:center; justify-content:center;
@@ -160,14 +202,16 @@
     .sendbtn:active{ transform: scale(0.98) }
     .sendbtn:hover{ filter: brightness(1.05) }
     .sendbtn svg{ width:20px; height:20px }
+    .sendbtn[disabled]{ opacity:.6; cursor:not-allowed; }
 
     /* Adjuntos */
     .attach{
       display:inline-flex; align-items:center; gap:8px; margin-top:10px;
-      background:#eff6ff; border:1px solid #cfe2ff; color:#0f172a; padding:8px 10px; border-radius:10px;
+      background:var(--attach-bg); border:1px solid var(--attach-bd); color:var(--text);
+      padding:8px 10px; border-radius:10px;
       text-decoration:none; font-weight:600; font-size:14px;
     }
-    .attach:hover{ background:#e7f0ff; }
+    .attach:hover{ filter:brightness(1.03); }
     .attach svg{ width:16px; height:16px; }
 
     /* Viewer imagen */
@@ -190,10 +234,22 @@
   <header>
     <!-- Avatar como background cover (no se deforma) -->
     <div class="avatar-wrap" id="avatarWrap" title="Ver imagen"></div>
+
     <div class="title">
       <div class="name">Valeria</div>
       <div class="role">Seguridad Alimentaria</div>
     </div>
+
+    <div class="spacer"></div>
+
+    <!-- Toggle tema claro/oscuro -->
+    <button id="themeToggle" class="themebtn" aria-label="Cambiar tema" title="Cambiar tema">
+      <!-- icono se reemplaza por JS (sol → luna) -->
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+        <circle cx="12" cy="12" r="5" stroke-width="2"></circle>
+        <path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+      </svg>
+    </button>
   </header>
 
   <!-- Visor de imagen expandida -->
@@ -223,6 +279,50 @@
     const msgs = $('#msgs');
     const box  = $('#box');
     const btn  = $('#send');
+    const themeToggle = $('#themeToggle');
+    const themeIcon   = $('#themeIcon');
+
+    /* ===== Tema: sistema + preferencia usuario ===== */
+    const storageKey = 'valeria_theme';
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    function applyTheme(theme){ // 'light' | 'dark' | null (auto)
+      if (theme === 'dark'){ document.documentElement.setAttribute('data-theme','dark'); }
+      else if (theme === 'light'){ document.documentElement.removeAttribute('data-theme'); }
+      else { // auto (según sistema)
+        if (prefersDark) document.documentElement.setAttribute('data-theme','dark');
+        else document.documentElement.removeAttribute('data-theme');
+      }
+      updateThemeIcon();
+    }
+    function currentTheme(){
+      const t = localStorage.getItem(storageKey);
+      if (t === 'light' || t === 'dark') return t;
+      return null; // auto
+    }
+    function toggleTheme(){
+      const t = currentTheme();
+      const next = t === 'dark' ? 'light' : 'dark';
+      localStorage.setItem(storageKey, next);
+      applyTheme(next);
+    }
+    function updateThemeIcon(){
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      themeIcon.innerHTML = isDark
+        // Luna
+        ? '<path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" stroke-width="2" fill="none"/>'
+        // Sol
+        : '<circle cx="12" cy="12" r="5" stroke-width="2"></circle><path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
+    }
+    // Inicial
+    applyTheme(currentTheme());
+    themeToggle.addEventListener('click', toggleTheme);
+    // Si cambia el tema del sistema y estamos en "auto" (null)
+    if (window.matchMedia){
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)=>{
+        if (currentTheme() === null) applyTheme(null);
+      });
+    }
 
     /* ===== Altura dinámica (iOS/Android + teclado) ===== */
     function setHeights(){
@@ -248,15 +348,18 @@
 
     /* ===== Helpers UI ===== */
     function escapeHTML(s){
-      return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+      return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
     }
 
-    // Emojis + negritas siempre
+    // Emojis + negritas coherentes (solo UI; sin tocar lógica)
     function formatReply(text, userText=''){
       if (!text) return '';
       let out = escapeHTML(text);
+
+      // Respetar **negritas**
       out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
 
+      // Énfasis automático en conceptos clave
       const emph = [
         /(\b200\s*ppm\b)/gi,
         /\b(j-?512|amonio cuaternario|sanitizante)\b/gi,
@@ -274,7 +377,7 @@
       out = out.replace(/^(\s*\**\s*Procedimiento\s*\**)/gim, '📋 <strong>$1</strong>');
       out = out.replace(/^(\s*\**\s*Análisis de causa raíz.*)/gim, '🔎 <strong>$1</strong>');
 
-      // Emoji contextual SIEMPRE (default 💬)
+      // Emoji contextual (default 💬)
       const u = (userText || '').toLowerCase();
       let tag = '💬';
       if (u.includes('200') || u.includes('ppm') || u.includes('j-512') || u.includes('j512') || u.includes('sanitizante')) tag = '🧪';
@@ -304,7 +407,7 @@
       return row;
     }
 
-    /* Presentación automática (sin “Licenciada…”) */
+    /* Presentación automática (sin “Licenciada…”, sin mostrar “pensando…”) */
     let interacted = false, lastUserText = '';
     function mark(){ interacted = true; }
     box.addEventListener('keydown', mark);
@@ -317,7 +420,7 @@
       }
     }, 5000);
 
-    /* PDFs (misma lógica de antes) */
+    /* === PDFs (misma lógica; no se toca) === */
     let PDF_MAP = null;
     async function ensurePdfMap(){
       if (PDF_MAP) return PDF_MAP;
