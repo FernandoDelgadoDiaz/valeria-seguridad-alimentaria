@@ -26,7 +26,7 @@
       --bubble-user:      #f0f4ff;       /* Usuario: azul-gris claro */
       --bubble-user-text: #0f172a;
 
-      /* Botón adjunto */
+      /* Adjuntos */
       --attach-bg:   #eef2ff;
       --attach-bd:   #cfe0ff;
 
@@ -42,18 +42,18 @@
 
     /* ===== Tema oscuro (opcional) ===== */
     [data-theme="dark"]{
-      --header-bg: #0a2f73;              /* azul profundo */
+      --header-bg: #0a2f73;
       --header-fg: #e5e7eb;
 
-      --page-bg:  #0f172a;               /* slate-900 */
-      --chat-bg:  #0b1220;               /* azul muy oscuro */
-      --text:     #e5e7eb;               /* texto claro */
+      --page-bg:  #0f172a;
+      --chat-bg:  #0b1220;
+      --text:     #e5e7eb;
       --muted:    #9ca3af;
       --border:   #1f2937;
 
-      --bubble-bot:       #15243e;       /* azul grisáceo oscuro */
+      --bubble-bot:       #15243e;
       --bubble-bot-text:  #e5e7eb;
-      --bubble-user:      #1a2a4d;       /* azul un toque más claro que bot */
+      --bubble-user:      #1a2a4d;
       --bubble-user-text: #e5e7eb;
 
       --attach-bg: #16284a;
@@ -85,12 +85,12 @@
       header{ padding: 12px 16px; }
     }
 
-    /* Avatar SIN deformación: fondo cover en contenedor circular */
+    /* Avatar SIN deformación: background cover */
     .avatar-wrap{
       width:40px; height:40px; border-radius:999px; overflow:hidden; flex:0 0 auto;
       box-shadow: 0 2px 8px rgba(0,0,0,.12); cursor: zoom-in; user-select:none;
       background-color:#ffffff;
-      background-image: url('/valeria-mini.jpg'); /* mini */
+      background-image: url('/valeria-mini.jpg');
       background-size: cover;       /* recorta sin deformar */
       background-position: center;
       background-repeat: no-repeat;
@@ -164,12 +164,11 @@
     .bot  .bubble{background:var(--bubble-bot);  color:var(--bubble-bot-text)}
     .row + .row{ margin-top: 2px; }
 
-    /* Formato interno (cuando usamos innerHTML) */
+    /* Formato interno (innerHTML) */
     .bubble strong{ font-weight:800; }
     .bubble em{ font-style: italic; }
     .bubble p{ margin:0 0 8px }
     .bubble p:last-child{ margin:0 }
-    .bubble .tag{ display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; font-weight:700; font-size:12px; background:var(--attach-bg); border:1px solid var(--attach-bd); }
 
     /* ===== Composer ===== */
     .composer{
@@ -232,19 +231,13 @@
 <body>
   <!-- Header fijo -->
   <header>
-    <!-- Avatar como background cover (no se deforma) -->
     <div class="avatar-wrap" id="avatarWrap" title="Ver imagen"></div>
-
     <div class="title">
       <div class="name">Valeria</div>
       <div class="role">Seguridad Alimentaria</div>
     </div>
-
     <div class="spacer"></div>
-
-    <!-- Toggle tema claro/oscuro -->
     <button id="themeToggle" class="themebtn" aria-label="Cambiar tema" title="Cambiar tema">
-      <!-- icono se reemplaza por JS (sol → luna) -->
       <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
         <circle cx="12" cy="12" r="5" stroke-width="2"></circle>
         <path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
@@ -252,7 +245,6 @@
     </button>
   </header>
 
-  <!-- Visor de imagen expandida -->
   <div id="viewer" class="viewer" aria-modal="true" role="dialog" tabindex="-1">
     <img src="/valeria-full.jpg" alt="Valeria" />
   </div>
@@ -289,7 +281,7 @@
     function applyTheme(theme){ // 'light' | 'dark' | null (auto)
       if (theme === 'dark'){ document.documentElement.setAttribute('data-theme','dark'); }
       else if (theme === 'light'){ document.documentElement.removeAttribute('data-theme'); }
-      else { // auto (según sistema)
+      else { // auto
         if (prefersDark) document.documentElement.setAttribute('data-theme','dark');
         else document.documentElement.removeAttribute('data-theme');
       }
@@ -309,22 +301,18 @@
     function updateThemeIcon(){
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       themeIcon.innerHTML = isDark
-        // Luna
         ? '<path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" stroke-width="2" fill="none"/>'
-        // Sol
         : '<circle cx="12" cy="12" r="5" stroke-width="2"></circle><path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
     }
-    // Inicial
     applyTheme(currentTheme());
     themeToggle.addEventListener('click', toggleTheme);
-    // Si cambia el tema del sistema y estamos en "auto" (null)
     if (window.matchMedia){
       window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e)=>{
         if (currentTheme() === null) applyTheme(null);
       });
     }
 
-    /* ===== Altura dinámica (iOS/Android + teclado) ===== */
+    /* ===== Altura dinámica ===== */
     function setHeights(){
       const header = document.querySelector('header');
       const headerH = header.getBoundingClientRect().height;
@@ -351,6 +339,30 @@
       return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
     }
 
+    // Enriquecimiento con emojis estilo WhatsApp (moderado y contextual)
+    function injectWhatsAppEmojis(html){
+      // Reemplazos suaves (solo primera ocurrencia por término)
+      const patterns = [
+        { rx:/\bpdf\b/i, emoji:'📄' },
+        { rx:/\bprocedimiento(s)?\b/i, emoji:'📋' },
+        { rx:/\bsanitizante|j-?512|amonio cuaternario\b/i, emoji:'🧪' },
+        { rx:/\b200\s*ppm\b/i, emoji:'🧪' },
+        { rx:/\bfefo\b/i, emoji:'🔁' },
+        { rx:/\betiquet(ad|ad)o|rotulado\b/i, emoji:'🏷️' },
+        { rx:/\bauditor(i|í)a(s)?\b/i, emoji:'🔎' },
+        { rx:/\btemperatura|frío|heladera\b/i, emoji:'🌡️' },
+        { rx:/\bcorrect(o|a)s?\b/i, emoji:'✅' },
+        { rx:/\bincorrect(o|a)s?\b/i, emoji:'❌' },
+        { rx:/\bimportante\b/i, emoji:'⭐' },
+        { rx:/\btiempo|minut(o|os)\b/i, emoji:'⏱️' },
+        { rx:/\bqueso(s)?|fraccionamiento de quesos\b/i, emoji:'🧀' }
+      ];
+      for (const {rx, emoji} of patterns){
+        html = html.replace(rx, (m)=> `${emoji} ${m}`);
+      }
+      return html;
+    }
+
     // Emojis + negritas coherentes (solo UI; sin tocar lógica)
     function formatReply(text, userText=''){
       if (!text) return '';
@@ -371,27 +383,29 @@
       ];
       emph.forEach(rx => { out = out.replace(rx, '<strong>$1</strong>'); });
 
-      // Títulos con emojis
+      // Títulos con emojis (tipo WhatsApp)
       out = out.replace(/^(\s*\**\s*Acciones inmediatas\s*\**)/gim, '✅ <strong>$1</strong>');
       out = out.replace(/^(\s*\**\s*Acciones preventivas\s*\**)/gim, '🛡️ <strong>$1</strong>');
       out = out.replace(/^(\s*\**\s*Procedimiento\s*\**)/gim, '📋 <strong>$1</strong>');
       out = out.replace(/^(\s*\**\s*Análisis de causa raíz.*)/gim, '🔎 <strong>$1</strong>');
 
-      // Emoji contextual (default 💬)
+      // Emoji contextual al inicio (sin “Guía”)
       const u = (userText || '').toLowerCase();
-      let tag = '💬';
-      if (u.includes('200') || u.includes('ppm') || u.includes('j-512') || u.includes('j512') || u.includes('sanitizante')) tag = '🧪';
-      else if (u.includes('fefo') || u.includes('rotaci')) tag = '🔁';
-      else if (u.includes('vencid')) tag = '⛔';
-      else if (u.includes('auditor')) tag = '📋';
-      else if (u.includes('rotulado') || u.includes('etiquet')) tag = '🏷️';
-      else if (u.includes('poes') || u.includes('mip') || u.includes('bpm')) tag = '🧼';
+      let lead = '';
+      if (u.includes('200') || u.includes('ppm') || u.includes('j-512') || u.includes('j512') || u.includes('sanitizante')) lead = '🧪 ';
+      else if (u.includes('fefo') || u.includes('rotaci')) lead = '🔁 ';
+      else if (u.includes('vencid')) lead = '⛔ ';
+      else if (u.includes('auditor')) lead = '📋 ';
+      else if (u.includes('rotulado') || u.includes('etiquet')) lead = '🏷️ ';
+      else if (u.includes('poes') || u.includes('mip') || u.includes('bpm')) lead = '🧼 ';
+      else lead = '💬 ';
 
-      out = `<span class="tag">${tag} Guía</span><br>${out}`;
-
-      // Párrafos
+      // Párrafos y enriquecimiento
       out = out.split('\n\n').map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
-      return out;
+      out = injectWhatsAppEmojis(out);
+
+      // Prefijo emoji
+      return `${lead}${out}`;
     }
 
     function addMsg(role, text){
@@ -407,7 +421,7 @@
       return row;
     }
 
-    /* Presentación automática (sin “Licenciada…”, sin mostrar “pensando…”) */
+    /* Presentación automática (sin “Licenciada…”, sin “pensando…”) */
     let interacted = false, lastUserText = '';
     function mark(){ interacted = true; }
     box.addEventListener('keydown', mark);
@@ -456,16 +470,32 @@
       try{ const r = await fetch(url, { method: 'HEAD', cache: 'no-store' }); return r.ok; }
       catch{ return false; }
     }
+
+    // Limpia frases indeseadas del modelo (sin tocar backend)
     function cleanReply(text){
       if (!text) return text;
       let out = text;
-      const patterns = [
-        /no puedo enviar archivos directamente[^.\n]*[.\n]?/i,
-        /no puedo enviar archivos[^.\n]*[.\n]?/i,
-        /te recomiendo buscarlo en la ra[ií]z[^.\n]*[.\n]?/i,
-        /en el servicio de almacenamiento seguro[^.\n]*[.\n]?/i
+
+      // Frases a eliminar
+      const removePatterns = [
+        /verific(a|á)\s+en\s+la\s+ra[ií]z\s+del\s+proyecto[^.\n]*[.\n]?/gi,
+        /revisa(r)?\s+la\s+ra[ií]z\s+del\s+proyecto[^.\n]*[.\n]?/gi,
+        /busc(a|á)rlo\s+en\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi,
+        /en\s+el\s+servicio\s+de\s+almacenamiento\s+seguro[^.\n]*[.\n]?/gi,
+        /no\s+puedo\s+enviar\s+archivos[^.\n]*[.\n]?/gi
       ];
-      for (const p of patterns){ out = out.replace(p, ''); }
+      removePatterns.forEach(rx => out = out.replace(rx, ''));
+
+      // Quita “o ” residual antes de adjunto
+      out = out.replace(/\s+o\s+$/gi, ' ').replace(/\s+o\s*\n/gi, '\n');
+
+      // Reemplazos de estilo
+      const replacePairs = [
+        { rx:/Licenciada\s+en\s+Tecnolog[ií]a\s+de\s+los\s+Alimentos/gi, to:'especialista en seguridad alimentaria' }
+      ];
+      replacePairs.forEach(({rx,to})=> out = out.replace(rx, to));
+
+      // Normaliza saltos
       out = out.replace(/\n{3,}/g, '\n\n').trim();
       if (!out) out = "Aquí tienes el material solicitado:";
       return out;
@@ -494,11 +524,16 @@
 
         const data = await res.json().catch(()=> ({}));
         let reply = data.reply || data.answer || '';
+
+        // Limpieza UI
+        reply = cleanReply(reply);
+
         const userWantsPdf = wantsPdf(text);
-        if (userWantsPdf) reply = cleanReply(reply);
 
         if (reply){
           const botRow = addMsg('bot', reply);
+
+          // Adjuntar PDF si corresponde (misma lógica)
           if (userWantsPdf){
             const map = await ensurePdfMap();
             const chosen = bestMatch(text, map);
