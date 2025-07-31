@@ -1,142 +1,250 @@
 [
   {
-    "id": "intro-rol-valeria",
-    "title": "Rol y tono de Valeria",
-    "source": "identidad-interna",
-    "tags": ["identidad", "rol", "tono"],
-    "content": "Sos Valeria, especialista en seguridad alimentaria (Lic. en Tecnología de los Alimentos). Comunicás en tono profesional, claro y pedagógico, usando términos del BPM y del Código Alimentario Argentino (CAA). Adaptás el lenguaje a Argentina (ej.: carne vacuna, freezer). Respondés con pasos concretos y, cuando corresponde, ofrecés procedimientos como documento adjunto (✔️)."
-  },
-  {
-    "id": "sani-200ppm",
-    "title": "Sanitizante en tienda",
-    "source": "norma-interna-sanitizante",
-    "tags": ["sanitizante", "amonio cuaternario", "J-512", "200 ppm"],
-    "content": "En el supermercado se usa amonio cuaternario/J-512 a 200 ppm como sanitizante. Preparación según indicación del fabricante. Verificar concentración con tiras reactivas o equipo de medición y registrar el resultado. Aplicar sobre superficie previamente limpia y enjuagada si corresponde; respetar tiempo de contacto indicado por el proveedor. No se utiliza lavandina en esta operación."
-  },
-  {
-    "id": "gpg007",
-    "title": "G-PG-007 · Medición de sanitizante",
+    "id": "gpg007_1",
+    "title": "G-PG-007 · Procedimiento de medición de sanitizante",
     "source": "procedimiento-interno",
-    "tags": ["G-PG-007", "medición", "registro"],
-    "content": "Procedimiento G-PG-007: medir concentración del sanitizante al inicio de cada turno y cuando se prepara una nueva dilución. Usar tiras reactivas o equipo calibrado; registrar fecha, hora, responsable, concentración medida y lote del producto químico. Si el valor difiere del objetivo (200 ppm), ajustar y volver a medir. Archivar registro según política documental."
+    "content": "Este procedimiento detalla cómo medir correctamente el sanitizante J-512 o amonio cuaternario en 200 ppm. La medición se realiza utilizando tiras reactivas calibradas, asegurando que la solución de trabajo alcance la concentración deseada."
   },
   {
-    "id": "rg01-suc-ml-002",
+    "id": "gpg007_2",
+    "title": "G-PG-007 · Procedimiento de medición de sanitizante",
+    "source": "procedimiento-interno",
+    "content": "Se debe preparar la solución en el balde correspondiente, sumergir la tira reactiva y comparar con la escala de color. Si el valor no alcanza 200 ppm, ajustar agregando más concentrado y repetir la medición."
+  },
+  {
+    "id": "rg01_1",
     "title": "RG 01-SUC-ML-002 · Registro de sucursales",
     "source": "registro-interno",
-    "tags": ["registro", "trazabilidad"],
-    "content": "Registro RG 01-SUC-ML-002: documenta mediciones, correcciones y verificaciones en sala y depósito. Debe completarse en el momento de la tarea, con firma del responsable y legible. Se conserva según período definido por la política de registros."
+    "content": "El registro debe contener la información de cada sucursal, incluyendo ubicación, responsables y cumplimiento de BPM. Este registro se actualiza mensualmente y es auditado por el supervisor zonal."
   },
   {
-    "id": "retiro-anticipado",
-    "title": "Retiro anticipado por vencimiento",
-    "source": "norma-interna-retirante",
-    "tags": ["vencimiento", "retiro", "política-interna"],
-    "content": "Criterio interno: productos masivos y congelados se retiran 10 días antes de su vencimiento. Productos perecederos se retiran 2 días antes. Registrar retiro, ubicación (cuarentena/merma) y destino según procedimiento vigente."
+    "id": "pollo_1",
+    "title": "Procedimiento de manejo de pollo",
+    "source": "procedimiento-interno",
+    "content": "La carne de pollo debe mantenerse a temperatura de refrigeración entre 0 °C y 4 °C. El descongelado debe realizarse únicamente en cámaras de refrigeración, nunca a temperatura ambiente."
   },
   {
-    "id": "queso-fraccionado",
+    "id": "pollo_2",
+    "title": "Procedimiento de manejo de pollo",
+    "source": "procedimiento-interno",
+    "content": "Es obligatorio rotular cada bandeja con la fecha y hora de fraccionado. La rotación FEFO (First Expired First Out) es obligatoria para minimizar el riesgo de vencimiento en góndola."
+  },
+  {
+    "id": "ovina_1",
+    "title": "Procedimiento de manejo de carne ovina",
+    "source": "procedimiento-interno",
+    "content": "El almacenamiento de carne ovina se realiza en cámaras de frío separadas de las carnes listas para consumo. Mantener las temperaturas entre 0 °C y 4 °C y utilizar envases herméticos para evitar contaminación cruzada."
+  },
+  {
+    "id": "queso_1",
     "title": "Procedimiento de fraccionado de quesos",
     "source": "procedimiento-interno",
-    "tags": ["quesos", "fraccionado", "etiquetado"],
-    "content": "Fraccionado de quesos: trabajar en sector higienizado y con BPM. Identificar cada fracción con etiqueta interna que incluya: nombre del producto, marca, lote/partida si aplica, fecha de fraccionamiento, fecha de vencimiento o vida útil remanente, condiciones de conservación (0–4 °C), peso neto, responsable. Tapar/proteger la fracción; almacenar refrigerado separado de crudos. Ante consulta, ofrecer el Procedimiento de Fraccionado de Quesos (PDF) ✔️."
+    "content": "Cada fracción de queso debe estar envuelta en film y correctamente rotulada con fecha de fraccionado y fecha de vencimiento original del lote."
   },
   {
-    "id": "etiquetado-sobrantes-queso",
-    "title": "Etiquetado visual para fracciones sobrantes",
-    "source": "instructivo-interno",
-    "tags": ["etiqueta interna", "sobrantes", "quesos"],
-    "content": "Etiqueta visual (ejemplo): 'Producto: Queso Tybo', 'Lote: 24-07-TYB', 'Fraccionado: 28/07/2025', 'Vto interno: 04/08/2025', 'Conservación: 0–4 °C', 'Responsable: APELLIDO', 'Observaciones: fracción de horma'. Debe ser legible, adherida y resistente a humedad."
-  },
-  {
-    "id": "pollo",
-    "title": "Procedimiento de pollo",
+    "id": "queso_2",
+    "title": "Procedimiento de fraccionado de quesos",
     "source": "procedimiento-interno",
-    "tags": ["pollo", "manipulación", "temperaturas"],
-    "content": "Recepción a 0–4 °C, verificar integridad de envases y fechas. Almacenamiento en cámaras exclusivas o sectorizado. Evitar goteos cruzados. Preparación con utensilios y tablas exclusivas; higiene de manos y cambio de guantes entre tareas. Cocción segura ≥74 °C en el centro del producto. Mantener BPM y registros."
+    "content": "Se debe asegurar que los utensilios estén limpios y desinfectados. La manipulación debe realizarse con guantes y sobre superficies sanitizadas."
   },
   {
-    "id": "carne-ovina",
-    "title": "Manejo de carne ovina",
+    "id": "milanesas_1",
+    "title": "Procedimiento de elaboración de milanesas",
     "source": "procedimiento-interno",
-    "tags": ["carne ovina", "frío", "rotación"],
-    "content": "Recepción con control de temperatura 0–4 °C y documentación sanitaria. Almacenamiento por especie y corte, rotación FEFO. Evitar contacto con listos para consumo. Limpieza y desinfección del área según plan. Registrar no conformidades y acciones."
+    "content": "Las milanesas deben elaborarse con carne previamente inspeccionada. Se debe mantener la cadena de frío durante todo el proceso, asegurando una temperatura inferior a 4 °C."
   },
   {
-    "id": "carnes-rojas",
-    "title": "Manejo de carnes rojas",
+    "id": "milanesas_2",
+    "title": "Procedimiento de elaboración de milanesas",
     "source": "procedimiento-interno",
-    "tags": ["carne vacuna", "bpm", "fefo"],
-    "content": "Carnes rojas (carne vacuna): control de temperatura 0–4 °C, integridad, rotación FEFO, separación de crudos y listos para consumo. Uso de cuchillos/mesadas higienizados. Evitar re-congelado. Señalizar mermas y retiros anticipados según política."
+    "content": "Las milanesas fraccionadas deben almacenarse en bandejas con separadores y etiquetadas con la fecha de elaboración. La vida útil debe respetar el procedimiento interno (máximo 48 h refrigerado)."
   },
   {
-    "id": "milanesas",
-    "title": "Procedimiento de milanesas",
+    "id": "dulces_1",
+    "title": "Procedimiento de fraccionado de dulces",
     "source": "procedimiento-interno",
-    "tags": ["milanesas", "manipulación"],
-    "content": "Elaborar milanesas en área limpia; materia prima refrigerada; batido y pan rallado protegidos. Trazabilidad por lote de carne y de insumos. Conservar producto terminado a 0–4 °C si es para venta refrigerada; para cocción inmediata, mantener cadena de frío hasta el proceso térmico."
+    "content": "Los dulces deben fraccionarse en un área libre de contaminantes, utilizando utensilios exclusivos para cada tipo de producto para evitar contaminación cruzada."
   },
   {
-    "id": "dulces",
-    "title": "Fraccionado de dulces",
+    "id": "dulces_2",
+    "title": "Procedimiento de fraccionado de dulces",
     "source": "procedimiento-interno",
-    "tags": ["dulces", "fraccionado", "etiquetado"],
-    "content": "Fraccionado de dulces: usar envases grado alimentario, identificar fracción con nombre, lote, fecha de fraccionamiento, vto interno y condiciones de conservación. Evitar contaminación cruzada con alérgenos; utensilios exclusivos."
+    "content": "El envase final debe incluir etiqueta con fecha de fraccionado y fecha de vencimiento original. No se permite reutilizar envases no higienizados."
   },
   {
-    "id": "plan-accion",
-    "title": "Plan de acción ante no conformidades",
-    "source": "plan-accion-interno",
-    "tags": ["no conformidades", "acciones", "5 porqués", "espina de pescado"],
-    "content": "Clasificar no conformidades: menor, mayor y crítica. Acciones inmediatas: contener el riesgo (retener producto, señalizar, corregir práctica). Acciones preventivas: analizar causa raíz (5 porqués, espina de pescado), definir responsables, plazos y verificación de eficacia. Documentar todo en el registro correspondiente."
+    "id": "planaccion_1",
+    "title": "Plan de acción para no conformidades",
+    "source": "procedimiento-interno",
+    "content": "El plan de acción debe incluir acciones inmediatas y preventivas. Las no conformidades críticas requieren intervención inmediata del responsable zonal y comunicación a la gerencia."
   },
   {
-    "id": "no-conformidades",
-    "title": "Definiciones de no conformidades",
-    "source": "criterios-internos",
-    "tags": ["definiciones", "clasificación"],
-    "content": "Menor: desviación sin impacto directo en inocuidad (p.ej., rótulo interno incompleto). Mayor: potencial impacto si no se corrige (p.ej., almacenamiento inadecuado). Crítica: impacto directo/alto riesgo (p.ej., ruptura de cadena de frío en perecederos). Priorizar gestión de las críticas."
+    "id": "planaccion_2",
+    "title": "Plan de acción para no conformidades",
+    "source": "procedimiento-interno",
+    "content": "Para el análisis de causa raíz, se utiliza el diagrama de Ishikawa y la técnica de los 5 porqués. Las acciones preventivas deben registrarse y auditarse en la próxima visita."
   },
   {
-    "id": "vida-util-post-apertura",
-    "title": "Vida útil referencial tras apertura",
-    "source": "criterio-general",
-    "tags": ["vida útil", "post apertura"],
-    "content": "Definir vida útil tras apertura según etiqueta del fabricante y/o procedimiento interno. Conservar a 0–4 °C si corresponde y rotular con 'Abrio:' y 'Consumir antes de:'. En caso de duda, aplicar criterio de prudencia y consultar al responsable de Calidad."
+    "id": "carnesrojas_1",
+    "title": "Procedimiento de manejo de carnes rojas",
+    "source": "procedimiento-interno",
+    "content": "Las carnes rojas deben almacenarse en cámaras a temperaturas entre 0 °C y 4 °C. La carne vencida debe ser retirada de góndola con 10 días de anticipación según norma interna."
+  }
+  ,
+  {
+    "id": "carnesrojas_2",
+    "title": "Procedimiento de manejo de carnes rojas",
+    "source": "procedimiento-interno",
+    "content": "Las piezas deben estar correctamente rotuladas con fecha de ingreso y vencimiento. La rotación FEFO es obligatoria en todas las sucursales para garantizar frescura."
   },
   {
-    "id": "bpm-basicos",
-    "title": "BPM básicos de manipulación",
-    "source": "manual-bpm",
-    "tags": ["BPM", "higiene", "manos"],
-    "content": "Lavado de manos efectivo, uso de guantes cuando aplique, uniforme limpio, cabello recogido y barbijo según tarea. Separación de crudos y listos para consumo. Limpieza y desinfección planificadas. Control de plagas y gestión de residuos. Capacitación periódica al personal."
+    "id": "retiro_1",
+    "title": "Política de retiro anticipado",
+    "source": "norma-interna",
+    "content": "Los productos masivos y congelados deben retirarse 10 días antes de su fecha de vencimiento. Los productos perecederos se retiran 2 días antes de vencer, según política interna."
   },
   {
-    "id": "temperaturas-clave",
-    "title": "Rangos de temperatura de seguridad",
-    "source": "referencia-tecnica",
-    "tags": ["temperaturas", "cadena de frío"],
-    "content": "Refrigeración: 0–4 °C. Congelación: ≤ -18 °C. Exhibición en caliente: ≥ 60 °C. Cocción segura orientativa: pollo ≥ 74 °C, carne molida ≥ 70 °C. Usar termómetro calibrado, registrar y verificar."
+    "id": "retiro_2",
+    "title": "Política de retiro anticipado",
+    "source": "norma-interna",
+    "content": "Esta política se audita semanalmente y cualquier incumplimiento se considera una no conformidad mayor."
   },
   {
-    "id": "documentos-m1-m3",
-    "title": "Documentos M1, M2 y M3",
-    "source": "documentación-interna",
-    "tags": ["M1", "M2", "M3"],
-    "content": "Documentos M1, M2 y M3: materiales de soporte para capacitación y verificación operativa. Contienen listas de chequeo, criterios visuales y ejemplos de buenas prácticas. Consultarlos cuando se requiera evidencia operativa para auditoría."
+    "id": "bpm_1",
+    "title": "Buenas Prácticas de Manufactura (BPM)",
+    "source": "manual",
+    "content": "Las BPM son obligatorias en todas las áreas de producción y ventas. Incluyen limpieza y desinfección, control de plagas, capacitación y trazabilidad de los productos."
   },
   {
-    "id": "adjuntos-pdf",
-    "title": "Disponibilidad de adjuntos",
-    "source": "nota-operativa",
-    "tags": ["adjuntos", "PDF"],
-    "content": "Si el usuario solicita un procedimiento específico (p.ej., 'mostrame el procedimiento de queso fraccionado'), responder con el paso a paso y ofrecer el archivo PDF correspondiente (✔️). Si el adjunto no está disponible en el momento, indicar que se puede compartir a pedido del responsable."
+    "id": "bpm_2",
+    "title": "Buenas Prácticas de Manufactura (BPM)",
+    "source": "manual",
+    "content": "Todo el personal debe conocer los procedimientos de lavado de manos, uso de elementos de protección personal y manipulación segura de alimentos."
   },
   {
-    "id": "terminologia-ar",
-    "title": "Terminología local (Argentina)",
-    "source": "estandar-lenguaje",
-    "tags": ["terminologia", "argentina"],
-    "content": "Usar términos locales: carne vacuna (no 'carne de res'), freezer, heladera, franco, medio franco. Mantener precisión técnica y claridad operativa."
+    "id": "bpm_3",
+    "title": "Buenas Prácticas de Manufactura (BPM)",
+    "source": "manual",
+    "content": "La validación de los procesos y el mantenimiento de registros son parte del sistema de calidad."
+  },
+  {
+    "id": "caa_1",
+    "title": "Código Alimentario Argentino (CAA)",
+    "source": "normativa",
+    "content": "El CAA regula todos los aspectos de producción y comercialización de alimentos en Argentina. Incluye definiciones, tolerancias y requisitos de rotulado."
+  },
+  {
+    "id": "caa_2",
+    "title": "Código Alimentario Argentino (CAA)",
+    "source": "normativa",
+    "content": "Las temperaturas mínimas y máximas para el almacenamiento y transporte deben respetarse estrictamente. Cualquier desviación es considerada una no conformidad."
+  },
+  {
+    "id": "caa_3",
+    "title": "Código Alimentario Argentino (CAA)",
+    "source": "normativa",
+    "content": "Las fechas de vencimiento deben ser claras y legibles. Los alimentos vencidos no pueden permanecer en góndola ni ser ofrecidos al consumidor."
+  },
+  {
+    "id": "etiquetadoqueso_1",
+    "title": "Ejemplo de etiquetado interno para fracciones de queso",
+    "source": "ejemplo-visual",
+    "content": "La etiqueta debe incluir: tipo de queso, fecha de fraccionado, fecha de vencimiento original y responsable del fraccionado. Se debe colocar en un lugar visible del envase."
+  },
+  {
+    "id": "etiquetadoqueso_2",
+    "title": "Ejemplo de etiquetado interno para fracciones de queso",
+    "source": "ejemplo-visual",
+    "content": "El color de la etiqueta puede variar por tipo de producto, pero siempre debe ser legible y resistente a la humedad."
+  },
+  {
+    "id": "sanitizante_1",
+    "title": "Uso de sanitizante J-512",
+    "source": "procedimiento-interno",
+    "content": "El J-512 se utiliza diluido a 200 ppm para desinfección de superficies de contacto con alimentos. La dilución debe realizarse siguiendo las indicaciones del fabricante y verificarse con tiras reactivas."
+  },
+  {
+    "id": "sanitizante_2",
+    "title": "Uso de sanitizante J-512",
+    "source": "procedimiento-interno",
+    "content": "No se permite el uso de lavandina en ninguna etapa de producción o ventas, salvo excepciones específicas definidas en procedimientos internos."
+  },
+  {
+    "id": "auditoria_1",
+    "title": "Auditorías internas",
+    "source": "procedimiento-interno",
+    "content": "Las auditorías se realizan de manera trimestral en todas las sucursales. Se revisan registros de BPM, controles de temperatura y cumplimiento de la política de retiro anticipado."
+  },
+  {
+    "id": "auditoria_2",
+    "title": "Auditorías internas",
+    "source": "procedimiento-interno",
+    "content": "Las no conformidades menores deben corregirse en un plazo máximo de 7 días, las mayores en 48 horas y las críticas de inmediato."
+  },
+  {
+    "id": "noconf_1",
+    "title": "Clasificación de no conformidades",
+    "source": "manual",
+    "content": "Las no conformidades se clasifican en menores, mayores y críticas. Cada una requiere tiempos de corrección distintos y acciones preventivas documentadas."
+  }
+  ,
+  {
+    "id": "noconf_2",
+    "title": "Clasificación de no conformidades",
+    "source": "manual",
+    "content": "Las acciones preventivas deben incluir análisis de causa raíz utilizando el diagrama de Ishikawa y la técnica de los 5 porqués. Estas acciones deben registrarse para seguimiento."
+  },
+  {
+    "id": "capac_1",
+    "title": "Capacitación del personal",
+    "source": "procedimiento-interno",
+    "content": "Todos los colaboradores deben recibir capacitación inicial y continua sobre BPM, CAA, políticas internas de retiro anticipado y manejo seguro de alimentos."
+  },
+  {
+    "id": "capac_2",
+    "title": "Capacitación del personal",
+    "source": "procedimiento-interno",
+    "content": "La capacitación se debe documentar mediante registros firmados por el asistente y el capacitador. Estos registros se conservan en la sucursal."
+  },
+  {
+    "id": "rotacion_1",
+    "title": "Rotación FEFO",
+    "source": "procedimiento-interno",
+    "content": "Todos los productos en góndola deben rotarse siguiendo el criterio FEFO (First Expired, First Out). Los productos próximos a vencer deben colocarse adelante."
+  },
+  {
+    "id": "rotacion_2",
+    "title": "Rotación FEFO",
+    "source": "procedimiento-interno",
+    "content": "El incumplimiento de la rotación FEFO es una de las principales causas de productos vencidos en góndola y se considera no conformidad mayor."
+  },
+  {
+    "id": "registros_1",
+    "title": "Registros de temperatura",
+    "source": "procedimiento-interno",
+    "content": "Se deben registrar temperaturas de cámaras, freezers y góndolas 3 veces por día. Estos registros deben estar firmados por el responsable del sector."
+  },
+  {
+    "id": "registros_2",
+    "title": "Registros de temperatura",
+    "source": "procedimiento-interno",
+    "content": "Si se detecta una desviación, debe activarse el plan de contingencia para asegurar la inocuidad de los productos."
+  },
+  {
+    "id": "planescontingencia_1",
+    "title": "Planes de contingencia",
+    "source": "procedimiento-interno",
+    "content": "El plan de contingencia define las acciones inmediatas en caso de fallas en equipos de refrigeración, contaminación cruzada o hallazgos críticos en auditoría."
+  },
+  {
+    "id": "planescontingencia_2",
+    "title": "Planes de contingencia",
+    "source": "procedimiento-interno",
+    "content": "Debe incluir responsables, tiempos máximos de respuesta y registros para documentar la ejecución de las acciones."
+  },
+  {
+    "id": "adjuntos_1",
+    "title": "Adjuntos de procedimientos",
+    "source": "procedimiento-interno",
+    "content": "Valeria puede ofrecer adjuntos PDF de procedimientos cuando el usuario lo solicite. Estos archivos deben estar en la raíz del proyecto o enlazados a un servicio de almacenamiento seguro."
   }
 ]
