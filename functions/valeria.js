@@ -1,10 +1,14 @@
 // functions/valeria.js
-// Versión estable: identidad + búsqueda vectorial "al vuelo", menor carga inicial y fallbacks robustos.
+// Versión ESTABLE + DIAGNÓSTICO:
+// - Identidad sólida (CAA/BPM, AR)
+// - Vectorial "al vuelo" con límite bajo (evita timeouts)
+// - Fallbacks útiles si el modelo o los docs no devuelven contenido
+// - Modo diagnóstico: enviar mensaje iniciando con "!!debug " para ver detalle
 
 const fs = require("fs");
 const path = require("path");
 
-// ---------- Utilidades ----------
+// -------- Utilidades --------
 function chunkText(text, maxLen = 1200) {
   if (!text) return [];
   const out = [];
@@ -27,16 +31,14 @@ function loadDocs() {
   }
 }
 
-// ---------- Cache ----------
-let CACHE = { ready: false, chunks: [], vectors: [], model: "text-embedding-3-small" };
-
-// Reducimos la cantidad de chunks para evitar timeouts en el primer arranque
-const MAX_CHUNKS = 120;       // si luego querés más cobertura, subimos este número
+// -------- Cache --------
+let CACHE = { ready: false, chunks: [], vectors: [], modelEmb: "text-embedding-3-small" };
+const MAX_CHUNKS = 120; // arranque rápido
 
 async function ensureEmbeddings(OPENAI_API_KEY) {
   if (CACHE.ready) return;
 
-  const docs = loadDocs(); // cada item: {id, title, source, content} o con "chunks"
+  const docs = loadDocs(); // [{id,title,source,content}|{...,chunks}]
   const chunks = [];
 
   for (const d of docs) {
@@ -54,11 +56,19 @@ async function ensureEmbeddings(OPENAI_API_KEY) {
 
   const working = chunks.slice(0, MAX_CHUNKS);
 
+  // Si no hay chunks, no abortamos: seguimos sin contexto
+  if (working.length === 0) {
+    CACHE.chunks = [];
+    CACHE.vectors = [];
+    CACHE.ready = true;
+    return;
+  }
+
   async function embedBatch(texts) {
     const resp = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: CACHE.model, input: texts })
+      body: JSON.stringify({ model: CACHE.modelEmb, input: texts })
     });
     if (!resp.ok) {
       const t = await resp.text().catch(() => "");
@@ -68,7 +78,7 @@ async function ensureEmbeddings(OPENAI_API_KEY) {
     return data.data.map(d => d.embedding);
   }
 
-  // Batches chicos para no saturar
+  // Batches chicos
   const vectors = [];
   const BATCH = 40;
   for (let i = 0; i < working.length; i += BATCH) {
@@ -82,10 +92,9 @@ async function ensureEmbeddings(OPENAI_API_KEY) {
   CACHE.ready = true;
 }
 
-// ---------- Handler ----------
+// -------- Handler --------
 exports.handler = async (event) => {
   try {
-    // GET simple para healthcheck
     if (event.httpMethod === "GET") {
       return { statusCode: 400, body: JSON.stringify({ reply: "No recibí tu mensaje." }) };
     }
@@ -101,14 +110,15 @@ exports.handler = async (event) => {
     }
 
     const lower = message.toLowerCase();
+    const debugMode = lower.startsWith("!!debug ");
 
-    // Reglas especiales: Ishikawa / 5 porqués (respuesta inmediata)
+    // --- Reglas especiales: Ishikawa / 5 porqués ---
     const pideIshikawa = lower.includes("espina de pescado") || lower.includes("ishikawa");
     const pide5Porques  = lower.includes("5 porqués") || lower.includes("5 porques") || lower.includes("cinco porqués");
     if (pideIshikawa || pide5Porques) {
       const problema = (lower.includes("vencid") && (lower.includes("góndola") || lower.includes("gondola")))
         ? "Productos vencidos en góndola"
-        : message.trim();
+        : message.replace(/^!!debug\s*/i, "").trim();
 
       const ishikawa =
 `🔎 *Análisis de causa raíz — Diagrama de Ishikawa (Espina de pescado)*
@@ -164,27 +174,41 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ reply: ishikawa + cincoPorques }) };
     }
 
-    // Embeddings de documentos (arranque frío; hoy 120 chunks)
-    await ensureEmbeddings(OPENAI_API_KEY);
-
-    // Embedding de la consulta
-    const embResp = await fetch("https://api.openai.com/v1/embeddings", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: CACHE.model, input: message })
-    });
-    if (!embResp.ok) {
-      const t = await embResp.text().catch(()=> "");
-      return { statusCode: 502, body: JSON.stringify({ reply: `Error creando embedding de la consulta (${embResp.status}). ${t}` }) };
+    // --- Embeddings de documentos (no bloquea si no hay docs) ---
+    let statusDiag = { haveDocs: false, chunks: 0, usedChunks: 0 };
+    try {
+      await ensureEmbeddings(OPENAI_API_KEY);
+      statusDiag.haveDocs = CACHE.chunks.length > 0;
+      statusDiag.chunks = CACHE.chunks.length;
+      statusDiag.usedChunks = CACHE.vectors.length;
+    } catch (e) {
+      // Si hubiera error de embeddings, seguimos sin contexto
+      statusDiag.embeddingsError = String(e.message || e);
     }
-    const embData = await embResp.json();
-    const qVec = embData.data?.[0]?.embedding;
 
-    // Rankear por similitud
-    const scored = CACHE.chunks.map((c, i) => ({ c, s: cosineSim(qVec, CACHE.vectors[i]) || 0 }));
-    scored.sort((a,b)=> b.s - a.s);
-    const topK = scored.slice(0, 5).map(x => x.c);
-    const context = topK.map(d => `• ${d.title}: ${d.content}`).join("\n");
+    // Rankear por similitud si hay docs
+    let context = "";
+    let topK = [];
+    if (statusDiag.haveDocs) {
+      // Embedding de la consulta
+      const embResp = await fetch("https://api.openai.com/v1/embeddings", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: CACHE.modelEmb, input: message.replace(/^!!debug\s*/i, "") })
+      });
+      if (!embResp.ok) {
+        const t = await embResp.text().catch(()=> "");
+        // Devolvemos diagnóstico útil
+        return { statusCode: 502, body: JSON.stringify({ reply: `Error creando embedding de la consulta (${embResp.status}). ${t}` }) };
+      }
+      const embData = await embResp.json();
+      const qVec = embData.data?.[0]?.embedding;
+
+      const scored = CACHE.chunks.map((c, i) => ({ c, s: cosineSim(qVec, CACHE.vectors[i]) || 0 }));
+      scored.sort((a,b)=> b.s - a.s);
+      topK = scored.slice(0, 5).map(x => x.c);
+      context = topK.map(d => `• ${d.title}: ${d.content}`).join("\n");
+    }
 
     // Prompts
     const systemPrompt = `
@@ -197,18 +221,20 @@ NO copies conversaciones previas ni formatees como transcripción. Respondé dir
       ? `Contexto interno (resumido):\n${context}\n\nRestringí tus afirmaciones técnicas a este contexto cuando aplique.`
       : `No se encontraron coincidencias en contexto interno. Usá criterios generales de CAA/BPM (aclará cuando asumís criterios generales).`;
 
-    // Llamada al modelo (usa gpt-4o-mini; si tu cuenta no lo tiene, cambiá a "gpt-3.5-turbo")
+    const userPrompt = message.replace(/^!!debug\s*/i, "");
+
+    // Llamada a OpenAI (modelo estable y accesible)
     const chatResp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-3.5-turbo",
         temperature: 0.4,
-        max_tokens: 600,
+        max_tokens: 700,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "system", content: contextPrompt },
-          { role: "user", content: message }
+          { role: "user", content: userPrompt }
         ]
       })
     });
@@ -220,7 +246,7 @@ NO copies conversaciones previas ni formatees como transcripción. Respondé dir
 
     const data = await chatResp.json();
 
-    // Fallback si viene vacío
+    // Extraer respuesta y Fallback robusto
     let reply = "";
     if (data?.choices?.length) {
       reply = data.choices[0]?.message?.content || data.choices[0]?.text || "";
@@ -230,6 +256,19 @@ NO copies conversaciones previas ni formatees como transcripción. Respondé dir
       reply = safeContext
         ? `No pude obtener texto del modelo en este intento. Basado en el contexto interno, te dejo una guía operativa:\n\n${safeContext}\n\nSi querés, reformulá la consulta o probamos de nuevo.`
         : `No pude obtener texto del modelo en este intento. Guía general CAA/BPM:\n\n• Separación de crudos y listos para consumo.\n• Cadena de frío: 0–4 °C (refrigeración) y ≤ −18 °C (congelación).\n• Rotación FEFO y retiro anticipado según política.\n• Limpieza y desinfección planificadas; verificación y registros.\n\nSi querés, reformulá la consulta o probamos de nuevo.`;
+    }
+
+    // Modo diagnóstico: mostrar contexto/topK y snippet del JSON
+    if (debugMode) {
+      const snippet = JSON.stringify({
+        haveDocs: statusDiag.haveDocs,
+        chunks: statusDiag.chunks,
+        usedChunks: statusDiag.usedChunks,
+        embeddingsError: statusDiag.embeddingsError || null,
+        topK: topK.map(t => ({ id: t.id, title: t.title })).slice(0,3),
+        rawChoicesType: Array.isArray(data?.choices) ? typeof data.choices[0]?.message?.content : "no-choices"
+      }, null, 2).slice(0, 1800);
+      reply = `🛠️ DEBUG\n${snippet}\n\n---\n${reply}`;
     }
 
     return { statusCode: 200, body: JSON.stringify({ reply }) };
