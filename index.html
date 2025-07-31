@@ -9,33 +9,34 @@
 
   <style>
     :root{
-      /* Azul del uniforme: si querés otro HEX exacto, reemplazalo acá. */
+      /* Azul del uniforme (cambiá acá si querés otro HEX exacto) */
       --brand-blue: #0056d2;
 
       --header-bg: var(--brand-blue);
       --header-fg: #ffffff;
 
-      --page-bg:   #f5f7fb;
+      --page-bg:   #eceff3;     /* fondo estilo app de mensajería */
       --card-bg:   #ffffff;
       --text:      #0f172a;
       --muted:     #64748b;
       --border:    #e5e7eb;
 
-      /* Burbujas diferenciadas */
-      --bubble-bot:       #eef4ff;  /* Valeria: azul muy suave */
+      /* Burbujas tipo WhatsApp */
+      --bubble-bot:       #e8f0ff;  /* Valeria: azul muy suave */
       --bubble-bot-text:  #0f172a;
-      --bubble-user:      #eaf7f0;  /* Usuario: verde suave */
+      --bubble-user:      #dff7e8;  /* Usuario: verde suave */
       --bubble-user-text: #0f172a;
 
       --error: #dc2626;
 
-      /* Tipografías responsivas */
+      /* Tipografías responsivas (mantenemos pila de sistema) */
       --fs-body: clamp(15px, 1.6vw, 16px);
       --fs-title: clamp(16px, 2.2vw, 18px);
 
-      /* Alturas dinámicas: JS setea --app-h y --header-h */
-      --app-h: 70vh;   /* fallback */
-      --header-h: 64px;/* fallback */
+      /* Alturas (JS las ajusta en vivo para teclado móvil) */
+      --app-h: 70vh;          /* fallback */
+      --header-h: 56px;       /* header móvil ~WhatsApp */
+      --composer-h: 50px;     /* input bar ~WhatsApp */
     }
 
     *{box-sizing:border-box}
@@ -46,7 +47,7 @@
       font-size: var(--fs-body);
       line-height:1.45;
 
-      /* Evita que el body se desplace: el scroll solo ocurre en .msgs */
+      /* El scroll del documento queda bloqueado: solo scrollean los mensajes */
       overflow: hidden;
       padding-top: env(safe-area-inset-top, 0px);
     }
@@ -55,90 +56,114 @@
     header{
       position: fixed; top: 0; left: 0; right: 0; z-index: 20;
       display:flex; align-items:center; gap:12px;
-      padding: max(10px, env(safe-area-inset-top)) 16px 10px 16px;
+      padding: max(8px, env(safe-area-inset-top)) 12px 8px 12px;
       height: var(--header-h);
       background: var(--header-bg);
       color: var(--header-fg);
+      border-bottom: 1px solid rgba(255,255,255,.15);
     }
+    @media (min-width: 768px){
+      :root{ --header-h: 64px; }
+      header{ padding: 12px 16px; }
+    }
+
     .title{
       font-weight:800; letter-spacing:.2px; font-size: var(--fs-title);
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .avatar{
-      width:44px; height:44px;
-      /* Garantiza círculo perfecto y evita deformación */
+      width:40px; height:40px; /* WhatsApp ~40px */
       aspect-ratio: 1 / 1;
       border-radius:999px; flex:0 0 auto;
       object-fit: cover; object-position: center;
-      box-shadow: 0 2px 10px rgba(0,0,0,.15);
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
       cursor: zoom-in; user-select:none;
+    }
+    @media (min-width: 768px){
+      .avatar{ width:44px; height:44px; }
     }
 
     /* ===== Layout principal ===== */
     main{
-      /* deja espacio para el header fijo */
       padding-top: var(--header-h);
       height: calc(100dvh - var(--header-h));
-      /* fallback para navegadores sin dvh (JS lo corrige con --app-h) */
-      height: calc(100vh - var(--header-h));
+      height: calc(100vh - var(--header-h)); /* fallback */
     }
-    .wrap{width:100%; max-width:960px; margin:0 auto; padding:12px 12px 16px}
+    .wrap{width:100%; max-width:980px; margin:0 auto; padding:8px 8px 12px}
     .chat{
-      background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:12px;
-
-      /* Altura ajustada en vivo (incluye teclado en móviles) */
+      background:var(--card-bg);
+      border:1px solid var(--border); border-radius:16px;
+      padding:0; /* WhatsApp no tiene marco interior grande */
       height: var(--app-h);
-
-      display:flex; flex-direction:column; gap:10px;
-      box-shadow:0 8px 24px rgba(15, 23, 42, .04);
+      display:flex; flex-direction:column;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, .06);
+      overflow:hidden; /* para que header/composer internos encajen visualmente */
     }
 
-    /* ===== Mensajes: único contenedor con scroll ===== */
+    /* ===== Área de mensajes (scroll) ===== */
     .msgs{
       flex:1; overflow:auto; display:flex; flex-direction:column;
-      gap:12px; padding:8px; overscroll-behavior: contain;
+      gap:10px; padding: 12px 10px; overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
+      background:
+        radial-gradient(ellipse at top left, #ffffff 0%, #f8fafc 60%, #eef2f7 100%);
     }
-    .row{display:flex; gap:8px; align-items:flex-end}
+
+    /* Mensajes con ancho máximo ~78% + espaciado tipo WhatsApp */
+    .row{display:flex; gap:6px; align-items:flex-end}
     .row.user{justify-content:flex-end}
     .bubble{
-      max-width: 88%;
-      padding:12px 14px; border-radius:16px; line-height:1.55; white-space:pre-wrap;
+      max-width: 78%;
+      padding:10px 12px; border-radius:16px; line-height:1.55; white-space:pre-wrap;
       border:1px solid var(--border); word-wrap:break-word;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
     }
     .user .bubble{background:var(--bubble-user); color:var(--bubble-user-text)}
     .bot  .bubble{background:var(--bubble-bot);  color:var(--bubble-bot-text)}
     .error .bubble{background:#ffe4e6; border-color:#fda4af}
 
-    /* Pensando */
+    /* Sutil separación vertical entre bloques como WhatsApp */
+    .row + .row{ margin-top: 2px; }
+
+    /* Indicador “pensando” */
     .typing{display:inline-flex; align-items:center; gap:8px}
     .dot{display:inline-block; width:6px; height:6px; border-radius:999px; background:#94a3b8; opacity:.35; animation:blink 1.3s infinite}
     .dot:nth-child(2){animation-delay:.2s}
     .dot:nth-child(3){animation-delay:.4s}
     @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
 
-    /* Composer (siempre visible dentro del panel) */
+    /* ===== Composer (input) compacto tipo WhatsApp ===== */
     .composer{
-      display:flex; gap:10px; padding:10px; border-top:1px solid var(--border);
-      background:#ffffff; border-radius:12px; margin-top:4px;
-      padding-bottom: max(10px, env(safe-area-inset-bottom));
+      display:flex; align-items:center; gap:8px;
+      padding:8px; border-top:1px solid var(--border);
+      background:#ffffff;
+      min-height: var(--composer-h);
       flex: 0 0 auto;
     }
     textarea{
-      flex:1; resize:vertical; min-height:56px; max-height:220px; padding:12px 12px 12px 14px; border-radius:10px;
-      border:1px solid var(--border); background:#ffffff; color:var(--text);
-      font-size:inherit;
+      flex:1; resize:none;
+      min-height: 40px; max-height: 120px;
+      padding: 10px 12px;
+      border-radius: 22px; /* pill */
+      border:1px solid var(--border);
+      background:#f9fafb; color:var(--text);
+      font-size:inherit; line-height:1.4;
+      outline:none;
     }
+    textarea:focus{ background:#fff; border-color:#cbd5e1; }
+
     .sendbtn{
       display:inline-flex; align-items:center; justify-content:center;
-      background:var(--brand-blue); color:#fff; border:0; border-radius:12px; width:52px; height:52px;
+      background:var(--brand-blue); color:#fff; border:0;
+      width: 44px; height: 44px; border-radius: 999px; /* circular */
       cursor:pointer; transition:transform .05s ease, filter .2s;
+      flex: 0 0 auto;
     }
     .sendbtn:active{ transform: scale(0.98) }
     .sendbtn:hover{ filter: brightness(1.05) }
-    .sendbtn svg{ width:22px; height:22px }
+    .sendbtn svg{ width:20px; height:20px }
 
-    /* Adjuntos */
+    /* Adjuntos PDF */
     .attach{
       display:inline-flex; align-items:center; gap:8px; margin-top:10px;
       background:#eff6ff; border:1px solid #cfe2ff; color:#0f172a; padding:8px 10px; border-radius:10px;
@@ -147,7 +172,7 @@
     .attach:hover{ background:#e7f0ff; }
     .attach svg{ width:16px; height:16px; }
 
-    /* Viewer (imagen expandida) */
+    /* Viewer (imagen de perfil expandida) */
     .viewer{
       position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
       background: rgba(0,0,0,.52);
@@ -206,7 +231,8 @@
       document.documentElement.style.setProperty('--header-h', headerH + 'px');
 
       const vh = (window.visualViewport?.height) ? window.visualViewport.height : window.innerHeight;
-      const appH = Math.max(240, vh - headerH - 16); // resta padding interior aproximado
+      // Deja margen interior y respeta teclado en móviles
+      const appH = Math.max(260, vh - headerH);
       document.documentElement.style.setProperty('--app-h', appH + 'px');
     }
     setHeights();
