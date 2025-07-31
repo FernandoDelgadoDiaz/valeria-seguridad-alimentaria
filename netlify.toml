@@ -1,7 +1,7 @@
 [functions]
+  # Si tus functions están en "functions", dejalo así; si están en "netlify/functions", cambiá el directory.
   directory = "functions"
   node_bundler = "esbuild"
-  included_files = ["data/**"]
 
 [[headers]]
   for = "/.netlify/functions/*"
@@ -10,8 +10,21 @@
     Access-Control-Allow-Headers = "Content-Type, Authorization"
     Access-Control-Allow-Methods = "GET, POST, OPTIONS"
 
-# Si querés llamar /api/valeria desde el front, este redirect lo mapea a la Function.
+# --- REDIRECTS ---
+# Si tu front llama a /.netlify/functions/chat, lo redirigimos a la única function que existe: valeria
+[[redirects]]
+  from = "/.netlify/functions/chat"
+  to = "/.netlify/functions/valeria"
+  status = 200
+
+# Si tu front llama a /api/chat, también lo mapeamos a la function valeria
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA: todas las demás rutas van al index.html (si tu sitio es SPA)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
   status = 200
