@@ -1,244 +1,196 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Valeria · Seguridad Alimentaria</title>
-
-  <!-- Icono -->
-  <link rel="icon" href="favicon.jpg" type="image/jpeg">
-  <meta name="theme-color" content="#004080">
+  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
+  <link rel="icon" href="/valeria-mini.jpg" />
 
   <style>
     :root{
-      --azul:#004080;
-      --azul-claro:#cfe6ff;
-      --gris-borde:#d9d9d9;
-      --fondo:#f5f6f8;
-      --blanco:#ffffff;
-      --texto:#222;
+      --bg:#0b1220;     /* fondo general oscuro */
+      --panel:#111827;  /* panel cards */
+      --muted:#94a3b8;  /* texto secundario */
+      --text:#e2e8f0;   /* texto principal */
+      --accent:#22c55e; /* verde acción */
+      --bubble-user:#1f2937;
+      --bubble-bot:#0ea5e9;
+      --bubble-bot-text:#041019;
+      --error:#ef4444;
+      --border:#1f2937;
     }
-    *{ box-sizing: border-box; }
-    html, body{
-      height:100%;
-      margin:0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      color:var(--texto);
-      background:var(--fondo);
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:linear-gradient(180deg,#071026, #0b1220 40%, #0b1220 100%);
+      color:var(--text); font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      display:flex; flex-direction:column;
     }
-
-    /* Header */
     header{
-      position:fixed; inset:0 0 auto 0; height:60px;
-      background:var(--azul); color:#fff;
-      display:flex; align-items:center; gap:10px;
-      padding:8px 12px; z-index:10;
-      box-shadow:0 2px 6px rgba(0,0,0,.08);
+      padding:14px 18px; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; gap:12px; background:rgba(17,24,39,.7); backdrop-filter: blur(6px);
+      position:sticky; top:0; z-index:10;
     }
-    header img{
-      width:40px; height:40px; border-radius:50%;
-      object-fit:cover; cursor:pointer; user-select:none;
-      border:2px solid rgba(255,255,255,.25);
+    header img{width:36px; height:36px; border-radius:10px; object-fit:cover}
+    header .title{font-weight:700; letter-spacing:.2px}
+    header .sub{color:var(--muted); font-size:13px}
+    main{flex:1; display:flex; justify-content:center}
+    .wrap{width:100%; max-width:920px; padding:16px}
+    .chat{
+      background:rgba(17,24,39,.55); border:1px solid var(--border); border-radius:16px; padding:12px;
+      min-height:65vh; display:flex; flex-direction:column; gap:10px;
     }
-    header .title{ display:flex; flex-direction:column; line-height:1.1; }
-    header .name{ font-weight:700; }
-    header .sub{ opacity:.9; font-size:.85rem; }
+    .msgs{flex:1; overflow:auto; display:flex; flex-direction:column; gap:12px; padding:8px}
+    .row{display:flex; gap:8px; align-items:flex-end}
+    .row.user{justify-content:flex-end}
+    .bubble{
+      max-width:80%; padding:10px 12px; border-radius:14px; line-height:1.4; white-space:pre-wrap;
+      border:1px solid var(--border); word-wrap:break-word;
+    }
+    .user .bubble{background:var(--bubble-user)}
+    .bot .bubble{background:var(--bubble-bot); color:var(--bubble-bot-text)}
+    .error .bubble{background:#7f1d1d; border-color:#ef4444}
+    .meta{font-size:12px; color:var(--muted); margin-top:2px}
+    .typing{display:inline-block; min-width:46px}
+    .dot{display:inline-block; width:6px; height:6px; margin:0 2px; border-radius:999px; background:#cbd5e1; opacity:.35; animation:blink 1.3s infinite}
+    .dot:nth-child(2){animation-delay:.2s}
+    .dot:nth-child(3){animation-delay:.4s}
+    @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
 
-    /* Chat */
-    #chat{
-      margin-top:60px; margin-bottom:70px;
-      height:calc(100vh - 130px);
-      padding:12px;
-      overflow-y:auto; display:flex; flex-direction:column; gap:8px;
+    .composer{
+      display:flex; gap:10px; padding:10px; border-top:1px solid var(--border);
+      background:rgba(17,24,39,.75); border-radius:12px; margin-top:8px;
     }
-    .message{
-      max-width:78%;
-      padding:10px 12px;
-      border-radius:14px;
-      line-height:1.45;
-      word-wrap:break-word;
-      white-space:pre-wrap;
-      border:1px solid transparent;
+    textarea{
+      flex:1; resize:vertical; min-height:68px; max-height:200px; padding:12px; border-radius:10px;
+      border:1px solid var(--border); background:#0f172a; color:var(--text); font-size:15px;
     }
-    .message.user{
-      align-self:flex-end;
-      background:var(--azul-claro);
-      border-color:#b7d4ff;
+    button{
+      background:var(--accent); color:#041019; border:0; border-radius:10px; padding:12px 16px;
+      font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 0 0 0 rgba(34,197,94,.5); transition:.2s;
     }
-    .message.bot{
-      align-self:flex-start;
-      background:var(--blanco);
-      border-color:var(--gris-borde);
-    }
-    .status{
-      align-self:center; opacity:.75; font-size:.92rem; margin:6px 0 10px;
-    }
-
-    /* Input */
-    #input-area{
-      position:fixed; inset:auto 0 0 0;
-      display:flex; align-items:flex-end; gap:8px;
-      padding:10px 12px; background:var(--blanco); z-index:10;
-      border-top:1px solid var(--gris-borde);
-    }
-    #message-input{
-      flex:1; min-height:40px; max-height:160px;
-      padding:10px 12px; font-size:1rem;
-      border:1px solid var(--gris-borde); border-radius:18px;
-      outline:none; resize:none; overflow-y:auto;
-    }
-    #send-button{
-      width:44px; height:44px; border:none; border-radius:50%;
-      background:var(--azul); color:#fff; font-size:1.2rem; cursor:pointer;
-    }
-    #send-button:disabled{ opacity:.6; cursor:not-allowed; }
-
-    /* Modal perfil */
-    .modal{ position:fixed; inset:0; background:rgba(0,0,0,.5);
-      display:none; align-items:center; justify-content:center; z-index:20; padding:16px; }
-    .modal.open{ display:flex; }
-    .modal-card{
-      background:#fff; border-radius:16px; width:min(520px, 92vw);
-      box-shadow:0 12px 32px rgba(0,0,0,.22); overflow:hidden;
-      animation:pop .12s ease-out;
-    }
-    @keyframes pop{ from{transform:scale(.98);opacity:.92} to{transform:scale(1);opacity:1} }
-    .modal-img{ width:100%; height:auto; display:block; background:#fafafa; }
-    .modal-body{ padding:12px 16px 16px; text-align:center; }
-    .modal-title{ font-weight:700; color:var(--azul); }
-    .modal-phrase{ margin-top:6px; font-size:.98rem }
-    .modal-close{
-      position:absolute; top:10px; right:14px; background:transparent; color:#fff;
-      border:none; font-size:28px; cursor:pointer; line-height:1;
-    }
-
-    @media (max-width:480px){
-      .message{ max-width:86%; }
-      header .sub{ display:none; }
-    }
+    button:disabled{opacity:.6; cursor:not-allowed}
+    .tips{color:var(--muted); font-size:13px; margin-top:6px}
+    a{color:#93c5fd}
   </style>
 </head>
 <body>
-  <!-- Encabezado -->
   <header>
-    <img id="avatarMini" src="valeria-mini.jpg" alt="Valeria (avatar)">
-    <div class="title">
-      <span class="name">Valeria · Seguridad Alimentaria</span>
-      <span class="sub">Especialista · CAA · BPM · Procedimientos internos</span>
+    <img src="/valeria-mini.jpg" alt="Valeria" onerror="this.style.display='none'">
+    <div>
+      <div class="title">Valeria · Seguridad Alimentaria (AR)</div>
+      <div class="sub">Preguntá sobre CAA, BPM, POES, rotulado interno, no conformidades…</div>
     </div>
   </header>
 
-  <!-- Área de chat -->
-  <main id="chat" aria-live="polite" aria-label="Conversación"></main>
+  <main>
+    <div class="wrap">
+      <div class="chat">
+        <div id="msgs" class="msgs"></div>
 
-  <!-- Input -->
-  <form id="input-area" autocomplete="off">
-    <textarea id="message-input" placeholder="Mensaje" rows="1"></textarea>
-    <button type="submit" id="send-button" title="Enviar">➤</button>
-  </form>
-
-  <!-- Modal perfil -->
-  <div class="modal" id="profileModal" aria-hidden="true" role="dialog" aria-label="Perfil de Valeria">
-    <button class="modal-close" id="closeModal" aria-label="Cerrar">×</button>
-    <div class="modal-card">
-      <img src="valeria-full.jpg" alt="Valeria · Seguridad Alimentaria" class="modal-img">
-      <div class="modal-body">
-        <div class="modal-title">Valeria · Seguridad Alimentaria</div>
-        <div class="modal-phrase">🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</div>
+        <div class="composer">
+          <textarea id="box" placeholder="Escribí tu pregunta… (Shift+Enter hace salto de línea)"></textarea>
+          <button id="send">Enviar</button>
+        </div>
+        <div class="tips">Atajos: <b>Enter</b> envía · <b>Shift+Enter</b> salto de línea · Probar: <code>!!ping</code> o <code>!!info</code></div>
       </div>
     </div>
-  </div>
+  </main>
 
   <script>
-    // Elementos
-    const chat = document.getElementById("chat");
-    const form = document.getElementById("input-area");
-    const input = document.getElementById("message-input");
-    const sendBtn = document.getElementById("send-button");
-    const modal = document.getElementById("profileModal");
-    const avatarMini = document.getElementById("avatarMini");
-    const closeModalBtn = document.getElementById("closeModal");
+    // -------- utilidades UI --------
+    const $ = s => document.querySelector(s);
+    const msgs = $('#msgs');
+    const box  = $('#box');
+    const btn  = $('#send');
 
-    // Utiles
-    const scrollChatToBottom = () => { chat.scrollTop = chat.scrollHeight; };
-
-    function addMessage(text, sender) {
-      const msg = document.createElement("div");
-      msg.className = `message ${sender}`;
-      msg.textContent = text; // evita inyección HTML
-      chat.appendChild(msg);
-      scrollChatToBottom();
-    }
-    function addStatus(text) {
-      const s = document.createElement("div");
-      s.className = "status";
-      s.textContent = text;
-      chat.appendChild(s);
-      scrollChatToBottom();
+    function addMsg(role, text, cls=''){
+      const row = document.createElement('div');
+      row.className = `row ${role} ${cls}`;
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      row.appendChild(bubble);
+      msgs.appendChild(row);
+      msgs.scrollTop = msgs.scrollHeight;
+      return row;
     }
 
-    // Auto-presentación a los 5s (si el usuario no escribió)
-    let userHasTyped = false;
-    const autoHelloTimer = setTimeout(() => {
-      if (!userHasTyped && chat.childElementCount === 0) {
-        addMessage("Hola 👋 Soy Valeria, especialista en seguridad alimentaria. ¿En qué te puedo ayudar hoy?", "bot");
-      }
-    }, 5000);
-    input.addEventListener("input", () => { userHasTyped = true; });
+    function addTyping(){
+      const row = document.createElement('div');
+      row.className = 'row bot';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = `<span class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span> Valeria está pensando…`;
+      row.appendChild(bubble);
+      msgs.appendChild(row);
+      msgs.scrollTop = msgs.scrollHeight;
+      return row;
+    }
 
-    // Textarea auto-expandible + Enter para enviar
-    input.addEventListener("input", () => {
-      input.style.height = "auto";
-      input.style.height = Math.min(input.scrollHeight, 160) + "px";
-    });
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        form.requestSubmit();
-      }
-    });
+    function replaceText(row, newText){
+      const bubble = row.querySelector('.bubble');
+      if (bubble) bubble.textContent = newText;
+    }
 
-    // Envío de mensaje
-    let sending = false;
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const text = input.value.trim();
-      if (!text || sending) return;
+    // -------- saludo inicial --------
+    addMsg('bot', '¡Hola! Soy Valeria. Preguntame sobre J-512 a 200 ppm, rotulado interno, FEFO, no conformidades, etc. 😉');
 
-      addMessage(text, "user");
-      input.value = ""; input.style.height = "40px";
-      sending = true; sendBtn.disabled = true;
+    // -------- envío --------
+    async function sendMessage(){
+      const text = box.value.trim();
+      if (!text) return;
+      addMsg('user', text);
+      box.value = '';
+      box.focus();
 
-      try {
-        const res = await fetch("/api/valeria", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+      // indicador
+      btn.disabled = true;
+      const typingRow = addTyping();
+
+      try{
+        const res = await fetch('/.netlify/functions/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: text })
         });
 
-        const ct = res.headers.get('content-type') || '';
-        const payload = ct.includes('application/json') ? await res.json() : await res.text();
-
-        if (!res.ok) {
-          const msg = typeof payload === 'string' ? payload : (payload?.reply || 'Error del servidor');
-          addStatus(`⚠️ ${msg}`);
-        } else {
-          addMessage(payload.reply || "No se encontró respuesta.", "bot");
+        // Si el servidor devuelve algo no-200, mostramos un error legible
+        if (!res.ok){
+          const t = await res.text().catch(()=> '');
+          replaceText(typingRow, `⚠️ Error del servidor (${res.status}). ${t.slice(0,200)}`);
+          typingRow.classList.add('error');
+          return;
         }
-      } catch (err) {
-        addStatus("⚠️ No pude conectar con el servidor. Verificá tu conexión o intentá de nuevo.");
-      } finally {
-        sending = false; sendBtn.disabled = false;
+
+        const data = await res.json().catch(()=> ({}));
+        const reply = data.reply || data.answer || '';
+
+        if (reply){
+          replaceText(typingRow, reply);
+        } else {
+          // <-- este era el caso que te mostraba “no se encontró…”. Ahora mostramos lo que realmente llegó.
+          replaceText(typingRow, 'No llegó texto en "reply" ni en "answer". Verificá en Network → Response.');
+          typingRow.classList.add('error');
+        }
+      } catch(e){
+        replaceText(typingRow, '❌ Error de red. ¿Estás online?');
+        typingRow.classList.add('error');
+      } finally{
+        btn.disabled = false;
+        msgs.scrollTop = msgs.scrollHeight;
+      }
+    }
+
+    // botón y Enter
+    btn.addEventListener('click', sendMessage);
+    box.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault();
+        sendMessage();
       }
     });
-
-    // Modal perfil
-    function openModal(){ modal.classList.add("open"); modal.setAttribute("aria-hidden","false"); }
-    function closeModal(){ modal.classList.remove("open"); modal.setAttribute("aria-hidden","true"); }
-    avatarMini.addEventListener("click", openModal);
-    closeModalBtn.addEventListener("click", closeModal);
-    modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
-    window.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeModal(); });
   </script>
 </body>
 </html>
