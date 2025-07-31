@@ -1,0 +1,13 @@
+{
+  "name": "valeria-backend",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Valeria Profesional - Netlify Functions + base vectorial simple",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo \"Netlify Functions se bundlean automáticamente\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
