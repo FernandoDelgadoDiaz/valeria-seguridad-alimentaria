@@ -1,5 +1,5 @@
 // functions/valeria.js
-// Backend de Valeria con identidad, búsqueda vectorial "al vuelo" y fallbacks útiles.
+// Versión estable: identidad + búsqueda vectorial "al vuelo", menor carga inicial y fallbacks robustos.
 
 const fs = require("fs");
 const path = require("path");
@@ -22,16 +22,21 @@ function loadDocs() {
     const raw = fs.readFileSync(path.join(__dirname, "../data/embeddings.json"), "utf8");
     const arr = JSON.parse(raw);
     return Array.isArray(arr) ? arr : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 // ---------- Cache ----------
 let CACHE = { ready: false, chunks: [], vectors: [], model: "text-embedding-3-small" };
 
+// Reducimos la cantidad de chunks para evitar timeouts en el primer arranque
+const MAX_CHUNKS = 120;       // si luego querés más cobertura, subimos este número
+
 async function ensureEmbeddings(OPENAI_API_KEY) {
   if (CACHE.ready) return;
 
-  const docs = loadDocs(); // cada item: {id, title, source, content} o content + chunks
+  const docs = loadDocs(); // cada item: {id, title, source, content} o con "chunks"
   const chunks = [];
 
   for (const d of docs) {
@@ -47,8 +52,6 @@ async function ensureEmbeddings(OPENAI_API_KEY) {
     }
   }
 
-  // Limitar para arranque rápido (ajustable)
-  const MAX_CHUNKS = 300;
   const working = chunks.slice(0, MAX_CHUNKS);
 
   async function embedBatch(texts) {
@@ -65,9 +68,9 @@ async function ensureEmbeddings(OPENAI_API_KEY) {
     return data.data.map(d => d.embedding);
   }
 
-  // Batches
+  // Batches chicos para no saturar
   const vectors = [];
-  const BATCH = 60;
+  const BATCH = 40;
   for (let i = 0; i < working.length; i += BATCH) {
     const slice = working.slice(i, i + BATCH);
     const embs = await embedBatch(slice.map(x => x.content));
@@ -82,6 +85,11 @@ async function ensureEmbeddings(OPENAI_API_KEY) {
 // ---------- Handler ----------
 exports.handler = async (event) => {
   try {
+    // GET simple para healthcheck
+    if (event.httpMethod === "GET") {
+      return { statusCode: 400, body: JSON.stringify({ reply: "No recibí tu mensaje." }) };
+    }
+
     const { message } = JSON.parse(event.body || "{}");
     if (!message) {
       return { statusCode: 400, body: JSON.stringify({ reply: "No recibí tu mensaje." }) };
@@ -94,7 +102,7 @@ exports.handler = async (event) => {
 
     const lower = message.toLowerCase();
 
-    // Reglas especiales: Ishikawa / 5 porqués
+    // Reglas especiales: Ishikawa / 5 porqués (respuesta inmediata)
     const pideIshikawa = lower.includes("espina de pescado") || lower.includes("ishikawa");
     const pide5Porques  = lower.includes("5 porqués") || lower.includes("5 porques") || lower.includes("cinco porqués");
     if (pideIshikawa || pide5Porques) {
@@ -156,7 +164,7 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ reply: ishikawa + cincoPorques }) };
     }
 
-    // Embeddings de documentos (arranque frío)
+    // Embeddings de documentos (arranque frío; hoy 120 chunks)
     await ensureEmbeddings(OPENAI_API_KEY);
 
     // Embedding de la consulta
@@ -189,12 +197,12 @@ NO copies conversaciones previas ni formatees como transcripción. Respondé dir
       ? `Contexto interno (resumido):\n${context}\n\nRestringí tus afirmaciones técnicas a este contexto cuando aplique.`
       : `No se encontraron coincidencias en contexto interno. Usá criterios generales de CAA/BPM (aclará cuando asumís criterios generales).`;
 
-    // Chat
+    // Llamada al modelo (usa gpt-4o-mini; si tu cuenta no lo tiene, cambiá a "gpt-3.5-turbo")
     const chatResp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",
+        model: "gpt-4o-mini",
         temperature: 0.4,
         max_tokens: 600,
         messages: [
@@ -212,7 +220,7 @@ NO copies conversaciones previas ni formatees como transcripción. Respondé dir
 
     const data = await chatResp.json();
 
-    // Fallback robusto si viene vacío
+    // Fallback si viene vacío
     let reply = "";
     if (data?.choices?.length) {
       reply = data.choices[0]?.message?.content || data.choices[0]?.text || "";
