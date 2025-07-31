@@ -1,27 +1,76 @@
 // functions/valeria.js
+// Backend de Valeria con identidad, búsqueda vectorial y reglas especiales
+
 const fs = require("fs");
 const path = require("path");
 
-let documents = [];
-try {
-  const raw = fs.readFileSync(path.join(__dirname, "../data/embeddings.json"), "utf8");
-  documents = JSON.parse(raw);
-} catch (e) {
-  documents = [];
+// Leer los documentos de data/embeddings.json
+function loadDocs() {
+  try {
+    const raw = fs.readFileSync(path.join(__dirname, "../data/embeddings.json"), "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
 }
 
-// util: coseno (por si ya tenés "embedding" numérico en cada doc)
+// Similitud coseno
 function cosineSim(a, b) {
   if (!a || !b || a.length !== b.length) return 0;
   let dot = 0, na = 0, nb = 0;
-  for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
   return (na && nb) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
+}
+
+// Cache para los embeddings de los documentos
+let CACHE = { ready: false, chunks: [], vectors: [], model: "text-embedding-3-small" };
+
+async function ensureEmbeddings(OPENAI_API_KEY) {
+  if (CACHE.ready) return;
+
+  const docs = loadDocs(); // documentos ya con chunks
+  const chunks = docs.map((d, i) => ({
+    id: d.id || `doc${i}`,
+    title: d.title || `Documento ${i + 1}`,
+    content: d.content || ""
+  }));
+
+  // Hacemos embeddings en batch
+  async function embedBatch(texts) {
+    const resp = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ model: CACHE.model, input: texts })
+    });
+    if (!resp.ok) throw new Error(`Error creando embeddings (${resp.status})`);
+    const data = await resp.json();
+    return data.data.map(d => d.embedding);
+  }
+
+  // En lotes de 60 para no exceder límites
+  const vectors = [];
+  const BATCH = 60;
+  for (let i = 0; i < chunks.length; i += BATCH) {
+    const slice = chunks.slice(i, i + BATCH);
+    const embs = await embedBatch(slice.map(c => c.content));
+    vectors.push(...embs);
+  }
+
+  CACHE.chunks = chunks;
+  CACHE.vectors = vectors;
+  CACHE.ready = true;
 }
 
 exports.handler = async (event) => {
   try {
     const { message } = JSON.parse(event.body || "{}");
-
     if (!message) {
       return { statusCode: 400, body: JSON.stringify({ reply: "No recibí tu mensaje." }) };
     }
@@ -31,33 +80,15 @@ exports.handler = async (event) => {
       return { statusCode: 500, body: JSON.stringify({ reply: "❌ API Key no configurada en Netlify." }) };
     }
 
-    // 1) Recuperación de contexto
-    // Si tus documentos ya tienen embeddings (campo "embedding": number[]),
-    // podés calcular la similitud coseno contra un embedding del mensaje del usuario.
-    // Mientras tanto, hacemos fallback a "includes" (starter).
-
-    // --- Fallback simple por includes ---
-    const simpleTop = documents
-      .map(d => ({
-        doc: d,
-        score: (d.content || "").toLowerCase().includes(message.toLowerCase()) ? 1 : 0
-      }))
-      .filter(x => x.score > 0)
-      .sort((a,b)=> b.score - a.score)
-      .slice(0, 5)
-      .map(x => x.doc);
-
-    const contextText = simpleTop.map(d => `• ${d.title}: ${d.content}`).join("\n");
-
-    // 2) Reglas especiales: Ishikawa + 5 porqués
     const lower = message.toLowerCase();
+
+    // Respuestas especiales Ishikawa/5 porqués
     const pideIshikawa = lower.includes("espina de pescado") || lower.includes("ishikawa");
-    const pide5Porques  = lower.includes("5 porqués") || lower.includes("5 porques") || lower.includes("cinco porqués");
+    const pide5Porques = lower.includes("5 porqués") || lower.includes("5 porques") || lower.includes("cinco porqués");
     if (pideIshikawa || pide5Porques) {
-      const problema =
-        lower.includes("vencid") && lower.includes("góndola")
-          ? "Productos vencidos en góndola"
-          : (message.trim() || "Problema a definir");
+      const problema = lower.includes("vencid") && lower.includes("góndola")
+        ? "Productos vencidos en góndola"
+        : message.trim();
 
       const ishikawa =
 `🔎 *Análisis de causa raíz — Diagrama de Ishikawa (Espina de pescado)*
@@ -113,25 +144,46 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: JSON.stringify({ reply: ishikawa + cincoPorques }) };
     }
 
-    // 3) Llamada al modelo con identidad fuerte
+    // Aseguramos embeddings de los documentos en memoria
+    await ensureEmbeddings(OPENAI_API_KEY);
+
+    // Embedding de la consulta
+    const embResp = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ model: CACHE.model, input: message })
+    });
+    if (!embResp.ok) throw new Error(`Error creando embedding de la consulta (${embResp.status})`);
+    const embData = await embResp.json();
+    const qVec = embData.data[0].embedding;
+
+    // Rankear documentos por similitud
+    const scored = CACHE.chunks.map((c, i) => ({ c, s: cosineSim(qVec, CACHE.vectors[i]) }));
+    scored.sort((a, b) => b.s - a.s);
+    const top = scored.slice(0, 5).map(x => x.c);
+
+    const context = top.map(c => `• ${c.title}: ${c.content}`).join("\n");
+
+    // Prompt con identidad fuerte
     const systemPrompt = `
 Sos **Valeria**, Licenciada en Tecnología de los Alimentos (Argentina), especialista en seguridad alimentaria.
 Usá terminología local (carne vacuna, freezer, heladera, franco), fundamento en CAA/BPM y procedimientos internos.
 Tono profesional y pedagógico; pasos concretos; ofrecé adjuntos PDF cuando corresponda (✔️).
-NO copies conversaciones previas ni formatees como transcripción. Respondé directo a la consulta.
-Si el contexto interno no cubre la pregunta, respondé con criterios generales de CAA/BPM y decí cuándo asumís criterios generales.
-`;
+NO copies conversaciones previas. Respondé directo a la consulta.`;
 
-    const userPrompt = message;
-    const contextPrompt = contextText
-      ? `Contexto interno (resumido):\n${contextText}\n\nRestringí tus afirmaciones técnicas a este contexto cuando aplique.`
-      : `No se encontraron coincidencias en contexto interno. Usá criterios generales de CAA/BPM, dejando claro que son generales.`;
+    const contextPrompt = context
+      ? `Contexto interno (resumido):\n${context}\n\nRestringí tus afirmaciones técnicas a este contexto cuando aplique.`
+      : `No se encontraron coincidencias en contexto interno. Usá criterios generales de CAA/BPM (aclará cuando asumís criterios generales).`;
 
-    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    // Llamada a OpenAI
+    const chatResp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
         model: "gpt-3.5-turbo",
@@ -139,22 +191,21 @@ Si el contexto interno no cubre la pregunta, respondé con criterios generales d
         messages: [
           { role: "system", content: systemPrompt },
           { role: "system", content: contextPrompt },
-          { role: "user", content: userPrompt }
-        ],
-      }),
+          { role: "user", content: message }
+        ]
+      })
     });
 
-    if (!resp.ok) {
-      const errText = await resp.text().catch(() => "");
-      return { statusCode: 502, body: JSON.stringify({ reply: `Error con OpenAI (${resp.status}). ${errText}` }) };
+    if (!chatResp.ok) {
+      const txt = await chatResp.text().catch(() => "");
+      return { statusCode: 502, body: JSON.stringify({ reply: `Error con OpenAI (${chatResp.status}). ${txt}` }) };
     }
 
-    const data = await resp.json();
-    const reply = data?.choices?.[0]?.message?.content || "No se encontró respuesta.";
+    const data = await chatResp.json();
+    const reply = data.choices?.[0]?.message?.content || "No se encontró respuesta.";
     return { statusCode: 200, body: JSON.stringify({ reply }) };
 
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ reply: "Error inesperado en el servidor." }) };
   }
 };
-
