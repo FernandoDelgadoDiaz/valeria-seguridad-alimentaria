@@ -2,45 +2,38 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <!-- iOS: el teclado reduce el área de contenido (no superpone) -->
+  <!-- iOS: el teclado reduce el área de contenido -->
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-  <title>Valeria · Especialista en Seguridad Alimentaria</title>
+  <title>Valeria · Seguridad Alimentaria</title>
   <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
   <link rel="icon" href="/valeria-mini.jpg" />
 
   <style>
     :root{
-      /* Azul uniforme (flecha + barra) */
-      --brand-blue: #0056d2;
+      --brand-blue: #0056d2;     /* azul uniforme del header y botón */
 
       --header-bg: var(--brand-blue);
       --header-fg: #ffffff;
 
-      /* Fondo general de la app (gris muy suave) */
-      --page-bg: #eceff3;
-
-      /* Fondo del área de diálogo (estilo WhatsApp) */
-      --chat-bg: #e7f3ee; /* verde/beige muy claro, no blanco */
+      --page-bg: #eceff3;        /* fondo general */
+      --chat-bg: #e9f3ef;        /* fondo del área de diálogo estilo WhatsApp */
 
       --text:  #0f172a;
       --muted: #64748b;
       --border:#e5e7eb;
 
-      /* Burbujas tipo WhatsApp */
-      --bubble-bot:       #e8f0ff; /* Valeria: azul muy suave */
+      /* Burbujas armoniosas */
+      --bubble-bot:       #eaf2ff;  /* Valeria: azul muy suave */
       --bubble-bot-text:  #0f172a;
-      --bubble-user:      #dff7e8; /* Usuario: verde suave */
+      --bubble-user:      #e6f7ec;  /* Usuario: verde suave */
       --bubble-user-text: #0f172a;
 
-      --error: #dc2626;
-
-      /* Tipografías responsivas (pila sistema para verse como WhatsApp nativo) */
       --fs-body:  clamp(15px, 1.6vw, 16px);
-      --fs-title: clamp(16px, 2.2vw, 18px);
+      --fs-name:  clamp(17px, 2.6vw, 20px);
+      --fs-role:  clamp(12px, 1.8vw, 14px);
 
-      /* Alturas (JS las ajusta en vivo con el teclado) */
-      --app-h: 70vh;     /* fallback */
-      --header-h: 56px;  /* header móvil ~WhatsApp */
+      --app-h: 70vh;
+      --header-h: 56px;
       --composer-h: 50px;
     }
 
@@ -50,48 +43,57 @@
       margin:0; background:var(--page-bg); color:var(--text);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       font-size: var(--fs-body); line-height:1.55;
-
-      /* El scroll del documento queda bloqueado: solo scrollean los mensajes */
       overflow: hidden;
       padding-top: env(safe-area-inset-top, 0px);
     }
 
-    /* ===== Header fijo (siempre visible) ===== */
+    /* ===== Header fijo ===== */
     header{
       position: fixed; top: 0; left: 0; right: 0; z-index: 20;
-      display:flex; align-items:center; gap:12px;
+      display:flex; align-items:center; gap:10px;
       padding: max(8px, env(safe-area-inset-top)) 12px 8px 12px;
       height: var(--header-h);
       background: var(--header-bg);
       color: var(--header-fg);
       border-bottom: 1px solid rgba(255,255,255,.15);
-      will-change: transform; /* evita saltos en iOS al abrir teclado */
+      will-change: transform;
     }
     @media (min-width: 768px){
       :root{ --header-h: 64px; }
       header{ padding: 12px 16px; }
     }
-    .title{
-      font-weight:800; letter-spacing:.2px; font-size: var(--fs-title);
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+
+    /* Avatar sin deformación */
+    .avatar-wrap{
+      width:40px; height:40px; border-radius:999px; overflow:hidden; flex:0 0 auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,.12); cursor: zoom-in; user-select:none;
+      background:#fff;
     }
     .avatar{
-      width:40px; height:40px; aspect-ratio: 1 / 1;
-      border-radius:999px; flex:0 0 auto;
+      width:100%; height:100%; display:block;
       object-fit: cover; object-position: center;
-      box-shadow: 0 2px 8px rgba(0,0,0,.12);
-      cursor: zoom-in; user-select:none;
-      backface-visibility: hidden; /* evita deformación sutil en iOS */
+      backface-visibility: hidden; image-orientation: from-image;
     }
     @media (min-width: 768px){
-      .avatar{ width:44px; height:44px; }
+      .avatar-wrap{ width:44px; height:44px; }
+    }
+
+    /* Título a dos líneas */
+    .title{ display:flex; flex-direction:column; line-height:1.1; min-width:0; }
+    .title .name{
+      font-weight:800; font-size: var(--fs-name);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .title .role{
+      font-weight:600; font-size: var(--fs-role); opacity:.95;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
 
     /* ===== Layout principal ===== */
     main{
       padding-top: var(--header-h);
       height: calc(100dvh - var(--header-h));
-      height: calc(100vh - var(--header-h)); /* fallback */
+      height: calc(100vh - var(--header-h));
     }
     .wrap{width:100%; max-width:980px; margin:0 auto; padding:8px 8px 12px}
     .chat{
@@ -102,18 +104,16 @@
       background: var(--chat-bg);
     }
 
-    /* ===== Área de mensajes (scroll) ===== */
+    /* ===== Mensajes ===== */
     .msgs{
       flex:1; overflow:auto; display:flex; flex-direction:column;
       gap:10px; padding: 12px 10px; overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
-      /* Sutil “papel tapiz” */
       background:
         radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.65) 0%, rgba(255,255,255,0) 60%),
         radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.55) 0%, rgba(255,255,255,0) 60%);
     }
 
-    /* Mensajes con ancho máx ~78% (estilo WhatsApp) */
     .row{display:flex; gap:6px; align-items:flex-end}
     .row.user{justify-content:flex-end}
     .bubble{
@@ -124,8 +124,14 @@
     }
     .user .bubble{background:var(--bubble-user); color:var(--bubble-user-text)}
     .bot  .bubble{background:var(--bubble-bot);  color:var(--bubble-bot-text)}
-    .error .bubble{background:#ffe4e6; border-color:#fda4af}
     .row + .row{ margin-top: 2px; }
+
+    /* Formato dentro de la burbuja (cuando usamos innerHTML) */
+    .bubble strong{ font-weight:800; }
+    .bubble em{ font-style: italic; }
+    .bubble p{ margin:0 0 8px }
+    .bubble p:last-child{ margin:0 }
+    .bubble .tag{ display:inline-flex; align-items:center; gap:6px; padding:2px 8px; border-radius:999px; font-weight:700; font-size:12px; background:#eef2ff; border:1px solid #c7d2fe; }
 
     /* Indicador “pensando” */
     .typing{display:inline-flex; align-items:center; gap:8px}
@@ -134,7 +140,7 @@
     .dot:nth-child(3){animation-delay:.4s}
     @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
 
-    /* ===== Composer compacto tipo WhatsApp ===== */
+    /* ===== Composer ===== */
     .composer{
       display:flex; align-items:center; gap:8px;
       padding:8px; border-top:1px solid var(--border);
@@ -146,13 +152,10 @@
       flex:1; resize:none;
       min-height: 40px; max-height: 120px;
       padding: 10px 12px;
-      border-radius: 22px; /* pill */
+      border-radius: 22px;
       border:1px solid var(--border);
       background:#f9fafb; color:var(--text);
-      /* Igual que las burbujas */
-      font-family: inherit;
-      font-size: var(--fs-body);
-      line-height: 1.55;
+      font-family: inherit; font-size: var(--fs-body); line-height: 1.55;
       outline:none;
     }
     textarea::placeholder{ color:#94a3b8; }
@@ -161,7 +164,7 @@
     .sendbtn{
       display:inline-flex; align-items:center; justify-content:center;
       background:var(--brand-blue); color:#fff; border:0;
-      width: 44px; height: 44px; border-radius: 999px; /* circular */
+      width: 44px; height: 44px; border-radius: 999px;
       cursor:pointer; transition:transform .05s ease, filter .2s;
       flex: 0 0 auto;
     }
@@ -169,7 +172,7 @@
     .sendbtn:hover{ filter: brightness(1.05) }
     .sendbtn svg{ width:20px; height:20px }
 
-    /* Adjuntos PDF */
+    /* Adjuntos */
     .attach{
       display:inline-flex; align-items:center; gap:8px; margin-top:10px;
       background:#eff6ff; border:1px solid #cfe2ff; color:#0f172a; padding:8px 10px; border-radius:10px;
@@ -178,7 +181,7 @@
     .attach:hover{ background:#e7f0ff; }
     .attach svg{ width:16px; height:16px; }
 
-    /* Viewer (imagen de perfil expandida) */
+    /* Viewer imagen */
     .viewer{
       position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
       background: rgba(0,0,0,.52);
@@ -196,8 +199,13 @@
 <body>
   <!-- Header fijo -->
   <header>
-    <img id="avatar" class="avatar" src="/valeria-mini.jpg" alt="Valeria" title="Ver imagen" />
-    <div class="title">Valeria. Especialista en Seguridad Alimentaria</div>
+    <div class="avatar-wrap" id="avatarWrap">
+      <img id="avatar" class="avatar" src="/valeria-mini.jpg" alt="Valeria" title="Ver imagen" />
+    </div>
+    <div class="title">
+      <div class="name">Valeria</div>
+      <div class="role">Seguridad Alimentaria</div>
+    </div>
   </header>
 
   <!-- Visor de imagen expandida -->
@@ -213,10 +221,8 @@
         <div class="composer">
           <textarea id="box" placeholder="Mensaje"></textarea>
           <button id="send" class="sendbtn" aria-label="Enviar">
-            <!-- Flecha tipo WhatsApp -->
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                    d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 0" />
+              <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 0" />
             </svg>
           </button>
         </div>
@@ -230,14 +236,13 @@
     const box  = $('#box');
     const btn  = $('#send');
 
-    /* ===== Altura dinámica robusta (iOS/Android + teclado) ===== */
+    /* ===== Altura dinámica (iOS/Android + teclado) ===== */
     function setHeights(){
       const header = document.querySelector('header');
       const headerH = header.getBoundingClientRect().height;
       document.documentElement.style.setProperty('--header-h', headerH + 'px');
 
       const vh = (window.visualViewport?.height) ? window.visualViewport.height : window.innerHeight;
-      // margen pequeño para respiros visuales
       const appH = Math.max(260, vh - headerH);
       document.documentElement.style.setProperty('--app-h', appH + 'px');
     }
@@ -251,28 +256,81 @@
       }
     }
     setupViewportListeners();
+    box.addEventListener('focus', ()=> { setTimeout(setHeights, 50); setTimeout(setHeights, 250); });
+    box.addEventListener('blur',  ()=> { setTimeout(setHeights, 50); setTimeout(setHeights, 250); });
 
-    // En iOS, al enfocar el textarea recalculamos y “fijamos” el header
-    box.addEventListener('focus', ()=> {
-      setTimeout(setHeights, 50);
-      setTimeout(setHeights, 250);
-    });
-    box.addEventListener('blur', ()=> {
-      setTimeout(setHeights, 50);
-      setTimeout(setHeights, 250);
-    });
+    /* ===== Helpers UI ===== */
+    function escapeHTML(s){
+      return s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    }
+
+    // Inserta emojis y negritas de forma sensible
+    function formatReply(text, userText=''){
+      if (!text) return '';
+
+      // 1) Escapar todo para evitar HTML no deseado
+      let out = escapeHTML(text);
+
+      // 2) Respetar negritas si vinieran tipo **...**
+      out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+      // 3) Énfasis automático en conceptos clave
+      const emph = [
+        /(\b200\s*ppm\b)/gi,
+        /\b(j-?512|amonio cuaternario|sanitizante)\b/gi,
+        /\b(bpm|bpa|poes|mip|5s)\b/gi,
+        /\b(fefo)\b/gi,
+        /\b(retiro anticipado|pr[oó]ximo a vencer)\b/gi,
+        /\b(auditor[ií]a[s]?|registro[s]?)\b/gi,
+        /\b(acciones inmediatas|acciones preventivas|procedimiento)\b/gi
+      ];
+      emph.forEach(rx => { out = out.replace(rx, '<strong>$1</strong>'); });
+
+      // 4) Títulos con emojis (línea completa)
+      out = out.replace(/^(\s*\**\s*Acciones inmediatas\s*\**)/gim, '✅ <strong>$1</strong>');
+      out = out.replace(/^(\s*\**\s*Acciones preventivas\s*\**)/gim, '🛡️ <strong>$1</strong>');
+      out = out.replace(/^(\s*\**\s*Procedimiento\s*\**)/gim, '📋 <strong>$1</strong>');
+      out = out.replace(/^(\s*\**\s*Análisis de causa raíz.*)/gim, '🔎 <strong>$1</strong>');
+
+      // 5) Emoji contextual según tema detectado (una “etiqueta” al inicio)
+      const u = (userText || '').toLowerCase();
+      let tag = '';
+      if (u.includes('200') || u.includes('ppm') || u.includes('j-512') || u.includes('j512') || u.includes('sanitizante')) tag = '🧪';
+      else if (u.includes('fefo') || u.includes('rotaci')) tag = '🔁';
+      else if (u.includes('vencid')) tag = '⛔';
+      else if (u.includes('auditor')) tag = '📋';
+      else if (u.includes('rotulado') || u.includes('etiquet')) tag = '🏷️';
+      else if (u.includes('poes') || u.includes('mip') || u.includes('bpm')) tag = '🧼';
+
+      if (tag){
+        out = `<span class="tag">${tag} Guía</span><br>${out}`;
+      }
+
+      // 6) Convertir dobles saltos a párrafos y simples a <br>
+      out = out.split('\n\n').map(p => `<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+
+      return out;
+    }
 
     function addMsg(role, text, cls=''){
       const row = document.createElement('div');
       row.className = `row ${role} ${cls}`;
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
-      bubble.textContent = text;
+
+      // Usuario en texto plano; Valeria con HTML formateado
+      if (role === 'bot'){
+        bubble.innerHTML = formatReply(String(text || ''));
+      }else{
+        bubble.textContent = text;
+      }
+
       row.appendChild(bubble);
       msgs.appendChild(row);
       msgs.scrollTop = msgs.scrollHeight;
       return row;
     }
+
     function addTyping(){
       const row = document.createElement('div');
       row.className = 'row bot';
@@ -284,12 +342,14 @@
       msgs.scrollTop = msgs.scrollHeight;
       return row;
     }
-    function replaceText(row, newText){
+    function replaceText(row, newText, asHTML=false){
       const bubble = row.querySelector('.bubble');
-      if (bubble) bubble.textContent = newText;
+      if (!bubble) return;
+      if (asHTML) bubble.innerHTML = newText;
+      else bubble.textContent = newText;
     }
 
-    /* Presentación automática a los 5s si no hay interacción */
+    /* Presentación automática (sin “Licenciada…”) */
     let interacted = false;
     function mark(){ interacted = true; }
     box.addEventListener('keydown', mark);
@@ -298,11 +358,11 @@
     setTimeout(()=>{
       const userMsgs = msgs.querySelectorAll('.row.user').length;
       if (!interacted && userMsgs === 0){
-        addMsg('bot','Hola, soy Valeria, Especialista en Seguridad Alimentaria. ¿En qué te puedo ayudar para fortalecer la cultura de inocuidad?');
+        addMsg('bot','Hola, soy Valeria. ¿En qué te puedo ayudar para fortalecer la cultura de inocuidad?');
       }
     }, 5000);
 
-    /* Carga del mapa de PDFs */
+    /* === PDFs (sin cambios de lógica) === */
     let PDF_MAP = null;
     async function ensurePdfMap(){
       if (PDF_MAP) return PDF_MAP;
@@ -311,16 +371,14 @@
         if (!r.ok) throw new Error('No pude cargar keyword_to_file.json');
         PDF_MAP = await r.json();
       }catch(e){
-        PDF_MAP = {}; // fallback vacío
+        PDF_MAP = {};
       }
       return PDF_MAP;
     }
-
     function wantsPdf(txt){
       const t = (txt || '').toLowerCase();
       return t.includes('pdf') || t.includes('adjunto') || t.includes('documento');
     }
-
     const PRIORITY_KEYS = [
       'sanitizante','j-512','j512','200 ppm','amonio cuaternario','amonio',
       'fefo','retiro anticipado','proximo a vencer',
@@ -340,7 +398,6 @@
       }
       return 'index.html';
     }
-
     async function fileExists(url){
       try{
         const r = await fetch(url, { method: 'HEAD', cache: 'no-store' });
@@ -393,8 +450,11 @@
         if (userWantsPdf) reply = cleanReply(reply);
 
         if (reply){
-          replaceText(typingRow, reply);
+          // Formato con negritas + emojis
+          const html = formatReply(reply, text);
+          replaceText(typingRow, html, /*asHTML*/ true);
 
+          // Adjuntar PDF si corresponde
           if (userWantsPdf){
             const map = await ensurePdfMap();
             const chosen = bestMatch(text, map);
@@ -440,21 +500,11 @@
       }
     });
 
-    /* ====== Viewer (imagen expandible) ====== */
-    const avatar = document.getElementById('avatar');
-    const viewer = document.getElementById('viewer');
-
-    function openViewer(){
-      viewer.classList.add('open');
-      viewer.focus();
-      document.body.style.overflow = 'hidden';
-    }
-    function closeViewer(){
-      viewer.classList.remove('open');
-      document.body.style.overflow = '';
-    }
-
-    avatar.addEventListener('click', openViewer);
+    /* Viewer imagen */
+    const viewer  = document.getElementById('viewer');
+    document.getElementById('avatarWrap').addEventListener('click', openViewer);
+    function openViewer(){ viewer.classList.add('open'); viewer.focus(); document.body.style.overflow = 'hidden'; }
+    function closeViewer(){ viewer.classList.remove('open'); document.body.style.overflow = ''; }
     viewer.addEventListener('click', closeViewer);
     viewer.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') closeViewer(); });
   </script>
