@@ -10,6 +10,7 @@
   <title>Valeria · Seguridad Alimentaria</title>
   <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
   <link rel="icon" href="/valeria-mini.jpg" />
+  <!-- v-2025.07.31-takeover -->
   <style>
     :root{
       --brand-blue:#0a2f73; --header-bg:var(--brand-blue); --header-fg:#fff;
@@ -18,34 +19,33 @@
       --bubble-user:#eef2f7; --bubble-user-text:#0f172a;
       --fs-body:clamp(15px,1.6vw,16px); --fs-name:clamp(18px,3vw,22px); --fs-role:clamp(12px,2vw,14px);
       --header-h:56px; --vhpx:100svh;
-
       /* Adjunto compacto */
-      --attach-bg:#ffffff; --attach-bd:#d9e1f2; --attach-fg:#0f172a;
-      --attach-bg-hover:#f3f6ff;
+      --attach-bg:#ffffff; --attach-bd:#d9e1f2; --attach-fg:#0f172a; --attach-bg-hover:#f3f6ff;
     }
     [data-theme="dark"]{
       --header-bg:var(--brand-blue); --header-fg:#e5e7eb;
       --page-bg:#0f172a; --chat-bg:#0b1220; --text:#e5e7eb; --muted:#9ca3af; --border:#1f2937;
       --bubble-bot:#1b2d50; --bubble-bot-text:#e5e7eb;
       --bubble-user:#335694; --bubble-user-text:#e5e7eb;
-
-      --attach-bg:#0f172a; --attach-bd:#344465; --attach-fg:#e5e7eb;
-      --attach-bg-hover:#132042;
+      --attach-bg:#0f172a; --attach-bd:#344465; --attach-fg:#e5e7eb; --attach-bg-hover:#132042;
     }
 
-    *{box-sizing:border-box} html,body{height:100%}
-    html,body{
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
       margin:0; background:var(--page-bg); color:var(--text);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       font-size:var(--fs-body); line-height:1.55; padding-top:env(safe-area-inset-top,0);
+      overflow:hidden; /* ← bloquemos scroll de lo “externo” */
     }
 
-    /* ===== Dos modos =====
-       data-standalone="true"  -> PWA (sin URL): header fijo
-       data-standalone="false" -> Navegador (con URL): header sticky
-    */
+    /* ===== TAKEOVER a pantalla completa ===== */
+    #valeria-app{
+      position:fixed; inset:0; z-index:1; /* tapa cualquier hero/banners */
+      display:flex; flex-direction:column; background:var(--page-bg);
+    }
 
-    /* Header */
+    /* Header (fijo) */
     header{
       display:flex; align-items:center; gap:10px;
       height:var(--header-h);
@@ -54,9 +54,6 @@
       border-bottom:1px solid rgba(255,255,255,.15);
       z-index:20; transform:translateZ(0);
     }
-    html[data-standalone="false"] header{ position: sticky; top: 0; }
-    html[data-standalone="true"]  header{ position: fixed; left:0; right:0; top:0; }
-
     @media (min-width:768px){ :root{--header-h:64px} header{ padding:12px 16px } }
 
     .avatar-wrap{
@@ -72,31 +69,20 @@
     .themebtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:transparent;color:var(--header-fg);cursor:pointer}
     .themebtn svg{width:20px;height:20px}
 
-    /* Main */
-    main{overflow:hidden}
-    html[data-standalone="true"]  main{ padding-top:var(--header-h); height:calc(var(--vhpx) - var(--header-h)); }
-    html[data-standalone="false"] main{ padding-top:0; min-height:100dvh; }
-
-    /* Navegador: el body puede scrollear si hace falta (colapsa URL). */
-    html[data-standalone="false"] body{ overflow:auto; }
-    /* PWA: bloqueamos scroll del body; solo scrollean mensajes. */
-    html[data-standalone="true"]  body{ overflow:hidden; overscroll-behavior:none; }
-
-    .wrap{width:100%;max-width:980px;margin:0 auto;padding:8px 8px 12px}
-    html[data-standalone="false"] .wrap{ padding-top:calc(var(--header-h) + 8px); padding-bottom:0; }
+    /* Main ocupa lo restante (100%) */
+    main{ flex:1 1 auto; min-height:0; /* necesario para que el grid hijo calcule bien */ }
+    .wrap{width:100%;max-width:980px;margin:0 auto;padding:8px 8px 12px; height:100%}
 
     /* Chat SIEMPRE en Grid: mensajes (1fr) + composer (auto) */
     .chat{
+      height:100%;
       background:var(--chat-bg); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 18px rgba(15,23,42,.06);
       display:grid; grid-template-rows:1fr auto; overflow:hidden; contain:layout size style;
     }
-    html[data-standalone="true"]  .chat{ height:100%; }
-    html[data-standalone="false"] .chat{ height:calc(100dvh - var(--header-h) - 8px - 8px); }
 
-    /* Mensajes: SIEMPRE con overflow:auto -> el panel de lectura scrollea */
+    /* Mensajes con scroll propio */
     .msgs{
-      overflow:auto; display:flex; flex-direction:column;
-      gap:10px; padding:12px 10px; -webkit-overflow-scrolling:touch;
+      overflow:auto; display:flex; flex-direction:column; gap:10px; padding:12px 10px; -webkit-overflow-scrolling:touch;
       background:
         radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 60%),
         radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 60%);
@@ -118,11 +104,9 @@
     .bot  .bubble{background:var(--bubble-bot); color:var(--bubble-bot-text)}
     .bubble strong{font-weight:800} .bubble em{font-style:italic}
     .bubble p{margin:0 0 8px} .bubble p:last-child{margin:0}
+    .bubble img{ max-width:100%; height:auto; border-radius:8px; display:block; } /* por si el backend inserta imágenes */
 
-    /* ⚠️ Imágenes dentro de la burbuja (por si el backend manda alguna) -> nunca gigantes */
-    .bubble img{ max-width:100%; height:auto; border-radius:8px; display:block; }
-
-    /* Composer */
+    /* Composer compacto tipo WhatsApp */
     .composer{ display:flex; align-items:flex-end; gap:8px; padding:8px; border-top:1px solid var(--border); background:#fff; }
     [data-theme="dark"] .composer{ background:#0b1220; }
     .textarea-wrap{ flex:1; display:flex; align-items:center; padding:6px 12px; border:1px solid var(--border); border-radius:22px; background:#fff; }
@@ -133,70 +117,59 @@
     .sendbtn{ display:inline-flex;align-items:center;justify-content:center;background:var(--brand-blue);color:#fff;border:0;width:44px;height:44px;border-radius:999px;cursor:pointer;transition:transform .05s, filter .2s }
     .sendbtn:active{ transform:scale(.98) } .sendbtn:hover{ filter:brightness(1.05) } .sendbtn svg{ width:20px;height:20px }
 
-    /* === Adjunto compacto: "📎 Procedimiento de pollos" === */
+    /* Adjunto compacto: "📎 Procedimiento de pollos" */
     .attach{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:4px 8px; border-radius:999px;
-      font-size:13px; font-weight:700; text-decoration:none;
-      background:var(--attach-bg); color:var(--attach-fg);
-      border:1px solid var(--attach-bd);
-      max-width: 80vw;
+      display:inline-flex; align-items:center; gap:8px; padding:4px 8px; border-radius:999px;
+      font-size:13px; font-weight:700; text-decoration:none; background:var(--attach-bg); color:var(--attach-fg);
+      border:1px solid var(--attach-bd); max-width:80vw;
     }
-    .attach:hover{ background: var(--attach-bg-hover); }
-    .attach .clip{ font-size:14px; line-height:1; }
-    .attach .name{
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
+    .attach:hover{ background:var(--attach-bg-hover) }
+    .attach .clip{ font-size:14px; line-height:1 }
+    .attach .name{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
   </style>
 </head>
 <body>
-  <header>
-    <div class="avatar-wrap" id="avatarWrap" title="Ver imagen"></div>
-    <div class="title"><div class="name">Valeria</div><div class="role">Seguridad Alimentaria</div></div>
-    <div class="spacer"></div>
-    <button id="themeToggle" class="themebtn" aria-label="Cambiar tema" title="Cambiar tema">
-      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-        <circle cx="12" cy="12" r="5" stroke-width="2"></circle>
-        <path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-      </svg>
-    </button>
-  </header>
+  <div id="valeria-app">
+    <header>
+      <div class="avatar-wrap" id="avatarWrap" title="Ver imagen"></div>
+      <div class="title"><div class="name">Valeria</div><div class="role">Seguridad Alimentaria</div></div>
+      <div class="spacer"></div>
+      <button id="themeToggle" class="themebtn" aria-label="Cambiar tema" title="Cambiar tema">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+          <circle cx="12" cy="12" r="5" stroke-width="2"></circle>
+          <path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+    </header>
 
-  <div id="viewer" class="viewer" aria-modal="true" role="dialog" tabindex="-1">
-    <img src="/valeria-full.jpg" alt="Valeria" />
-  </div>
+    <!-- Visor de imagen -->
+    <div id="viewer" class="viewer" aria-modal="true" role="dialog" tabindex="-1" style="display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.52);position:fixed;inset:0;z-index:50;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))">
+      <img src="/valeria-full.jpg" alt="Valeria" style="max-width:min(92vw,1024px);max-height:88vh;border-radius:12px;object-fit:contain;box-shadow:0 10px 40px rgba(0,0,0,.4);background:#fff" />
+    </div>
 
-  <main>
-    <div class="wrap">
-      <div class="chat">
-        <div id="msgs" class="msgs"></div>
+    <main>
+      <div class="wrap">
+        <div class="chat">
+          <div id="msgs" class="msgs"></div>
 
-        <div class="composer" id="composer">
-          <div class="textarea-wrap"><textarea id="box" placeholder="Mensaje"></textarea></div>
-          <button id="send" class="sendbtn" aria-label="Enviar">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 0" />
-            </svg>
-          </button>
+          <div class="composer" id="composer">
+            <div class="textarea-wrap"><textarea id="box" placeholder="Mensaje"></textarea></div>
+            <button id="send" class="sendbtn" aria-label="Enviar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 0" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  </main>
+    </main>
+  </div>
 
   <script>
     const $ = s => document.querySelector(s);
     const msgs=$('#msgs'), box=$('#box'), btn=$('#send'), themeToggle=$('#themeToggle'), themeIcon=$('#themeIcon'), composer=$('#composer');
 
-    /* Detectar PWA vs navegador */
-    function detectStandalone(){
-      const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-        || navigator.standalone || document.referrer.startsWith('android-app://');
-      document.documentElement.setAttribute('data-standalone', isStandalone ? 'true' : 'false');
-      return isStandalone;
-    }
-    detectStandalone();
-
-    /* Tema (sin tocar lógica) */
+    /* Tema */
     const storageKey='valeria_theme';
     function applyTheme(theme){
       const prefersDark=window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -213,16 +186,13 @@
     themeToggle.addEventListener('click', toggleTheme);
     if(window.matchMedia){window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(currentTheme()===null)applyTheme(null);});}
 
-    /* Viewport real */
+    /* Viewport real (para teclado iOS/Android) */
     function setVH(){
       const vv=window.visualViewport;
       const h=vv ? vv.height : (window.innerHeight||document.documentElement.clientHeight);
       document.documentElement.style.setProperty('--vhpx', h + 'px');
     }
-    function reflow(){
-      setVH();
-      msgs.scrollTop = msgs.scrollHeight; // Mantener últimos mensajes a la vista
-    }
+    function reflow(){ setVH(); msgs.scrollTop = msgs.scrollHeight; }
     function setupViewportListeners(){
       reflow();
       window.addEventListener('resize', reflow, {passive:true});
@@ -236,11 +206,11 @@
     }
     setupViewportListeners();
 
-    /* Autosize textarea (tipo WhatsApp) */
+    /* Autosize textarea */
     function autosizeTextarea(){
       box.style.height='auto';
       const lineH=parseFloat(getComputedStyle(box).lineHeight)||20;
-      const max=lineH*6 + 12; /* ~6 líneas */
+      const max=lineH*6 + 12;
       box.style.height=Math.min(box.scrollHeight,max)+'px';
       msgs.scrollTop=msgs.scrollHeight;
     }
@@ -276,21 +246,21 @@
       return out;
     }
 
-    /* UI de mensajes (lógica intacta) */
+    /* Mensajería (UI) */
     let interacted=false;
     function addMsg(role,text){
       const row=document.createElement('div'); row.className=`row ${role}`;
       const bubble=document.createElement('div'); bubble.className='bubble';
       if(role==='bot'){ bubble.innerHTML=formatReply(String(text||'')); } else { bubble.textContent=text; }
       row.appendChild(bubble); msgs.appendChild(row);
-      msgs.scrollTop=msgs.scrollHeight; // SIEMPRE baja al último
+      msgs.scrollTop=msgs.scrollHeight;
       return row;
     }
     function mark(){interacted=true;}
     box.addEventListener('keydown',mark); box.addEventListener('focus',mark); btn.addEventListener('click',mark);
     setTimeout(()=>{ if(!interacted && !msgs.querySelector('.row.user')) addMsg('bot','Hola, soy Valeria. ¿En qué te puedo ayudar para fortalecer la cultura de inocuidad?'); },5000);
 
-    /* —— Lógica de envío / PDFs (sin cambios de lógica) —— */
+    /* —— Lógica de envío / PDFs (SIN cambios) —— */
     async function ensurePdfMap(){ try{const r=await fetch('/docs/keyword_to_file.json',{cache:'no-store'}); return r.ok?await r.json():{}; }catch{return{};} }
     function wantsPdf(t){t=(t||'').toLowerCase();return t.includes('pdf')||t.includes('adjunto')||t.includes('documento');}
     const PRIORITY_KEYS=['sanitizante','j-512','j512','200 ppm','amonio cuaternario','amonio','fefo','retiro anticipado','proximo a vencer','rotulado','etiquetado','fraccionamiento de quesos','quesos','queso','milanesas','pollo','carne vacuna','carne ovina','poes','bpm','bpa','mip','5s','reclamos','retiro de mercado'];
@@ -317,7 +287,6 @@
         const userWantsPdf=wantsPdf(text);
         if(reply){
           const botRow=addMsg('bot',reply);
-
           if(userWantsPdf){
             const map=await ensurePdfMap();
             const chosen=bestMatch(text,map);
@@ -325,12 +294,8 @@
             const url=isIndex?'/docs/index.html':`/docs/${chosen}`;
             const ok=await fileExists(url);
 
-            // Título prolijo: "Procedimiento de pollos"
-            const prettyName = (isIndex ? 'Ver todos los PDFs'
-              : chosen.replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\s+/g,' ').trim()
-              ).replace(/\b\w/g,c=>c.toUpperCase());
+            const prettyName=(isIndex?'Ver todos los PDFs':chosen.replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\s+/g,' ').trim()).replace(/\b\w/g,c=>c.toUpperCase());
 
-            // Inserto adjunto compacto: 📎 + título, sin SVG gigante
             const bubble=botRow.querySelector('.bubble');
             bubble.appendChild(document.createElement('br'));
             const a=document.createElement('a');
@@ -340,7 +305,6 @@
             a.innerHTML = `<span class="clip">📎</span><span class="name">${prettyName}</span>`;
             bubble.appendChild(a);
           }
-
         }else{
           addMsg('bot','No llegó texto en "reply" ni en "answer". Verificá en Network → Response.');
         }
@@ -356,9 +320,9 @@
 
     /* Viewer */
     const viewer=document.getElementById('viewer');
-    document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.classList.add('open');document.body.style.overflow='hidden';});
-    viewer.addEventListener('click',()=>{viewer.classList.remove('open');document.body.style.overflow='';});
-    viewer.addEventListener('keydown',e=>{ if(e.key==='Escape') viewer.classList.remove('open'); });
+    document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.style.display='flex';document.body.style.overflow='hidden';});
+    viewer.addEventListener('click',()=>{viewer.style.display='none';document.body.style.overflow='';});
+    viewer.addEventListener('keydown',e=>{ if(e.key==='Escape') {viewer.style.display='none';document.body.style.overflow='';} });
   </script>
 </body>
 </html>
