@@ -1,240 +1,474 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#0a2f73" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Valeria · Seguridad Alimentaria</title>
-  <link rel="icon" href="icono-valeria.jpg" />
+  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
+  <!-- Favicons opcionales -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/valeria-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/valeria-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/valeria-512.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/valeria-180.png">
+  <link rel="mask-icon" href="/icons/valeria-maskable.svg" color="#0a2f73">
+  <!-- Fallback si no están los íconos aún -->
+  <link rel="icon" href="/valeria-mini.jpg" />
+  <!-- v-2025.08.01-definitivo + contexto -->
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #e5ddd5;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
+    :root{
+      --brand-blue:#0a2f73; --header-bg:var(--brand-blue); --header-fg:#fff;
+      --page-bg:#eef1f6; --chat-bg:#f5f7fb; --text:#0f172a; --muted:#64748b; --border:#e5e7eb;
+      --bubble-bot:#dbeafe; --bubble-bot-text:#0f172a;
+      --bubble-user:#eef2f7; --bubble-user-text:#0f172a;
+      --fs-body:clamp(15px,1.6vw,16px); --fs-name:clamp(18px,3vw,22px); --fs-role:clamp(12px,2vw,14px);
+      --header-h:56px; --vhpx:100svh;
+      /* Adjunto compacto */
+      --attach-bg:#ffffff; --attach-bd:#d9e1f2; --attach-fg:#0f172a; --attach-bg-hover:#f3f6ff;
     }
-    header {
-      background-color: #075e54;
-      color: white;
-      padding: 10px;
-      display: flex;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
+    [data-theme="dark"]{
+      --header-bg:var(--brand-blue); --header-fg:#e5e7eb;
+      --page-bg:#0f172a; --chat-bg:#0b1220; --text:#e5e7eb; --muted:#9ca3af; --border:#1f2937;
+      --bubble-bot:#1b2d50; --bubble-bot-text:#e5e7eb;
+      --bubble-user:#335694; --bubble-user-text:#e5e7eb;
+
+      --attach-bg:#0f172a; --attach-bd:#344465; --attach-fg:#e5e7eb; --attach-bg-hover:#132042;
     }
-    header img {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      margin-right: 10px;
-      object-fit: cover;
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--page-bg); color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      font-size:var(--fs-body); line-height:1.55; padding-top:env(safe-area-inset-top,0);
+      overflow:hidden;
     }
-    header .name {
-      display: flex;
-      flex-direction: column;
+
+    /* ===== App a pantalla completa (takeover) ===== */
+    #valeria-app{
+      position:fixed; inset:0; z-index:1;
+      display:flex; flex-direction:column; background:var(--page-bg);
     }
-    header .name strong {
-      font-size: 1rem;
+
+    /* Header fijo */
+    header{
+      display:flex; align-items:center; gap:10px;
+      height:var(--header-h);
+      padding:max(8px,env(safe-area-inset-top)) 12px 8px 12px;
+      background:var(--header-bg); color:var(--header-fg);
+      border-bottom:1px solid rgba(255,255,255,.15);
+      z-index:20; transform:translateZ(0);
     }
-    header .name small {
-      font-size: 0.75rem;
+    @media (min-width:768px){ :root{--header-h:64px} header{ padding:12px 16px } }
+
+    .avatar-wrap{
+      width:40px;height:40px;border-radius:999px;overflow:hidden;flex:0 0 auto;
+      background:#fff url('/valeria-mini.jpg') center/cover no-repeat; box-shadow:0 2px 8px rgba(0,0,0,.12);
+      cursor:zoom-in; user-select:none;
     }
-    #chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-      background-image: url('fondo-whatsapp.jpg');
-      background-size: cover;
-      scroll-behavior: smooth;
+    @media (min-width:768px){ .avatar-wrap{width:44px;height:44px} }
+    .title{display:flex;flex-direction:column;line-height:1.1;min-width:0}
+    .name{font-weight:800;font-size:var(--fs-name);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .role{font-weight:600;font-size:var(--fs-role);opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .spacer{flex:1 1 auto}
+    .themebtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:transparent;color:var(--header-fg);cursor:pointer}
+    .themebtn svg{width:20px;height:20px}
+
+    /* Main ocupa lo restante */
+    main{ flex:1 1 auto; min-height:0; }
+    .wrap{width:100%;max-width:980px;margin:0 auto;padding:8px 8px 12px; height:100%}
+
+    /* Chat: grid 1fr + auto */
+    .chat{
+      height:100%;
+      background:var(--chat-bg); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 18px rgba(15,23,42,.06);
+      display:grid; grid-template-rows:1fr auto; overflow:hidden; contain:layout size style;
     }
-    .message {
-      max-width: 75%;
-      margin: 10px;
-      padding: 10px 14px;
-      border-radius: 7px;
-      line-height: 1.4;
-      word-wrap: break-word;
+
+    /* Mensajes */
+    .msgs{
+      overflow:auto; display:flex; flex-direction:column; gap:10px; padding:12px 10px; -webkit-overflow-scrolling:touch;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 60%);
+      contain:strict;
     }
-    .user {
-      align-self: flex-end;
-      background-color: #dcf8c6;
+    [data-theme="dark"] .msgs{
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.05) 0%, rgba(255,255,255,0) 60%);
     }
-    .valeria {
-      align-self: flex-start;
-      background-color: #fff;
+
+    .row{display:flex;gap:6px;align-items:flex-end}
+    .row.user{justify-content:flex-end}
+    .bubble{
+      max-width:78%; padding:10px 12px; border-radius:16px; white-space:pre-wrap;
+      border:1px solid var(--border); word-wrap:break-word; box-shadow:0 1px 2px rgba(0,0,0,.04);
+      overflow-wrap:anywhere;
     }
-    .chat-container {
-      display: flex;
-      flex-direction: column;
+    .user .bubble{background:var(--bubble-user);color:var(--bubble-user-text)}
+    .bot  .bubble{background:var(--bubble-bot); color:var(--bubble-bot-text)}
+    .bubble strong{font-weight:800} .bubble em{font-style:italic}
+    .bubble p{margin:0 0 8px} .bubble p:last-child{margin:0}
+    .bubble img{ max-width:100%; height:auto; border-radius:8px; display:block; }
+
+    /* Composer */
+    .composer{ display:flex; align-items:flex-end; gap:8px; padding:8px; border-top:1px solid var(--border); background:#fff; }
+    [data-theme="dark"] .composer{ background:#0b1220; }
+    .textarea-wrap{ flex:1; display:flex; align-items:center; padding:6px 12px; border:1px solid var(--border); border-radius:22px; background:#fff; }
+    [data-theme="dark"] .textarea-wrap{ background:#0f172a; border-color:#374151; }
+    textarea{ flex:1; resize:none; border:0; background:transparent; color:var(--text); font:inherit; line-height:1.55;
+      min-height:24px; max-height:9.5em; padding:6px 0; outline:none }
+    textarea::placeholder{ color:#94a3b8 }
+    .sendbtn{ display:inline-flex;align-items:center;justify-content:center;background:var(--brand-blue);color:#fff;border:0;width:44px;height:44px;border-radius:999px;cursor:pointer;transition:transform .05s, filter .2s }
+    .sendbtn:active{ transform:scale(.98) } .sendbtn:hover{ filter:brightness(1.05) } .sendbtn svg{ width:20px;height:20px }
+
+    /* === Adjunto compacto: respeta ancho de la burbuja === */
+    .attach{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 8px; border-radius:999px;
+      font-size:13px; font-weight:700; text-decoration:none;
+      background:var(--attach-bg); color:var(--attach-fg);
+      border:1px solid var(--attach-bd);
+      max-width:100%;
+      white-space:nowrap;
     }
-    #input-container {
-      display: flex;
-      padding: 10px;
-      background-color: #f0f0f0;
+    .attach:hover{ background: var(--attach-bg-hover); }
+    .attach .clip{ font-size:14px; line-height:1; flex:0 0 auto; }
+    .attach .name{ min-width:0; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; }
+
+    /* Viewer imagen (con frase adentro) */
+    .viewer{
+      position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+      background: rgba(0,0,0,.52);
+      padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+      flex-direction:column; gap:12px;
     }
-    #user-input {
-      flex: 1;
-      padding: 8px;
-      font-size: 1rem;
-      border: none;
-      border-radius: 20px;
-      resize: none;
-      max-height: 150px;
-      overflow-y: auto;
+    .viewer.open{ display:flex; }
+    .viewer img{
+      max-width: min(92vw, 1024px);
+      max-height: 78vh;
+      border-radius:12px; object-fit: contain; box-shadow:0 10px 40px rgba(0,0,0,.4);
+      background:#fff;
     }
-    #send-button {
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      margin-left: 10px;
-      cursor: pointer;
-      color: #075e54;
-    }
-    .profile-expanded {
-      display: none;
-      position: absolute;
-      top: 50px;
-      left: 10px;
-      background: white;
-      padding: 10px;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      z-index: 1001;
-      text-align: center;
-    }
-    .profile-expanded img {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-    .profile-expanded h3 {
-      margin: 10px 0 5px 0;
-      font-size: 1rem;
-    }
-    .profile-expanded p {
-      font-size: 0.8rem;
-      font-style: italic;
-    }
-    .attachment {
-      background-color: #eee;
-      padding: 6px 10px;
-      border-radius: 5px;
-      display: inline-block;
-      font-size: 0.85rem;
-      margin-top: 5px;
-    }
-    .dark-mode {
-      background-color: #111;
-      color: white;
-    }
-    .dark-mode header {
-      background-color: #333;
-    }
-    .dark-mode #chat {
-      background-color: #222;
-      background-image: none;
-    }
-    .dark-mode .message.valeria {
-      background-color: #444;
-    }
-    .dark-mode .message.user {
-      background-color: #1e6f5c;
-    }
-    #toggle-theme {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      width: 24px;
-      height: 24px;
-      background-color: #fff;
-      border: 2px solid #075e54;
-      border-radius: 50%;
-      cursor: pointer;
+    .viewer .motto{
+      color:#fff; font-size:14px; text-align:center; font-weight:600; max-width:90%; line-height:1.35;
+      text-shadow:0 1px 2px rgba(0,0,0,.45);
     }
   </style>
 </head>
 <body>
-  <header onclick="toggleProfile()">
-    <img src="icono-valeria.jpg" alt="Valeria" />
-    <div class="name">
-      <strong>Valeria</strong>
-      <small>Seguridad Alimentaria</small>
+  <div id="valeria-app">
+    <header>
+      <div class="avatar-wrap" id="avatarWrap" title="Ver imagen"></div>
+      <div class="title"><div class="name">Valeria</div><div class="role">Seguridad Alimentaria</div></div>
+      <div class="spacer"></div>
+      <button id="themeToggle" class="themebtn" aria-label="Cambiar tema" title="Cambiar tema">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+          <circle cx="12" cy="12" r="5" stroke-width="2"></circle>
+          <path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Visor de imagen -->
+    <div id="viewer" class="viewer" aria-modal="true" role="dialog" tabindex="-1">
+      <img src="/valeria-full.jpg" alt="Valeria" />
+      <div class="motto">🛡️ La inocuidad alimentaria comienza con cada decisión que tomamos.</div>
     </div>
-    <div id="toggle-theme" title="Modo Día/Noche"></div>
-  </header>
 
-  <div class="profile-expanded" id="profile">
-    <img src="valeria-profile-full.jpg" alt="Perfil Valeria" />
-    <h3>Valeria · Seguridad Alimentaria</h3>
-    <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
-  </div>
+    <main>
+      <div class="wrap">
+        <div class="chat">
+          <div id="msgs" class="msgs"></div>
 
-  <div id="chat" class="chat-container"></div>
-
-  <div id="input-container">
-    <textarea id="user-input" rows="1" placeholder="Mensaje"></textarea>
-    <button id="send-button">➤</button>
+          <div class="composer" id="composer">
+            <div class="textarea-wrap"><textarea id="box" placeholder="Mensaje"></textarea></div>
+            <button id="send" class="sendbtn" aria-label="Enviar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 0" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
 
   <script>
-    const chat = document.getElementById("chat");
-    const userInput = document.getElementById("user-input");
-    const sendButton = document.getElementById("send-button");
+    const $ = s => document.querySelector(s);
+    const msgs=$('#msgs'), box=$('#box'), btn=$('#send'), themeToggle=$('#themeToggle'), themeIcon=$('#themeIcon'), composer=$('#composer');
 
-    function appendMessage(text, sender, attachment = null) {
-      const msg = document.createElement("div");
-      msg.className = `message ${sender}`;
-      msg.innerHTML = text;
-      if (attachment) {
-        const file = document.createElement("div");
-        file.className = "attachment";
-        file.innerText = `📎 ${attachment}`;
-        msg.appendChild(file);
+    /* ===================== Tema (día/noche) ===================== */
+    const storageKey='valeria_theme';
+    function applyTheme(theme){
+      const prefersDark=window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if(theme==='dark'){document.documentElement.setAttribute('data-theme','dark');}
+      else if(theme==='light'){document.documentElement.removeAttribute('data-theme');}
+      else{ prefersDark?document.documentElement.setAttribute('data-theme','dark'):document.documentElement.removeAttribute('data-theme'); }
+      themeIcon.innerHTML=(document.documentElement.getAttribute('data-theme')==='dark')
+        ?'<path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" stroke-width="2" fill="none"/>'
+        :'<circle cx="12" cy="12" r="5" stroke-width="2"></circle><path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
+    }
+    function currentTheme(){const t=localStorage.getItem(storageKey);return(t==='light'||t==='dark')?t:null;}
+    function toggleTheme(){const t=currentTheme();const next=t==='dark'?'light':'dark';localStorage.setItem(storageKey,next);applyTheme(next);}
+    applyTheme(currentTheme());
+    themeToggle.addEventListener('click', toggleTheme);
+    if(window.matchMedia){window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(currentTheme()===null)applyTheme(null);});}
+
+    /* ===================== Viewport (iOS/Android) ===================== */
+    function setVH(){
+      const vv=window.visualViewport;
+      const h=vv ? vv.height : (window.innerHeight||document.documentElement.clientHeight);
+      document.documentElement.style.setProperty('--vhpx', h + 'px');
+    }
+    function reflow(){ setVH(); msgs.scrollTop = msgs.scrollHeight; }
+    function setupViewportListeners(){
+      reflow();
+      window.addEventListener('resize', reflow, {passive:true});
+      window.addEventListener('orientationchange', reflow, {passive:true});
+      if(window.visualViewport){
+        visualViewport.addEventListener('resize', reflow, {passive:true});
+        visualViewport.addEventListener('scroll', reflow, {passive:true});
       }
-      chat.appendChild(msg);
-      chat.scrollTop = chat.scrollHeight;
+      const ro=new ResizeObserver(()=>{ msgs.scrollTop = msgs.scrollHeight; });
+      ro.observe(composer);
+    }
+    setupViewportListeners();
+
+    /* ===================== Autosize textarea ===================== */
+    function autosizeTextarea(){
+      box.style.height='auto';
+      const lineH=parseFloat(getComputedStyle(box).lineHeight)||20;
+      const max=lineH*6 + 12;
+      box.style.height=Math.min(box.scrollHeight,max)+'px';
+      msgs.scrollTop=msgs.scrollHeight;
+    }
+    box.addEventListener('input', autosizeTextarea);
+    box.addEventListener('focus', ()=>{ setTimeout(()=>{ autosizeTextarea(); msgs.scrollTop=msgs.scrollHeight; }, 50); });
+
+    /* ===================== Helpers UI (emojis/negritas) ===================== */
+    function escapeHTML(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
+    function injectWhatsAppEmojis(html){
+      const patterns=[
+        {rx:/\bpdf\b/i,emoji:'📄'},{rx:/\bprocedimiento(s)?\b/i,emoji:'📋'},
+        {rx:/\bsanitizante|j-?512|amonio cuaternario\b/i,emoji:'🧪'},{rx:/\b200\s*ppm\b/i,emoji:'🧪'},
+        {rx:/\bfefo\b/i,emoji:'🔁'},{rx:/\betiquet(ad|ad)o|rotulado\b/i,emoji:'🏷️'},
+        {rx:/\bauditor(i|í)a(s)?\b/i,emoji:'🔎'},{rx:/\btemperatura|fr[ií]o|heladera|c[aá]mara\b/i,emoji:'🌡️'},
+        {rx:/\bcorrect(o|a)s?\b/i,emoji:'✅'},{rx:/\bincorrect(o|a)s?\b/i,emoji:'❌'},
+        {rx:/\bimportante\b/i,emoji:'⭐'},{rx:/\btiempo|minut(o|os)\b/i,emoji:'⏱️'},
+        {rx:/\bqueso(s)?|fraccionamiento de quesos\b/i,emoji:'🧀'}
+      ];
+      for(const {rx,emoji} of patterns){ html=html.replace(rx,(m)=>`${emoji} ${m}`); }
+      return html;
+    }
+    function formatReply(text){
+      if(!text)return''; let out=escapeHTML(text);
+      out=out.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      const emph=[/(\b200\s*ppm\b)/gi,/\b(j-?512|amonio cuaternario|sanitizante)\b/gi,/\b(bpm|bpa|poes|mip|5s)\b/gi,/\b(fefo)\b/gi,/\b(retiro anticipado|pr[oó]ximo a vencer)\b/gi,/\b(auditor[ií]a[s]?|registro[s]?)\b/gi,/\b(acciones inmediatas|acciones preventivas|procedimiento)\b/gi];
+      emph.forEach(rx=>{out=out.replace(rx,'<strong>$1</strong>');});
+      out=out.replace(/^(\s*\**\s*Acciones inmediatas\s*\**)/gim,'✅ <strong>$1</strong>')
+             .replace(/^(\s*\**\s*Acciones preventivas\s*\**)/gim,'🛡️ <strong>$1</strong>')
+             .replace(/^(\s*\**\s*Procedimiento\s*\**)/gim,'📋 <strong>$1</strong>')
+             .replace(/^(\s*\**\s*Análisis de causa raíz.*)/gim,'🔎 <strong>$1</strong>');
+      out=out.split('\n\n').map(p=>`<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+      out=injectWhatsAppEmojis(out);
+      return out;
+    }
+    function isGreeting(text){
+      const t=(text||'').trim().toLowerCase();
+      return /^hola([ !,.¿?]|$)/.test(t) || /^buen(d[ií]a|as tardes|as noches)/.test(t);
     }
 
-    sendButton.addEventListener("click", sendMessage);
-    userInput.addEventListener("keypress", function(e) {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
+    /* ===================== CONTEXTO (tema activo) ===================== */
+    let lastTopic = null;
+    const TOPIC_KEYS = [
+      { rx: /\bques(o|os)\b|\bfraccionamiento de quesos?\b/i, topic: 'fraccionamiento de quesos', pdfKey: 'fraccionamiento de quesos' },
+      { rx: /\bsanitizante\b|\bj-?512\b|\b200\s*ppm\b/i, topic: 'sanitizante j-512', pdfKey: 'j-512' },
+      { rx: /\brotulad(o|a)|etiquetado\b/i, topic: 'rotulado/etiquetado', pdfKey: 'rotulado' },
+      { rx: /\bfefo\b/i, topic: 'FEFO', pdfKey: 'fefo' },
+      { rx: /\bpoes\b|\bmip\b|\bbpm\b/i, topic: 'POES/BPM/MIP', pdfKey: 'poes' }
+      // Podés sumar más
+    ];
+    function detectTopic(text){
+      const s = (text||'');
+      for (const {rx, topic, pdfKey} of TOPIC_KEYS){
+        if (rx.test(s)) return { topic, pdfKey };
       }
-    });
+      return null;
+    }
+    function updateTopicFromText(text){
+      const hit = detectTopic(text);
+      if (hit) lastTopic = hit; // {topic, pdfKey}
+    }
+    function resolveImplicitRequest(userText){
+      const t = (userText || '').toLowerCase().trim();
+      const wantsProcedure = /^(dame|pasame|enviame|mandame)\s+(el\s+)?procedimiento(s)?\b/i.test(t)
+                           || /^procedimiento(s)?$/i.test(t);
+      if (wantsProcedure && lastTopic){
+        if (!t.includes(lastTopic.topic)) return `${userText} de ${lastTopic.topic}`;
+      }
+      return userText;
+    }
+    function deGenericize(reply){
+      if (!reply || !lastTopic) return reply;
+      const askArea = /(indic(a|á)me|decime|dime|por favor ind(i|í)ca)\s+cu[aá]l\s+es\s+el\s+(tema|área)[^.\n]*[.\n]?/i;
+      if (askArea.test(reply)){
+        const hint = `Te comparto el procedimiento de ${lastTopic.topic}.`;
+        reply = reply.replace(askArea, hint + ' ');
+      }
+      return reply;
+    }
 
-    function sendMessage() {
-      const text = userInput.value.trim();
-      if (text) {
-        appendMessage(text, "user");
-        userInput.value = "";
-        getValeriaResponse(text);
+    /* ===================== Historial corto (opcional) ===================== */
+    const history = []; // {role:'user'|'assistant', content:'...'}
+    function pushHistory(role, content){
+      history.push({ role, content });
+      if (history.length > 12) history.shift(); // ~6 turnos
+    }
+
+    /* ===================== Mensajería (UI) ===================== */
+    let interacted=false;
+    function addMsg(role,text){
+      const row=document.createElement('div'); row.className=`row ${role}`;
+      const bubble=document.createElement('div'); bubble.className='bubble';
+      if(role==='bot'){
+        let t=String(text||'');
+        if(isGreeting(t)) t = '👋 ' + t.replace(/^hola/i,'Hola').trim();
+        bubble.innerHTML=formatReply(t);
+      } else {
+        bubble.textContent=text;
+      }
+      row.appendChild(bubble); msgs.appendChild(row);
+      msgs.scrollTop=msgs.scrollHeight;
+      return row;
+    }
+    function mark(){interacted=true;}
+    box.addEventListener('keydown',mark); box.addEventListener('focus',mark); btn.addEventListener('click',mark);
+    setTimeout(()=>{ if(!interacted && !msgs.querySelector('.row.user')) addMsg('bot','Hola, soy Valeria. ¿En qué te puedo ayudar para fortalecer la cultura de inocuidad?'); },5000);
+
+    /* ===================== PDFs (misma lógica + sesgo por tema) ===================== */
+    async function ensurePdfMap(){ try{const r=await fetch('/docs/keyword_to_file.json',{cache:'no-store'}); return r.ok?await r.json():{}; }catch{return{};} }
+    function wantsPdf(t){t=(t||'').toLowerCase();return t.includes('pdf')||t.includes('adjunto')||t.includes('documento');}
+    const PRIORITY_KEYS=['sanitizante','j-512','j512','200 ppm','amonio cuaternario','amonio','fefo','retiro anticipado','proximo a vencer','rotulado','etiquetado','fraccionamiento de quesos','quesos','queso','milanesas','pollo','carne vacuna','carne ovina','poes','bpm','bpa','mip','5s','reclamos','retiro de mercado'];
+    function bestMatch(txt,map){
+      const t=(txt||'').toLowerCase();
+      for(const k of PRIORITY_KEYS){if(map[k]&&t.includes(k.toLowerCase()))return map[k];}
+      const keys=Object.keys(map).sort((a,b)=>b.length-a.length);
+      for(const k of keys){if(t.includes(k.toLowerCase()))return map[k];}
+      return 'index.html';
+    }
+    async function fileExists(url){try{const r=await fetch(url,{method:'HEAD',cache:'no-store'});return r.ok;}catch{return false;}}
+
+    /* ===================== Limpieza mínima de respuestas ===================== */
+    function cleanReply(text){
+      if(!text) return text;
+      let out=text;
+      [ /verific(a|á)\s+en\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi, /revisa(r)?\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi,
+        /busc(a|á)rlo\s+en\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi, /en\s+el\s+servicio\s+de\s+almacenamiento\s+seguro[^.\n]*[.\n]?/gi,
+        /no\s+puedo\s+enviar\s+archivos[^.\n]*[.\n]?/gi
+      ].forEach(rx=>out=out.replace(rx,''));
+      out = out.replace(/\bespecialista en seguridad alimentaria\b(?:\s*,?\s*especialista en seguridad alimentaria\b)+/gi,'especialista en seguridad alimentaria');
+      out = out.replace(/\b(\w+)(?:[,\s]+)\1\b/gi, '$1'); // duplicación accidental
+      out = out.replace(/Licenciada\s+en\s+Tecnolog[ií]a\s+de\s+los\s+Alimentos/gi,'especialista en seguridad alimentaria');
+      out = out.replace(/\n{3,}/g,'\n\n').trim();
+      if(!out) out = "Aquí tienes el material solicitado:";
+      return out;
+    }
+
+    /* ===================== Envío ===================== */
+    async function sendMessage(){
+      let text=box.value.trim(); if(!text) return;
+
+      // 1) UI muestra lo que escribió el usuario
+      addMsg('user',text);
+      updateTopicFromText(text);
+      pushHistory('user', text);
+
+      // 2) Expandir pedido implícito usando tema activo
+      const expanded = resolveImplicitRequest(text);
+
+      box.value=''; autosizeTextarea(); btn.disabled=true;
+
+      try{
+        const res=await fetch('/.netlify/functions/chat',{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            message: expanded,           // ← lo que realmente pedimos al modelo
+            context_hint: lastTopic,     // ← opcional (si tu backend lo utiliza)
+            history                      // ← opcional (si se ignora, no afecta)
+          })
+        });
+
+        if(!res.ok){
+          const t=await res.text().catch(()=> '');
+          addMsg('bot',`⚠️ Error del servidor (${res.status}). ${t.slice(0,200)}`);
+          pushHistory('assistant', `Error ${res.status}`);
+          return;
+        }
+
+        const data=await res.json().catch(()=> ({}));
+        let reply = cleanReply(data.reply || data.answer || '');
+
+        // 3) Si el modelo pidió "indicame el área/tema..." pero hay contexto, lo resolvemos
+        reply = deGenericize(reply);
+
+        const userWantsPdf = wantsPdf(text);
+
+        if(reply){
+          const botRow=addMsg('bot',reply);
+          updateTopicFromText(reply);
+          pushHistory('assistant', reply);
+
+          // 4) PDF: priorizamos el tema activo si existe
+          if(userWantsPdf){
+            const map=await ensurePdfMap();
+            let chosen;
+            if (lastTopic && lastTopic.pdfKey && map[lastTopic.pdfKey]) {
+              chosen = map[lastTopic.pdfKey];
+            } else {
+              chosen = bestMatch(text, map);
+            }
+            const isIndex=String(chosen||'').toLowerCase()==='index.html';
+            const url=isIndex?'/docs/index.html':`/docs/${chosen}`;
+            const ok=await fileExists(url);
+
+            const prettyName=(isIndex?'Ver Todos Los PDFs'
+              : String(chosen||'').replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\s+/g,' ').trim()
+            ).replace(/\b\w/g,c=>c.toUpperCase());
+
+            const bubble=botRow.querySelector('.bubble');
+            bubble.appendChild(document.createElement('br'));
+            const a=document.createElement('a');
+            a.href = ok ? url : '/docs/index.html';
+            a.target = '_blank'; a.rel='noopener';
+            a.className = 'attach';
+            a.innerHTML = `<span class="clip">📎</span><span class="name">${prettyName}</span>`;
+            bubble.appendChild(a);
+          }
+
+        }else{
+          addMsg('bot','No llegó texto en "reply" ni en "answer". Verificá en Network → Response.');
+          pushHistory('assistant', 'Respuesta vacía');
+        }
+      }catch(e){
+        addMsg('bot','❌ Error de red. ¿Estás online?');
+        pushHistory('assistant', 'Error de red');
+      }finally{
+        btn.disabled=false;
+        msgs.scrollTop=msgs.scrollHeight;
       }
     }
+    btn.addEventListener('click',sendMessage);
+    box.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 
-    function getValeriaResponse(text) {
-      setTimeout(() => {
-        appendMessage("🤖 Estoy procesando tu consulta...", "valeria");
-        // Aquí se integrará la lógica GPT posteriormente
-        setTimeout(() => {
-          const respuesta = "👩🏻‍⚕️ Soy Valeria, especialista en seguridad alimentaria. ¿En qué puedo ayudarte? 😊";
-          chat.lastChild.remove(); // remover "procesando..."
-          appendMessage(respuesta, "valeria");
-        }, 1500);
-      }, 500);
-    }
-
-    function toggleProfile() {
-      const profile = document.getElementById("profile");
-      profile.style.display = profile.style.display === "block" ? "none" : "block";
-    }
-
-    document.getElementById("toggle-theme").onclick = () => {
-      document.body.classList.toggle("dark-mode");
-    };
+    /* ===================== Viewer imagen ===================== */
+    const viewer=document.getElementById('viewer');
+    document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.classList.add('open');document.body.style.overflow='hidden';});
+    viewer.addEventListener('click',()=>{viewer.classList.remove('open');document.body.style.overflow='';});
   </script>
 </body>
 </html>
