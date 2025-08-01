@@ -3,246 +3,161 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Valeria · Seguridad Alimentaria</title>
-  <link rel="icon" type="image/png" href="favicon.png" />
+  <title>Valeria - Seguridad Alimentaria</title>
+  <link rel="icon" href="favicon-valeria.png" type="image/png">
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       background-color: #e5ddd5;
-      color: #000;
     }
-    .dark-mode {
-      background-color: #121212;
-      color: #fff;
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
-    header {
-      position: sticky;
-      top: 0;
+    .chat-header {
       background-color: #075e54;
       color: white;
       padding: 10px;
+      font-weight: bold;
+      position: sticky;
+      top: 0;
       display: flex;
       align-items: center;
-      z-index: 1000;
     }
-    header img {
-      height: 40px;
+    .chat-header img {
       width: 40px;
+      height: 40px;
       border-radius: 50%;
       margin-right: 10px;
       object-fit: cover;
     }
-    header div {
-      display: flex;
-      flex-direction: column;
-    }
-    header div span:first-child {
-      font-weight: bold;
-      font-size: 1.1em;
-    }
-    header div span:last-child {
-      font-size: 0.85em;
-    }
-    #chat {
-      padding: 10px;
-      height: calc(100vh - 130px);
+    .chat-messages {
+      flex: 1;
       overflow-y: auto;
+      padding: 10px;
+      background-color: #efeae2;
     }
     .message {
-      max-width: 80%;
       margin-bottom: 10px;
+      max-width: 80%;
       padding: 10px;
       border-radius: 10px;
       line-height: 1.4;
-      white-space: pre-line;
+      white-space: pre-wrap;
     }
     .user {
-      background-color: #dcf8c6;
       align-self: flex-end;
+      background-color: #dcf8c6;
     }
-    .valeria {
-      background-color: #fff;
+    .bot {
       align-self: flex-start;
+      background-color: white;
     }
-    .message-container {
-      display: flex;
-      flex-direction: column;
-    }
-    #inputContainer {
+    .chat-input {
       display: flex;
       padding: 10px;
       background-color: #f0f0f0;
     }
-    #inputContainer textarea {
+    .chat-input textarea {
       flex: 1;
       resize: none;
       padding: 10px;
-      font-size: 1em;
-      border-radius: 10px;
+      border-radius: 20px;
       border: 1px solid #ccc;
+      outline: none;
+      font-size: 16px;
       max-height: 150px;
       overflow-y: auto;
     }
-    #inputContainer button {
-      margin-left: 10px;
+    .chat-input button {
       background-color: #075e54;
       border: none;
-      border-radius: 50%;
-      width: 45px;
-      height: 45px;
       color: white;
-      font-size: 1.2em;
+      padding: 10px 15px;
+      border-radius: 50%;
+      margin-left: 10px;
       cursor: pointer;
     }
     .profile-expanded {
-      display: none;
-      position: absolute;
-      top: 60px;
-      left: 10px;
+      text-align: center;
       background-color: white;
-      border-radius: 10px;
-      padding: 10px;
-      z-index: 2000;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      padding: 20px;
+      border-bottom: 1px solid #ccc;
     }
     .profile-expanded img {
-      width: 200px;
-      border-radius: 10px;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
     }
-    .profile-expanded .text {
-      margin-top: 10px;
-      text-align: center;
+    .profile-expanded h2 {
+      margin: 10px 0 5px;
     }
-    .pdf-link {
-      display: inline-block;
-      margin-top: 5px;
-      padding: 6px 10px;
-      border-radius: 5px;
-      background-color: #25d366;
-      color: white;
-      text-decoration: none;
-      font-size: 0.9em;
+    .profile-expanded p {
+      margin: 0;
+      font-style: italic;
+      color: #666;
     }
   </style>
 </head>
 <body>
-  <header onclick="toggleProfile()">
-    <img src="mini-perfil.jpg" alt="Valeria">
-    <div>
-      <span>Valeria</span>
-      <span>Seguridad Alimentaria</span>
+  <div class="chat-container">
+    <div class="chat-header">
+      <img src="mini-perfil.jpg" alt="Valeria">
+      <div>
+        <div>Valeria</div>
+        <div style="font-size: 0.85em;">Seguridad Alimentaria</div>
+      </div>
     </div>
-  </header>
-
-  <div class="profile-expanded" id="profileExpanded">
-    <img src="profile-picture-full.jpg" alt="Valeria">
-    <div class="text">
-      <strong>Valeria · Seguridad Alimentaria</strong><br>
-      🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.
+    <div class="profile-expanded">
+      <img src="profile-picture-full.jpg" alt="Valeria">
+      <h2>Valeria · Seguridad Alimentaria</h2>
+      <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
+    </div>
+    <div class="chat-messages" id="chat">
+      <!-- Mensajes aparecerán aquí -->
+    </div>
+    <div class="chat-input">
+      <textarea id="input" placeholder="Mensaje..." rows="1" oninput="autoGrow(this)"></textarea>
+      <button onclick="sendMessage()">➤</button>
     </div>
   </div>
 
-  <div id="chat" class="message-container"></div>
-  <div id="inputContainer">
-    <textarea id="userInput" rows="1" placeholder="Mensaje" oninput="adjustHeight(this)"></textarea>
-    <button onclick="sendMessage()">➤</button>
-  </div>
   <script>
     const chat = document.getElementById("chat");
-    const profile = document.getElementById("profileExpanded");
+    const input = document.getElementById("input");
 
-    function toggleProfile() {
-      profile.style.display = profile.style.display === "block" ? "none" : "block";
-    }
-
-    function adjustHeight(textarea) {
-      textarea.style.height = "auto";
-      textarea.style.height = (textarea.scrollHeight) + "px";
+    function autoGrow(element) {
+      element.style.height = "auto";
+      element.style.height = (element.scrollHeight) + "px";
     }
 
     function sendMessage() {
-      const input = document.getElementById("userInput");
       const text = input.value.trim();
       if (text === "") return;
-
       appendMessage(text, "user");
       input.value = "";
       input.style.height = "auto";
-
-      setTimeout(() => {
-        respondToUser(text);
-      }, 500);
+      simulateResponse(text);
     }
 
     function appendMessage(text, sender) {
-      const message = document.createElement("div");
-      message.classList.add("message", sender);
-      message.innerText = text;
-      chat.appendChild(message);
+      const msg = document.createElement("div");
+      msg.className = "message " + sender;
+      msg.innerText = text;
+      chat.appendChild(msg);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    function respondToUser(text) {
-      const lowerText = text.toLowerCase();
-
-      // Saludo inicial
-      if (["hola", "buen día", "buenas tardes", "buenas noches"].some(frase => lowerText.includes(frase))) {
-        appendMessage("👩🏻‍⚕️ Hola, soy Valeria, especialista en seguridad alimentaria. ¿En qué puedo ayudarte hoy? 😊", "valeria");
-        return;
-      }
-
-      // Procedimiento de sanitizante
-      if (lowerText.includes("pdf") && lowerText.includes("sanitizante")) {
-        appendMessage("📄 Aquí tenés el procedimiento de medición de sanitizante J-512: ", "valeria");
-        appendPDF("G-PG-007-Medición-Sanitizante.pdf");
-        return;
-      }
-
-      // Consulta por uso de lavandina
-      if (lowerText.includes("lavandina")) {
-        appendMessage("🚫 No está permitido el uso de lavandina en ninguna etapa de producción o ventas, salvo excepciones definidas en los 📋 procedimientos internos. Para desinfección de superficies, debe usarse 🧪 J-512 a 200 ppm.", "valeria");
-        return;
-      }
-
-      // Consulta por J-512 con 100 ppm
-      if (lowerText.includes("j512") && lowerText.includes("100")) {
-        appendMessage("⚠️ No es recomendable usar J-512 a 100 ppm. Según el procedimiento 📋 G-PG-007, la concentración correcta es 🧪 200 ppm para garantizar desinfección efectiva.", "valeria");
-        return;
-      }
-
-      // Solicitud de procedimiento de sanitizante
-      if (lowerText.includes("procedimiento") && (lowerText.includes("sanitizante") || lowerText.includes("j-512"))) {
-        appendMessage(
-`📋 Procedimiento para uso del sanitizante J-512:
-
-1️⃣ Diluir el producto en agua potable hasta alcanzar 🧪 200 ppm.
-2️⃣ Medir la concentración con tiras reactivas.
-3️⃣ Si es menor, ajustar agregando más J-512.
-4️⃣ Aplicar sobre superficies en contacto con alimentos.
-5️⃣ Documentar el proceso en el registro correspondiente.`,
-          "valeria"
-        );
-        appendPDF("G-PG-007-Medición-Sanitizante.pdf");
-        return;
-      }
-
-      // Mensaje por defecto
-      appendMessage("🤔 No entendí del todo. ¿Podés reformular o decirme sobre qué procedimiento o tema querés hablar?", "valeria");
-    }
-
-    function appendPDF(filename) {
-      const link = document.createElement("a");
-      link.href = `docs/${filename}`;
-      link.innerText = `⬇️ Descargar ${filename}`;
-      link.classList.add("pdf-link");
-      link.setAttribute("download", filename);
-
-      const wrapper = document.createElement("div");
-      wrapper.classList.add("message", "valeria");
-      wrapper.appendChild(link);
-      chat.appendChild(wrapper);
-      chat.scrollTop = chat.scrollHeight;
+    function simulateResponse(userText) {
+      setTimeout(() => {
+        appendMessage("🤔 No entendí del todo. ¿Podés reformular o decirme sobre qué procedimiento o tema querés hablar?", "bot");
+      }, 1000);
     }
   </script>
 </body>
