@@ -1,721 +1,474 @@
-<!DOCTYPE html>
-<html lang="es-AR">
+<!doctype html>
+<html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#0a2f73" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Valeria · Seguridad Alimentaria</title>
+  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
+  <!-- Favicons opcionales -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/valeria-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/valeria-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/valeria-512.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/valeria-180.png">
+  <link rel="mask-icon" href="/icons/valeria-maskable.svg" color="#0a2f73">
+  <!-- Fallback si no están los íconos aún -->
+  <link rel="icon" href="/valeria-mini.jpg" />
+  <!-- v-2025.08.01-definitivo + contexto -->
   <style>
-    :root {
-      --header-bg: #0b66c3;      /* Azul encabezado */
-      --app-bg: #f5f7fb;         /* Fondo día */
-      --bubble-user: #20262e;    /* Burbuja usuario (no verde) */
-      --bubble-user-text: #ffffff;
-      --bubble-bot: #ffffff;     /* Burbuja Valeria */
-      --bubble-bot-text: #0f172a;
-      --border: #e5e7eb;
-      --muted: #6b7280;
-      --accent: #0b66c3;
-      --card-bg: #f9fafb;
-      --textarea-bg: #ffffff;
+    :root{
+      --brand-blue:#0a2f73; --header-bg:var(--brand-blue); --header-fg:#fff;
+      --page-bg:#eef1f6; --chat-bg:#f5f7fb; --text:#0f172a; --muted:#64748b; --border:#e5e7eb;
+      --bubble-bot:#dbeafe; --bubble-bot-text:#0f172a;
+      --bubble-user:#eef2f7; --bubble-user-text:#0f172a;
+      --fs-body:clamp(15px,1.6vw,16px); --fs-name:clamp(18px,3vw,22px); --fs-role:clamp(12px,2vw,14px);
+      --header-h:56px; --vhpx:100svh;
+      /* Adjunto compacto */
+      --attach-bg:#ffffff; --attach-bd:#d9e1f2; --attach-fg:#0f172a; --attach-bg-hover:#f3f6ff;
     }
-    .dark {
-      --app-bg: #0f172a;         /* Fondo noche */
-      --bubble-user: #1f2937;
-      --bubble-user-text: #e5e7eb;
-      --bubble-bot: #111827;
-      --bubble-bot-text: #e5e7eb;
-      --border: #374151;
-      --muted: #9ca3af;
-      --card-bg: #0b1220;
-      --textarea-bg: #0b1220;
+    [data-theme="dark"]{
+      --header-bg:var(--brand-blue); --header-fg:#e5e7eb;
+      --page-bg:#0f172a; --chat-bg:#0b1220; --text:#e5e7eb; --muted:#9ca3af; --border:#1f2937;
+      --bubble-bot:#1b2d50; --bubble-bot-text:#e5e7eb;
+      --bubble-user:#335694; --bubble-user-text:#e5e7eb;
+
+      --attach-bg:#0f172a; --attach-bd:#344465; --attach-fg:#e5e7eb; --attach-bg-hover:#132042;
     }
 
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      background: var(--app-bg);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
-      color: var(--bubble-bot-text);
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:var(--page-bg); color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      font-size:var(--fs-body); line-height:1.55; padding-top:env(safe-area-inset-top,0);
+      overflow:hidden;
     }
 
-    /* Header fijo estilo WhatsApp */
-    .header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 14px;
-      background: var(--header-bg);
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    .avatar-mini {
-      width: 38px; height: 38px;
-      border-radius: 999px;
-      overflow: hidden;
-      flex: 0 0 auto;
-      border: 2px solid rgba(255,255,255,0.35);
-      cursor: pointer;
-    }
-    .avatar-mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .title-wrap { display: flex; flex-direction: column; line-height: 1.1; }
-    .title { font-weight: 700; font-size: 16px; }
-    .subtitle { font-size: 12px; opacity: 0.9; }
-
-    .header-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-    .toggle {
-      width: 40px; height: 24px; border-radius: 999px; position: relative;
-      background: rgba(255,255,255,0.35); cursor: pointer;
-    }
-    .toggle .knob {
-      position: absolute; top: 2px; left: 2px;
-      width: 20px; height: 20px; border-radius: 50%;
-      background: #fff; transition: all .2s ease;
-    }
-    .toggle.active .knob { left: 18px; }
-
-    /* Chat layout */
-    .chat {
-      display: flex; flex-direction: column;
-      height: calc(100vh - 58px);
-    }
-    .messages {
-      flex: 1 1 auto;
-      overflow-y: auto;
-      padding: 12px;
-      scroll-behavior: smooth;
-    }
-    .row { display: flex; margin-bottom: 10px; }
-    .row.user { justify-content: flex-end; }
-    .row.bot { justify-content: flex-start; }
-
-    .bubble {
-      max-width: min(85%, 720px);
-      padding: 10px 12px;
-      border-radius: 16px;
-      line-height: 1.35;
-      font-size: 15px;
-      border: 1px solid var(--border);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      overflow-wrap: anywhere;
-    }
-    .row.user .bubble {
-      background: var(--bubble-user);
-      color: var(--bubble-user-text);
-      border-color: transparent;
-      border-bottom-right-radius: 6px;
-    }
-    .row.bot .bubble {
-      background: var(--bubble-bot);
-      color: var(--bubble-bot-text);
-      border-bottom-left-radius: 6px;
+    /* ===== App a pantalla completa (takeover) ===== */
+    #valeria-app{
+      position:fixed; inset:0; z-index:1;
+      display:flex; flex-direction:column; background:var(--page-bg);
     }
 
-    /* Adjuntos compactos ✔️ */
-    .attachments {
-      margin-top: 6px;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 6px;
+    /* Header fijo */
+    header{
+      display:flex; align-items:center; gap:10px;
+      height:var(--header-h);
+      padding:max(8px,env(safe-area-inset-top)) 12px 8px 12px;
+      background:var(--header-bg); color:var(--header-fg);
+      border-bottom:1px solid rgba(255,255,255,.15);
+      z-index:20; transform:translateZ(0);
     }
-    .attach-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 12px;
+    @media (min-width:768px){ :root{--header-h:64px} header{ padding:12px 16px } }
+
+    .avatar-wrap{
+      width:40px;height:40px;border-radius:999px;overflow:hidden;flex:0 0 auto;
+      background:#fff url('/valeria-mini.jpg') center/cover no-repeat; box-shadow:0 2px 8px rgba(0,0,0,.12);
+      cursor:zoom-in; user-select:none;
     }
-    .attach-title { font-weight: 600; margin: 0 0 4px 0; display: flex; gap: 6px; align-items: center; }
-    .attach-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-    .attach-actions a {
-      display: inline-block; text-decoration: none;
-      padding: 6px 10px; border-radius: 10px;
-      border: 1px solid var(--accent);
-      color: var(--accent);
-      font-weight: 600; font-size: 13px;
+    @media (min-width:768px){ .avatar-wrap{width:44px;height:44px} }
+    .title{display:flex;flex-direction:column;line-height:1.1;min-width:0}
+    .name{font-weight:800;font-size:var(--fs-name);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .role{font-weight:600;font-size:var(--fs-role);opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .spacer{flex:1 1 auto}
+    .themebtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:transparent;color:var(--header-fg);cursor:pointer}
+    .themebtn svg{width:20px;height:20px}
+
+    /* Main ocupa lo restante */
+    main{ flex:1 1 auto; min-height:0; }
+    .wrap{width:100%;max-width:980px;margin:0 auto;padding:8px 8px 12px; height:100%}
+
+    /* Chat: grid 1fr + auto */
+    .chat{
+      height:100%;
+      background:var(--chat-bg); border:1px solid var(--border); border-radius:16px; box-shadow:0 6px 18px rgba(15,23,42,.06);
+      display:grid; grid-template-rows:1fr auto; overflow:hidden; contain:layout size style;
     }
 
-    /* Input fijo abajo */
-    .composer {
-      flex: 0 0 auto;
-      border-top: 1px solid var(--border);
-      background: var(--app-bg);
-      padding: 10px 10px 12px;
+    /* Mensajes */
+    .msgs{
+      overflow:auto; display:flex; flex-direction:column; gap:10px; padding:12px 10px; -webkit-overflow-scrolling:touch;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.35) 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.25) 0%, rgba(255,255,255,0) 60%);
+      contain:strict;
     }
-    .composer-wrap {
-      display: flex; align-items: flex-end; gap: 8px;
-      background: var(--textarea-bg); border: 1px solid var(--border);
-      border-radius: 14px; padding: 8px;
-    }
-    .composer textarea {
-      flex: 1 1 auto; resize: none; border: none; outline: none;
-      background: transparent; color: inherit; font: inherit;
-      max-height: 200px; min-height: 22px;
-    }
-    .send-btn {
-      width: 40px; height: 40px; border-radius: 10px; border: none;
-      background: var(--accent); color: #fff; display: grid; place-items: center;
-      cursor: pointer;
-    }
-    .send-btn svg { width: 20px; height: 20px; display: block; }
-
-    /* Modal avatar expandido */
-    .modal {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-      display: none; align-items: center; justify-content: center; z-index: 50;
-      padding: 20px;
-    }
-    .modal.open { display: flex; }
-    .modal-card {
-      position: relative; max-width: 480px; width: 100%;
-      background: #000; border-radius: 14px; overflow: hidden;
-    }
-    .modal-card img { width: 100%; display: block; }
-    .modal-caption {
-      position: absolute; left: 0; right: 0; bottom: 0;
-      background: linear-gradient(transparent, rgba(0,0,0,0.75));
-      color: #fff; padding: 12px 14px;
-    }
-    .modal-caption .line1 { font-weight: 700; }
-    .modal-caption .line2 { margin-top: 4px; opacity: 0.95; }
-    .modal-close {
-      position: absolute; top: 8px; right: 8px;
-      background: rgba(255,255,255,0.15);
-      color: #fff; border: none; border-radius: 999px;
-      width: 32px; height: 32px; cursor: pointer;
-      font-size: 18px; display: grid; place-items: center;
+    [data-theme="dark"] .msgs{
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(900px 500px at 120% 20%, rgba(255,255,255,.05) 0%, rgba(255,255,255,0) 60%);
     }
 
-    a { color: var(--accent); }
-    b { font-weight: 700; }
+    .row{display:flex;gap:6px;align-items:flex-end}
+    .row.user{justify-content:flex-end}
+    .bubble{
+      max-width:78%; padding:10px 12px; border-radius:16px; white-space:pre-wrap;
+      border:1px solid var(--border); word-wrap:break-word; box-shadow:0 1px 2px rgba(0,0,0,.04);
+      overflow-wrap:anywhere;
+    }
+    .user .bubble{background:var(--bubble-user);color:var(--bubble-user-text)}
+    .bot  .bubble{background:var(--bubble-bot); color:var(--bubble-bot-text)}
+    .bubble strong{font-weight:800} .bubble em{font-style:italic}
+    .bubble p{margin:0 0 8px} .bubble p:last-child{margin:0}
+    .bubble img{ max-width:100%; height:auto; border-radius:8px; display:block; }
+
+    /* Composer */
+    .composer{ display:flex; align-items:flex-end; gap:8px; padding:8px; border-top:1px solid var(--border); background:#fff; }
+    [data-theme="dark"] .composer{ background:#0b1220; }
+    .textarea-wrap{ flex:1; display:flex; align-items:center; padding:6px 12px; border:1px solid var(--border); border-radius:22px; background:#fff; }
+    [data-theme="dark"] .textarea-wrap{ background:#0f172a; border-color:#374151; }
+    textarea{ flex:1; resize:none; border:0; background:transparent; color:var(--text); font:inherit; line-height:1.55;
+      min-height:24px; max-height:9.5em; padding:6px 0; outline:none }
+    textarea::placeholder{ color:#94a3b8 }
+    .sendbtn{ display:inline-flex;align-items:center;justify-content:center;background:var(--brand-blue);color:#fff;border:0;width:44px;height:44px;border-radius:999px;cursor:pointer;transition:transform .05s, filter .2s }
+    .sendbtn:active{ transform:scale(.98) } .sendbtn:hover{ filter:brightness(1.05) } .sendbtn svg{ width:20px;height:20px }
+
+    /* === Adjunto compacto: respeta ancho de la burbuja === */
+    .attach{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 8px; border-radius:999px;
+      font-size:13px; font-weight:700; text-decoration:none;
+      background:var(--attach-bg); color:var(--attach-fg);
+      border:1px solid var(--attach-bd);
+      max-width:100%;
+      white-space:nowrap;
+    }
+    .attach:hover{ background: var(--attach-bg-hover); }
+    .attach .clip{ font-size:14px; line-height:1; flex:0 0 auto; }
+    .attach .name{ min-width:0; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; }
+
+    /* Viewer imagen (con frase adentro) */
+    .viewer{
+      position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+      background: rgba(0,0,0,.52);
+      padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+      flex-direction:column; gap:12px;
+    }
+    .viewer.open{ display:flex; }
+    .viewer img{
+      max-width: min(92vw, 1024px);
+      max-height: 78vh;
+      border-radius:12px; object-fit: contain; box-shadow:0 10px 40px rgba(0,0,0,.4);
+      background:#fff;
+    }
+    .viewer .motto{
+      color:#fff; font-size:14px; text-align:center; font-weight:600; max-width:90%; line-height:1.35;
+      text-shadow:0 1px 2px rgba(0,0,0,.45);
+    }
   </style>
 </head>
 <body>
-  <!-- Header estilo WhatsApp -->
-  <div class="header">
-    <div class="avatar-mini" id="avatarMini" title="Ver perfil">
-      <!-- Imagen mini SIN texto (podés reemplazar el archivo sin tocar código) -->
-      <img src="assets/valeria-mini.jpg" alt="Valeria mini" />
-    </div>
-    <div class="title-wrap">
-      <div class="title">Valeria</div>
-      <div class="subtitle">Seguridad Alimentaria</div>
-    </div>
-    <div class="header-actions">
-      <!-- Toggle día/noche -->
-      <div class="toggle" id="themeToggle" title="Día / Noche">
-        <div class="knob"></div>
-      </div>
-    </div>
-  </div>
+  <div id="valeria-app">
+    <header>
+      <div class="avatar-wrap" id="avatarWrap" title="Ver imagen"></div>
+      <div class="title"><div class="name">Valeria</div><div class="role">Seguridad Alimentaria</div></div>
+      <div class="spacer"></div>
+      <button id="themeToggle" class="themebtn" aria-label="Cambiar tema" title="Cambiar tema">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+          <circle cx="12" cy="12" r="5" stroke-width="2"></circle>
+          <path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+    </header>
 
-  <!-- Chat -->
-  <div class="chat">
-    <div class="messages" id="messages"></div>
-
-    <!-- Composer -->
-    <div class="composer">
-      <div class="composer-wrap">
-        <textarea id="input" rows="1" placeholder="Mensaje"></textarea>
-        <button class="send-btn" id="sendBtn" aria-label="Enviar">
-          <!-- Flecha, sin color verde -->
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M4 12l16-8-4 8 4 8-16-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
+    <!-- Visor de imagen -->
+    <div id="viewer" class="viewer" aria-modal="true" role="dialog" tabindex="-1">
+      <img src="/valeria-full.jpg" alt="Valeria" />
+      <div class="motto">🛡️ La inocuidad alimentaria comienza con cada decisión que tomamos.</div>
     </div>
-  </div>
 
-  <!-- Modal avatar expandido (con frase adentro) -->
-  <div class="modal" id="avatarModal" aria-hidden="true">
-    <div class="modal-card">
-      <!-- Imagen FULL con overlay de texto (tu imagen puede no tener texto) -->
-      <img src="assets/valeria-full.jpg" alt="Valeria perfil completo" />
-      <div class="modal-caption">
-        <div class="line1">Valeria · Seguridad Alimentaria</div>
-        <div class="line2">🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</div>
+    <main>
+      <div class="wrap">
+        <div class="chat">
+          <div id="msgs" class="msgs"></div>
+
+          <div class="composer" id="composer">
+            <div class="textarea-wrap"><textarea id="box" placeholder="Mensaje"></textarea></div>
+            <button id="send" class="sendbtn" aria-label="Enviar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 0" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
-      <button class="modal-close" id="modalClose" aria-label="Cerrar">×</button>
-    </div>
+    </main>
   </div>
 
   <script>
-    // ---------------------------
-    // Tema Día/Noche con memoria
-    // ---------------------------
-    const root = document.documentElement;
-    const themeToggle = document.getElementById('themeToggle');
-    function setTheme(mode) {
-      if (mode === 'noche') {
-        document.body.classList.add('dark');
-        themeToggle.classList.add('active');
-        localStorage.setItem('valeria_theme', 'noche');
-      } else {
-        document.body.classList.remove('dark');
-        themeToggle.classList.remove('active');
-        localStorage.setItem('valeria_theme', 'dia');
+    const $ = s => document.querySelector(s);
+    const msgs=$('#msgs'), box=$('#box'), btn=$('#send'), themeToggle=$('#themeToggle'), themeIcon=$('#themeIcon'), composer=$('#composer');
+
+    /* ===================== Tema (día/noche) ===================== */
+    const storageKey='valeria_theme';
+    function applyTheme(theme){
+      const prefersDark=window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if(theme==='dark'){document.documentElement.setAttribute('data-theme','dark');}
+      else if(theme==='light'){document.documentElement.removeAttribute('data-theme');}
+      else{ prefersDark?document.documentElement.setAttribute('data-theme','dark'):document.documentElement.removeAttribute('data-theme'); }
+      themeIcon.innerHTML=(document.documentElement.getAttribute('data-theme')==='dark')
+        ?'<path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" stroke-width="2" fill="none"/>'
+        :'<circle cx="12" cy="12" r="5" stroke-width="2"></circle><path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
+    }
+    function currentTheme(){const t=localStorage.getItem(storageKey);return(t==='light'||t==='dark')?t:null;}
+    function toggleTheme(){const t=currentTheme();const next=t==='dark'?'light':'dark';localStorage.setItem(storageKey,next);applyTheme(next);}
+    applyTheme(currentTheme());
+    themeToggle.addEventListener('click', toggleTheme);
+    if(window.matchMedia){window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(currentTheme()===null)applyTheme(null);});}
+
+    /* ===================== Viewport (iOS/Android) ===================== */
+    function setVH(){
+      const vv=window.visualViewport;
+      const h=vv ? vv.height : (window.innerHeight||document.documentElement.clientHeight);
+      document.documentElement.style.setProperty('--vhpx', h + 'px');
+    }
+    function reflow(){ setVH(); msgs.scrollTop = msgs.scrollHeight; }
+    function setupViewportListeners(){
+      reflow();
+      window.addEventListener('resize', reflow, {passive:true});
+      window.addEventListener('orientationchange', reflow, {passive:true});
+      if(window.visualViewport){
+        visualViewport.addEventListener('resize', reflow, {passive:true});
+        visualViewport.addEventListener('scroll', reflow, {passive:true});
       }
-      // Guardamos pista para la capa de razonamiento si quiere usarlo
-      window.__VALERIA_STATE = window.__VALERIA_STATE || {};
-      window.__VALERIA_STATE.ultimo_modo = mode;
+      const ro=new ResizeObserver(()=>{ msgs.scrollTop = msgs.scrollHeight; });
+      ro.observe(composer);
     }
-    themeToggle.addEventListener('click', () => {
-      const isDark = document.body.classList.contains('dark');
-      setTheme(isDark ? 'dia' : 'noche');
-    });
-    // Cargar preferencia previa
-    setTheme(localStorage.getItem('valeria_theme') || 'dia');
+    setupViewportListeners();
 
-    // ---------------------------
-    // Avatar expandido
-    // ---------------------------
-    const avatarMini = document.getElementById('avatarMini');
-    const avatarModal = document.getElementById('avatarModal');
-    const modalClose = document.getElementById('modalClose');
-    function openModal() { avatarModal.classList.add('open'); avatarModal.setAttribute('aria-hidden','false'); }
-    function closeModal() { avatarModal.classList.remove('open'); avatarModal.setAttribute('aria-hidden','true'); }
-    avatarMini.addEventListener('click', openModal);
-    modalClose.addEventListener('click', closeModal);
-    avatarModal.addEventListener('click', (e)=>{ if(e.target===avatarModal) closeModal(); });
-
-    // ---------------------------
-    // Utilidades UI
-    // ---------------------------
-    const messagesEl = document.getElementById('messages');
-    const inputEl = document.getElementById('input');
-    const sendBtn = document.getElementById('sendBtn');
-
-    function autoResizeTextarea(el) {
-      el.style.height = 'auto';
-      el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+    /* ===================== Autosize textarea ===================== */
+    function autosizeTextarea(){
+      box.style.height='auto';
+      const lineH=parseFloat(getComputedStyle(box).lineHeight)||20;
+      const max=lineH*6 + 12;
+      box.style.height=Math.min(box.scrollHeight,max)+'px';
+      msgs.scrollTop=msgs.scrollHeight;
     }
-    inputEl.addEventListener('input', () => autoResizeTextarea(inputEl));
-    autoResizeTextarea(inputEl);
+    box.addEventListener('input', autosizeTextarea);
+    box.addEventListener('focus', ()=>{ setTimeout(()=>{ autosizeTextarea(); msgs.scrollTop=msgs.scrollHeight; }, 50); });
 
-    function scrollToBottom() {
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+    /* ===================== Helpers UI (emojis/negritas) ===================== */
+    function escapeHTML(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
+    function injectWhatsAppEmojis(html){
+      const patterns=[
+        {rx:/\bpdf\b/i,emoji:'📄'},{rx:/\bprocedimiento(s)?\b/i,emoji:'📋'},
+        {rx:/\bsanitizante|j-?512|amonio cuaternario\b/i,emoji:'🧪'},{rx:/\b200\s*ppm\b/i,emoji:'🧪'},
+        {rx:/\bfefo\b/i,emoji:'🔁'},{rx:/\betiquet(ad|ad)o|rotulado\b/i,emoji:'🏷️'},
+        {rx:/\bauditor(i|í)a(s)?\b/i,emoji:'🔎'},{rx:/\btemperatura|fr[ií]o|heladera|c[aá]mara\b/i,emoji:'🌡️'},
+        {rx:/\bcorrect(o|a)s?\b/i,emoji:'✅'},{rx:/\bincorrect(o|a)s?\b/i,emoji:'❌'},
+        {rx:/\bimportante\b/i,emoji:'⭐'},{rx:/\btiempo|minut(o|os)\b/i,emoji:'⏱️'},
+        {rx:/\bqueso(s)?|fraccionamiento de quesos\b/i,emoji:'🧀'}
+      ];
+      for(const {rx,emoji} of patterns){ html=html.replace(rx,(m)=>`${emoji} ${m}`); }
+      return html;
     }
-
-    function sanitize(text) {
-      // Simple sanitización para mensajes de usuario
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.textContent;
-    }
-
-    function renderMessage({ html, text, sender, attachments }) {
-      const row = document.createElement('div');
-      row.className = 'row ' + (sender === 'user' ? 'user' : 'bot');
-
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-
-      if (html) {
-        bubble.innerHTML = html;
-      } else {
-        bubble.textContent = text;
-      }
-
-      // Adjuntos compactos ✔️ (solo para bot)
-      if (sender !== 'user' && Array.isArray(attachments) && attachments.length) {
-        const wrap = document.createElement('div');
-        wrap.className = 'attachments';
-        attachments.forEach(att => {
-          const card = document.createElement('div');
-          card.className = 'attach-card';
-          card.innerHTML = `
-            <div class="attach-title">📄 <span>${att.title}</span></div>
-            <div class="attach-meta">Código: ${att.code}</div>
-            <div class="attach-actions">
-              <a href="docs/${att.pdfId}" download target="_blank" rel="noopener">✔️ ${att.downloadHint}</a>
-            </div>
-          `;
-          wrap.appendChild(card);
-        });
-        bubble.appendChild(wrap);
-      }
-
-      row.appendChild(bubble);
-      messagesEl.appendChild(row);
-      scrollToBottom();
-    }
-
-    function sendUserMessage() {
-      const raw = inputEl.value;
-      const text = raw.trim();
-      if (!text) return;
-
-      // Render usuario
-      renderMessage({ text: sanitize(text), sender: 'user' });
-
-      // Limpiar y auto-resize
-      inputEl.value = '';
-      autoResizeTextarea(inputEl);
-
-      // Componer respuesta de Valeria (usa el motor de contexto integrado)
-      try {
-        const { replyHtml, attachments } = window.valeriaCraftReply(text);
-        renderMessage({ html: replyHtml, sender: 'bot', attachments });
-      } catch (e) {
-        renderMessage({
-          html: '❗ Ocurrió un inconveniente al procesar la consulta. Probá de nuevo o especificá el <b>producto</b> o <b>proceso</b> que querés trabajar. 🙂',
-          sender: 'bot'
-        });
-        console.error(e);
-      }
-    }
-
-    // Enviar con click o Enter (Shift+Enter = salto)
-    sendBtn.addEventListener('click', sendUserMessage);
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendUserMessage();
-      }
-    });
-
-    // Mensaje inicial (no intrusivo; solo si el usuario no escribió aún)
-    // Podés desactivarlo si no querés saludo automático.
-    /*
-    renderMessage({
-      html: '👋 Soy <b>Valeria</b>, especialista en <b>seguridad alimentaria</b>. Contame el <b>producto</b> o <b>proceso</b> y te doy el paso a paso + PDF. ✨',
-      sender: 'bot'
-    });
-    */
-  </script>
-
-  <!-- ==========================================================
-       🧠 Valeria Context Engine (Motor de comprensión e implícitos)
-       Integrado completo y listo (puede vivir al final del index)
-       ========================================================== -->
-  <script>
-  (function () {
-    // -------------------------
-    // Estado de sesión (ligero)
-    // -------------------------
-    const defaultState = {
-      tema_actual: null,
-      procedimiento_relevante: null,
-      entidades: [],
-      riesgo_detectado: null,
-      ultimo_modo: null
-    };
-    window.__VALERIA_STATE = window.__VALERIA_STATE || { ...defaultState };
-
-    // -------------------------
-    // Utilidades
-    // -------------------------
-    const stripAccents = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const norm = (s) => stripAccents(String(s || '').toLowerCase().trim());
-
-    const SYN = [
-      // Productos
-      { find: [/carne\s+vacuna/], to: 'carnes rojas' },
-      { find: [/queso?s?/], to: 'quesos' },
-      { find: [/lacteos?/], to: 'lacteos' },
-      { find: [/milanesa?s?/], to: 'milanesas' },
-      { find: [/dulce?s?|mermeladas?|confituras?/], to: 'dulces' },
-      { find: [/pollo?s?/], to: 'pollo' },
-      { find: [/ovina|cordero|carne\s+ovina/], to: 'carne ovina' },
-      // Acciones
-      { find: [/fraccion(ar|ado|amiento)/], to: 'fraccionar' },
-      { find: [/etiquet(ar|ado)|rotul(ar|ado)/], to: 'etiquetar' },
-      { find: [/sanitiz(ar|ante)|desinfect(ar|ante)/], to: 'sanitizar' },
-      { find: [/retir(ar|o)|venc(e|imien)/], to: 'retiro' },
-      { find: [/embandej(ad|ar|ado)|ambandejado/], to: 'en bandeja' },
-      // Insumos
-      { find: [/lavandina|cloro/], to: 'lavandina' },
-      { find: [/amonio\s+cuaternario|j-?512/], to: 'amonio cuaternario' },
-      // Documentos / nociones
-      { find: [/procedimiento|poe|instructivo/], to: 'procedimiento' },
-      { find: [/plan\s+de\s+accion|plan\s+correctivo/], to: 'plan de accion' },
-      { find: [/registro\s+de\s+sucursales/], to: 'registro de sucursales' },
-    ];
-
-    function normalizeTokens(text) {
-      const t = norm(text);
-      let out = t;
-      SYN.forEach(({ find, to }) => {
-        find.forEach((re) => { out = out.replace(re, to); });
-      });
+    function formatReply(text){
+      if(!text)return''; let out=escapeHTML(text);
+      out=out.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      const emph=[/(\b200\s*ppm\b)/gi,/\b(j-?512|amonio cuaternario|sanitizante)\b/gi,/\b(bpm|bpa|poes|mip|5s)\b/gi,/\b(fefo)\b/gi,/\b(retiro anticipado|pr[oó]ximo a vencer)\b/gi,/\b(auditor[ií]a[s]?|registro[s]?)\b/gi,/\b(acciones inmediatas|acciones preventivas|procedimiento)\b/gi];
+      emph.forEach(rx=>{out=out.replace(rx,'<strong>$1</strong>');});
+      out=out.replace(/^(\s*\**\s*Acciones inmediatas\s*\**)/gim,'✅ <strong>$1</strong>')
+             .replace(/^(\s*\**\s*Acciones preventivas\s*\**)/gim,'🛡️ <strong>$1</strong>')
+             .replace(/^(\s*\**\s*Procedimiento\s*\**)/gim,'📋 <strong>$1</strong>')
+             .replace(/^(\s*\**\s*Análisis de causa raíz.*)/gim,'🔎 <strong>$1</strong>');
+      out=out.split('\n\n').map(p=>`<p>${p.replace(/\n/g,'<br>')}</p>`).join('');
+      out=injectWhatsAppEmojis(out);
       return out;
     }
-
-    // -------------------------
-    // Catálogo de procedimientos
-    // -------------------------
-    const PROCEDURES = {
-      'fraccionado_quesos': {
-        title: 'Procedimiento de fraccionado de quesos',
-        code: 'G-PG-QUESOS',
-        tags: ['quesos', 'fraccionar', 'etiquetar', 'en bandeja', 'rotular'],
-        summary: [
-          'Mise en place higiénica y superficie sanitizada.',
-          'Tiempo de exposición al ambiente: minimizar.',
-          'Corte/porcionado y <b>etiquetado interno</b> (fecha fraccionado, vencimiento original, responsable).',
-          'Almacenamiento en <b>refrigeración</b>; FEFO/FIFO.'
-        ],
-        pdfId: 'proc_fraccionado_quesos.pdf'
-      },
-      'procedimiento_pollo': {
-        title: 'Procedimiento de pollo',
-        code: 'PROC-POLLO',
-        tags: ['pollo', 'fraccionar', 'etiquetar', 'en bandeja'],
-        summary: [
-          'Higiene de manos, utensilios exclusivos, superficie sanitizada.',
-          'Control de <b>temperaturas</b> y tiempos de exposición.',
-          'Etiquetado interno (fecha/hora de fraccionado).',
-          'Refrigeración y segregación por riesgo cruzado.'
-        ],
-        pdfId: 'proc_pollo.pdf'
-      },
-      'manejo_carne_ovina': {
-        title: 'Procedimiento de manejo de carne ovina',
-        code: 'PROC-OVINA',
-        tags: ['carne ovina', 'fraccionar', 'etiquetar'],
-        summary: [
-          'Desposte/porcionado en área autorizada.',
-          'Control de T°; evitar goteo y contaminación cruzada.',
-          'Etiquetado interno y trazabilidad por lote.'
-        ],
-        pdfId: 'proc_carne_ovina.pdf'
-      },
-      'procedimiento_milanesas': {
-        title: 'Procedimiento de milanesas',
-        code: 'PROC-MILA',
-        tags: ['milanesas', 'fraccionar', 'etiquetar', 'en bandeja'],
-        summary: [
-          'Superficie sanitizada, utensilios exclusivos.',
-          'Etiquetado con <b>fecha de elaboración</b>; <b>máx. 48 h</b> en heladera.',
-          'Separadores entre capas para evitar compactación.'
-        ],
-        pdfId: 'proc_milanesas.pdf'
-      },
-      'fraccionado_dulces': {
-        title: 'Procedimiento de fraccionado de dulces',
-        code: 'PROC-DULCES',
-        tags: ['dulces', 'fraccionar', 'etiquetar'],
-        summary: [
-          'Fraccionado con utensilios limpios y secos.',
-          'Envases aptos y rotulados con lote y fecha.',
-          'Evitar contaminación por humedad.'
-        ],
-        pdfId: 'proc_dulces.pdf'
-      },
-      'medicion_sanitizante': {
-        title: 'Medición de sanitizante (amonio cuaternario 200 ppm)',
-        code: 'G-PG-007',
-        tags: ['amonio cuaternario', 'sanitizar', 'medicion', 'mesada'],
-        summary: [
-          '<b>No usamos lavandina</b> en esta operación.',
-          'Preparar <b>J-512 a 200 ppm</b> según instrucciones.',
-          'Verificar concentración con tiras/reactivo (G‑PG‑007).'
-        ],
-        pdfId: 'G-PG-007_medicion_sanitizante.pdf'
-      },
-      'registro_sucursales': {
-        title: 'Registro de sucursales',
-        code: 'RG 01-SUC-ML-002',
-        tags: ['registro de sucursales', 'registro', 'documento'],
-        summary: [
-          'Formato estandarizado de registro por sucursal.',
-          'Completar campos obligatorios y firma responsable.'
-        ],
-        pdfId: 'RG_01-SUC-ML-002_registro_sucursales.pdf'
-      },
-      'plan_accion': {
-        title: 'Plan de acción',
-        code: 'PLAN-ACCION',
-        tags: ['plan de accion', 'no conformidad', 'incidente'],
-        summary: [
-          'Acción inmediata y correctiva.',
-          'Análisis de <b>causa raíz</b> (5 porqués, espina de pescado).',
-          'Seguimiento y verificación de efectividad.'
-        ],
-        pdfId: 'plan_de_accion.pdf'
-      }
-    };
-
-    // -------------------------
-    // Reglas internas clave
-    // -------------------------
-    const RULES = {
-      sanitizante: {
-        message: 'En esta operación <b>no usamos lavandina</b>. Usá <b>amonio cuaternario (J‑512) a 200 ppm</b> y verificá con tiras/reactivo conforme <b>G‑PG‑007</b>.',
-        tags: ['sanitizar', 'mesada', 'amonio cuaternario', 'medicion', '200 ppm']
-      },
-      retiro_anticipado: {
-        message: 'Recordá <b>retiro anticipado</b>: <b>congelados/masivos</b> a <b>10 días</b> del vencimiento; <b>perecederos</b> a <b>2 días</b>.',
-        tags: ['retiro', 'vencimiento', 'góndola', 'deposito']
-      }
-    };
-
-    // -------------------------
-    // Intención + entidades
-    // -------------------------
-    function detectIntent(textN) {
-      const intents = [];
-      if (/\b(procedimiento|poe|instructivo|dame el procedimiento|pasame el procedimiento)\b/.test(textN)) {
-        intents.push('solicitar_procedimiento');
-      }
-      if (/\b(fraccionar|etiquetar|rotular|en bandeja|sanitizar|desinfectar)\b/.test(textN)) {
-        intents.push('consulta_operativa');
-      }
-      if (/\b(venc|retir|retiro|fecha limite|fecha de vencimiento|vida util|aptitud)\b/.test(textN)) {
-        intents.push('normativa');
-      }
-      if (/\b(incidente|olor|temperatura elevada|no conformidad|riesgo)\b/.test(textN)) {
-        intents.push('riesgo');
-      }
-      if (!intents.length) intents.push('general');
-      return intents;
+    function isGreeting(text){
+      const t=(text||'').trim().toLowerCase();
+      return /^hola([ !,.¿?]|$)/.test(t) || /^buen(d[ií]a|as tardes|as noches)/.test(t);
     }
 
-    const ENTITY_TERMS = [
-      'quesos','pollo','carne ovina','carnes rojas','milanesas','dulces','lacteos',
-      'mesada','amonio cuaternario','lavandina','en bandeja','etiquetar','fraccionar',
-      'sanitizar','retiro','vencimiento','procedimiento','plan de accion','registro de sucursales'
+    /* ===================== CONTEXTO (tema activo) ===================== */
+    let lastTopic = null;
+    const TOPIC_KEYS = [
+      { rx: /\bques(o|os)\b|\bfraccionamiento de quesos?\b/i, topic: 'fraccionamiento de quesos', pdfKey: 'fraccionamiento de quesos' },
+      { rx: /\bsanitizante\b|\bj-?512\b|\b200\s*ppm\b/i, topic: 'sanitizante j-512', pdfKey: 'j-512' },
+      { rx: /\brotulad(o|a)|etiquetado\b/i, topic: 'rotulado/etiquetado', pdfKey: 'rotulado' },
+      { rx: /\bfefo\b/i, topic: 'FEFO', pdfKey: 'fefo' },
+      { rx: /\bpoes\b|\bmip\b|\bbpm\b/i, topic: 'POES/BPM/MIP', pdfKey: 'poes' }
+      // Podés sumar más
     ];
-
-    function extractEntities(textN) {
-      const found = new Set();
-      ENTITY_TERMS.forEach(k => { if (textN.includes(k)) found.add(k); });
-      return Array.from(found);
-    }
-
-    function resolveTema(state, entities) {
-      const products = ['quesos','pollo','carne ovina','carnes rojas','milanesas','dulces','lacteos'];
-      const hit = entities.find(e => products.includes(e));
-      return hit || state.tema_actual || null;
-    }
-
-    function guessProcedure(tema, intents, entities) {
-      const has = (arr, key) => arr && arr.some(e => e === key);
-      if (tema === 'quesos') return 'fraccionado_quesos';
-      if (tema === 'pollo') return 'procedimiento_pollo';
-      if (tema === 'carne ovina') return 'manejo_carne_ovina';
-      if (tema === 'milanesas') return 'procedimiento_milanesas';
-      if (tema === 'dulces') return 'fraccionado_dulces';
-      if (has(entities, 'amonio cuaternario') || has(entities, 'sanitizar') || has(entities, 'mesada')) {
-        return 'medicion_sanitizante';
+    function detectTopic(text){
+      const s = (text||'');
+      for (const {rx, topic, pdfKey} of TOPIC_KEYS){
+        if (rx.test(s)) return { topic, pdfKey };
       }
-      if (has(entities, 'registro de sucursales')) return 'registro_sucursales';
-      if (detectIntent(entities.join(' ')).includes('riesgo')) return 'plan_accion';
       return null;
     }
-
-    function attachmentCard(proc) {
-      return {
-        title: `${proc.title}`,
-        code: proc.code,
-        pdfId: proc.pdfId,
-        downloadHint: 'Descargar PDF'
-      };
+    function updateTopicFromText(text){
+      const hit = detectTopic(text);
+      if (hit) lastTopic = hit; // {topic, pdfKey}
+    }
+    function resolveImplicitRequest(userText){
+      const t = (userText || '').toLowerCase().trim();
+      const wantsProcedure = /^(dame|pasame|enviame|mandame)\s+(el\s+)?procedimiento(s)?\b/i.test(t)
+                           || /^procedimiento(s)?$/i.test(t);
+      if (wantsProcedure && lastTopic){
+        if (!t.includes(lastTopic.topic)) return `${userText} de ${lastTopic.topic}`;
+      }
+      return userText;
+    }
+    function deGenericize(reply){
+      if (!reply || !lastTopic) return reply;
+      const askArea = /(indic(a|á)me|decime|dime|por favor ind(i|í)ca)\s+cu[aá]l\s+es\s+el\s+(tema|área)[^.\n]*[.\n]?/i;
+      if (askArea.test(reply)){
+        const hint = `Te comparto el procedimiento de ${lastTopic.topic}.`;
+        reply = reply.replace(askArea, hint + ' ');
+      }
+      return reply;
     }
 
-    function renderBullets(lines) {
-      return lines.map(l => `• ${l}`).join('<br>');
+    /* ===================== Historial corto (opcional) ===================== */
+    const history = []; // {role:'user'|'assistant', content:'...'}
+    function pushHistory(role, content){
+      history.push({ role, content });
+      if (history.length > 12) history.shift(); // ~6 turnos
     }
 
-    function buildReply({ state, intents, tema, procedureKey, entities, textN }) {
-      const parts = [];
-      const attachments = [];
-
-      const needsSanitizante = /sanitizar|mesada|amonio cuaternario/.test(textN);
-      const needsRetiro = /retiro|venc|vida util|aptitud/.test(textN);
-
-      // Procedimiento principal (si existe)
-      if (procedureKey) {
-        const proc = PROCEDURES[procedureKey];
-        if (proc) {
-          parts.push(`🔎 Tema: <b>${tema || 'general'}</b>`);
-          parts.push(`<b>📋 ${proc.title}</b><br>${renderBullets(proc.summary)}`);
-          attachments.push(attachmentCard(proc));
-        }
+    /* ===================== Mensajería (UI) ===================== */
+    let interacted=false;
+    function addMsg(role,text){
+      const row=document.createElement('div'); row.className=`row ${role}`;
+      const bubble=document.createElement('div'); bubble.className='bubble';
+      if(role==='bot'){
+        let t=String(text||'');
+        if(isGreeting(t)) t = '👋 ' + t.replace(/^hola/i,'Hola').trim();
+        bubble.innerHTML=formatReply(t);
+      } else {
+        bubble.textContent=text;
       }
-
-      // Si no hubo procedimiento pero hay intención operativa
-      if (!procedureKey && intents.includes('consulta_operativa')) {
-        parts.push('Entiendo que necesitás una <b>indicación operativa</b>. ¿Sobre qué producto/área (p. ej., <b>quesos</b>, <b>pollo</b>, <b>mesada</b>) te doy el paso a paso exacto? 🙂');
-      }
-
-      // Reglas sanitizante
-      if (needsSanitizante) {
-        parts.push(`🧼 ${RULES.sanitizante.message}`);
-        attachments.push(attachmentCard(PROCEDURES['medicion_sanitizante']));
-      }
-
-      // Regla retiro/aptitud
-      if (needsRetiro) {
-        parts.push(`⏱️ ${RULES.retiro_anticipado.message}`);
-        // Ofrecer plan de acción si se trata de producto fuera de aptitud
-        attachments.push(attachmentCard(PROCEDURES['plan_accion']));
-      }
-
-      if (!parts.length) {
-        parts.push('Estoy para ayudarte en <b>inocuidad alimentaria</b> (CAA, BPM y procedimientos internos). Decime el <b>producto</b> o el <b>proceso</b> y te doy el paso a paso + PDF. ✨');
-      }
-
-      const replyHtml = parts.join('<br><br>');
-      return { replyHtml, attachments };
+      row.appendChild(bubble); msgs.appendChild(row);
+      msgs.scrollTop=msgs.scrollHeight;
+      return row;
     }
+    function mark(){interacted=true;}
+    box.addEventListener('keydown',mark); box.addEventListener('focus',mark); btn.addEventListener('click',mark);
+    setTimeout(()=>{ if(!interacted && !msgs.querySelector('.row.user')) addMsg('bot','Hola, soy Valeria. ¿En qué te puedo ayudar para fortalecer la cultura de inocuidad?'); },5000);
 
-    function processTurn({ userText, state }) {
-      const defaultClone = { ...defaultState };
-      const safeState = { ...defaultClone, ...(state || {}) };
-      const textN = normalizeTokens(userText);
-
-      // 1) Normalización de tokens
-      const normalized = normalizeTokens(textN);
-
-      // 2) Intención y entidades
-      const intents = detectIntent(normalized);
-      const entities = extractEntities(normalized);
-
-      // 3) Resolver tema (persistir si no hay nuevo)
-      const tema = resolveTema(safeState, entities);
-
-      // 4) Adivinar procedimiento
-      let procedureKey = guessProcedure(tema, intents, entities);
-
-      // 5) Si pidió “dame el procedimiento” y hay tema en estado previo
-      if (!procedureKey && intents.includes('solicitar_procedimiento') && safeState.tema_actual) {
-        procedureKey = guessProcedure(safeState.tema_actual, intents, entities);
-      }
-
-      // 6) Construir respuesta
-      const { replyHtml, attachments } = buildReply({ state: safeState, intents, tema, procedureKey, entities, textN: normalized });
-
-      // 7) Actualizar estado
-      safeState.tema_actual = tema || safeState.tema_actual || null;
-      safeState.procedimiento_relevante = procedureKey || safeState.procedimiento_relevante || null;
-      safeState.entidades = Array.from(new Set([...(safeState.entidades || []), ...entities]));
-
-      return { replyHtml, attachments, state: safeState };
+    /* ===================== PDFs (misma lógica + sesgo por tema) ===================== */
+    async function ensurePdfMap(){ try{const r=await fetch('/docs/keyword_to_file.json',{cache:'no-store'}); return r.ok?await r.json():{}; }catch{return{};} }
+    function wantsPdf(t){t=(t||'').toLowerCase();return t.includes('pdf')||t.includes('adjunto')||t.includes('documento');}
+    const PRIORITY_KEYS=['sanitizante','j-512','j512','200 ppm','amonio cuaternario','amonio','fefo','retiro anticipado','proximo a vencer','rotulado','etiquetado','fraccionamiento de quesos','quesos','queso','milanesas','pollo','carne vacuna','carne ovina','poes','bpm','bpa','mip','5s','reclamos','retiro de mercado'];
+    function bestMatch(txt,map){
+      const t=(txt||'').toLowerCase();
+      for(const k of PRIORITY_KEYS){if(map[k]&&t.includes(k.toLowerCase()))return map[k];}
+      const keys=Object.keys(map).sort((a,b)=>b.length-a.length);
+      for(const k of keys){if(t.includes(k.toLowerCase()))return map[k];}
+      return 'index.html';
     }
+    async function fileExists(url){try{const r=await fetch(url,{method:'HEAD',cache:'no-store'});return r.ok;}catch{return false;}}
 
-    // API pública para la UI
-    window.valeriaCraftReply = function(userText) {
-      const out = processTurn({ userText, state: window.__VALERIA_STATE });
-      window.__VALERIA_STATE = out.state;
-      // Enriquecer adjuntos con prefijo de ícono aquí (UI se encarga del 📄 y ✔️)
-      // Devolvemos tal cual para que la UI los pinte.
-      // Adjuntamos también el título con 📄 al render de UI.
-      if (Array.isArray(out.attachments)) {
-        out.attachments = out.attachments.map(a => ({
-          ...a,
-          title: a.title // el ícono 📄 lo agregamos en UI
-        }));
-      }
+    /* ===================== Limpieza mínima de respuestas ===================== */
+    function cleanReply(text){
+      if(!text) return text;
+      let out=text;
+      [ /verific(a|á)\s+en\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi, /revisa(r)?\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi,
+        /busc(a|á)rlo\s+en\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi, /en\s+el\s+servicio\s+de\s+almacenamiento\s+seguro[^.\n]*[.\n]?/gi,
+        /no\s+puedo\s+enviar\s+archivos[^.\n]*[.\n]?/gi
+      ].forEach(rx=>out=out.replace(rx,''));
+      out = out.replace(/\bespecialista en seguridad alimentaria\b(?:\s*,?\s*especialista en seguridad alimentaria\b)+/gi,'especialista en seguridad alimentaria');
+      out = out.replace(/\b(\w+)(?:[,\s]+)\1\b/gi, '$1'); // duplicación accidental
+      out = out.replace(/Licenciada\s+en\s+Tecnolog[ií]a\s+de\s+los\s+Alimentos/gi,'especialista en seguridad alimentaria');
+      out = out.replace(/\n{3,}/g,'\n\n').trim();
+      if(!out) out = "Aquí tienes el material solicitado:";
       return out;
-    };
-  })();
-  </script>
+    }
 
+    /* ===================== Envío ===================== */
+    async function sendMessage(){
+      let text=box.value.trim(); if(!text) return;
+
+      // 1) UI muestra lo que escribió el usuario
+      addMsg('user',text);
+      updateTopicFromText(text);
+      pushHistory('user', text);
+
+      // 2) Expandir pedido implícito usando tema activo
+      const expanded = resolveImplicitRequest(text);
+
+      box.value=''; autosizeTextarea(); btn.disabled=true;
+
+      try{
+        const res=await fetch('/.netlify/functions/chat',{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            message: expanded,           // ← lo que realmente pedimos al modelo
+            context_hint: lastTopic,     // ← opcional (si tu backend lo utiliza)
+            history                      // ← opcional (si se ignora, no afecta)
+          })
+        });
+
+        if(!res.ok){
+          const t=await res.text().catch(()=> '');
+          addMsg('bot',`⚠️ Error del servidor (${res.status}). ${t.slice(0,200)}`);
+          pushHistory('assistant', `Error ${res.status}`);
+          return;
+        }
+
+        const data=await res.json().catch(()=> ({}));
+        let reply = cleanReply(data.reply || data.answer || '');
+
+        // 3) Si el modelo pidió "indicame el área/tema..." pero hay contexto, lo resolvemos
+        reply = deGenericize(reply);
+
+        const userWantsPdf = wantsPdf(text);
+
+        if(reply){
+          const botRow=addMsg('bot',reply);
+          updateTopicFromText(reply);
+          pushHistory('assistant', reply);
+
+          // 4) PDF: priorizamos el tema activo si existe
+          if(userWantsPdf){
+            const map=await ensurePdfMap();
+            let chosen;
+            if (lastTopic && lastTopic.pdfKey && map[lastTopic.pdfKey]) {
+              chosen = map[lastTopic.pdfKey];
+            } else {
+              chosen = bestMatch(text, map);
+            }
+            const isIndex=String(chosen||'').toLowerCase()==='index.html';
+            const url=isIndex?'/docs/index.html':`/docs/${chosen}`;
+            const ok=await fileExists(url);
+
+            const prettyName=(isIndex?'Ver Todos Los PDFs'
+              : String(chosen||'').replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\s+/g,' ').trim()
+            ).replace(/\b\w/g,c=>c.toUpperCase());
+
+            const bubble=botRow.querySelector('.bubble');
+            bubble.appendChild(document.createElement('br'));
+            const a=document.createElement('a');
+            a.href = ok ? url : '/docs/index.html';
+            a.target = '_blank'; a.rel='noopener';
+            a.className = 'attach';
+            a.innerHTML = `<span class="clip">📎</span><span class="name">${prettyName}</span>`;
+            bubble.appendChild(a);
+          }
+
+        }else{
+          addMsg('bot','No llegó texto en "reply" ni en "answer". Verificá en Network → Response.');
+          pushHistory('assistant', 'Respuesta vacía');
+        }
+      }catch(e){
+        addMsg('bot','❌ Error de red. ¿Estás online?');
+        pushHistory('assistant', 'Error de red');
+      }finally{
+        btn.disabled=false;
+        msgs.scrollTop=msgs.scrollHeight;
+      }
+    }
+    btn.addEventListener('click',sendMessage);
+    box.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
+
+    /* ===================== Viewer imagen ===================== */
+    const viewer=document.getElementById('viewer');
+    document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.classList.add('open');document.body.style.overflow='hidden';});
+    viewer.addEventListener('click',()=>{viewer.classList.remove('open');document.body.style.overflow='';});
+  </script>
 </body>
 </html>
