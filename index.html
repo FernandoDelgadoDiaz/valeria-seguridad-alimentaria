@@ -17,7 +17,7 @@
   <link rel="mask-icon" href="/icons/valeria-maskable.svg" color="#0a2f73">
   <!-- Fallback si no están los íconos aún -->
   <link rel="icon" href="/valeria-mini.jpg" />
-  <!-- v-2025.08.01-restore -->
+  <!-- v-2025.08.01-definitivo -->
   <style>
     :root{
       --brand-blue:#0a2f73; --header-bg:var(--brand-blue); --header-fg:#fff;
@@ -28,8 +28,6 @@
       --header-h:56px; --vhpx:100svh;
       /* Adjunto compacto */
       --attach-bg:#ffffff; --attach-bd:#d9e1f2; --attach-fg:#0f172a; --attach-bg-hover:#f3f6ff;
-      /* Motto */
-      --motto-bg:#e9eef8; --motto-fg:#0f172a;
     }
     [data-theme="dark"]{
       --header-bg:var(--brand-blue); --header-fg:#e5e7eb;
@@ -38,8 +36,6 @@
       --bubble-user:#335694; --bubble-user-text:#e5e7eb;
 
       --attach-bg:#0f172a; --attach-bd:#344465; --attach-fg:#e5e7eb; --attach-bg-hover:#132042;
-
-      --motto-bg:#0e1a33; --motto-fg:#dbeafe;
     }
 
     *{box-sizing:border-box}
@@ -80,15 +76,6 @@
     .spacer{flex:1 1 auto}
     .themebtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:999px;border:1px solid rgba(255,255,255,.25);background:transparent;color:var(--header-fg);cursor:pointer}
     .themebtn svg{width:20px;height:20px}
-
-    /* Motto banda */
-    .motto{
-      display:flex; align-items:center; justify-content:center;
-      background: var(--motto-bg); color: var(--motto-fg);
-      padding:6px 10px; font-size:12.5px; font-weight:700; letter-spacing:.2px;
-      text-align:center; border-bottom:1px solid var(--border);
-    }
-    .motto .dot{width:6px;height:6px;border-radius:999px;background:currentColor;opacity:.35;margin:0 8px}
 
     /* Main ocupa lo restante */
     main{ flex:1 1 auto; min-height:0; }
@@ -152,6 +139,25 @@
     .attach:hover{ background: var(--attach-bg-hover); }
     .attach .clip{ font-size:14px; line-height:1; flex:0 0 auto; }
     .attach .name{ min-width:0; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; }
+
+    /* Viewer imagen (con frase adentro) */
+    .viewer{
+      position:fixed; inset:0; z-index:50; display:none; align-items:center; justify-content:center;
+      background: rgba(0,0,0,.52);
+      padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+      flex-direction:column; gap:12px;
+    }
+    .viewer.open{ display:flex; }
+    .viewer img{
+      max-width: min(92vw, 1024px);
+      max-height: 78vh;
+      border-radius:12px; object-fit: contain; box-shadow:0 10px 40px rgba(0,0,0,.4);
+      background:#fff;
+    }
+    .viewer .motto{
+      color:#fff; font-size:14px; text-align:center; font-weight:600; max-width:90%; line-height:1.35;
+      text-shadow:0 1px 2px rgba(0,0,0,.45);
+    }
   </style>
 </head>
 <body>
@@ -168,16 +174,10 @@
       </button>
     </header>
 
-    <!-- Motto integrado -->
-    <div class="motto">
-      <span class="dot"></span>
-      La inocuidad alimentaria comienza con cada decisión que tomamos
-      <span class="dot"></span>
-    </div>
-
-    <!-- Visor de imagen -->
-    <div id="viewer" class="viewer" aria-modal="true" role="dialog" tabindex="-1" style="display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.52);position:fixed;inset:0;z-index:50;padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))">
-      <img src="/valeria-full.jpg" alt="Valeria" style="max-width:min(92vw,1024px);max-height:88vh;border-radius:12px;object-fit:contain;box-shadow:0 10px 40px rgba(0,0,0,.4);background:#fff" />
+    <!-- Visor de imagen expandida con frase adentro -->
+    <div id="viewer" class="viewer" aria-modal="true" role="dialog" tabindex="-1">
+      <img src="/valeria-full.jpg" alt="Valeria" />
+      <div class="motto">🛡️ La inocuidad alimentaria comienza con cada decisión que tomamos.</div>
     </div>
 
     <main>
@@ -202,7 +202,7 @@
     const $ = s => document.querySelector(s);
     const msgs=$('#msgs'), box=$('#box'), btn=$('#send'), themeToggle=$('#themeToggle'), themeIcon=$('#themeIcon'), composer=$('#composer');
 
-    /* Tema */
+    /* Tema (día/noche) */
     const storageKey='valeria_theme';
     function applyTheme(theme){
       const prefersDark=window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -250,7 +250,7 @@
     box.addEventListener('input', autosizeTextarea);
     box.addEventListener('focus', ()=>{ setTimeout(()=>{ autosizeTextarea(); msgs.scrollTop=msgs.scrollHeight; }, 50); });
 
-    /* Helpers UI */
+    /* Helpers UI (emojis/negritas) */
     function escapeHTML(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
     function injectWhatsAppEmojis(html){
       const patterns=[
@@ -310,6 +310,7 @@
     function bestMatch(txt,map){const t=(txt||'').toLowerCase();for(const k of PRIORITY_KEYS){if(map[k]&&t.includes(k.toLowerCase()))return map[k];}const keys=Object.keys(map).sort((a,b)=>b.length-a.length);for(const k of keys){if(t.includes(k.toLowerCase()))return map[k];}return'index.html';}
     async function fileExists(url){try{const r=await fetch(url,{method:'HEAD',cache:'no-store'});return r.ok;}catch{return false;}}
 
+    // Limpieza mínima de frases indeseadas / duplicados
     function cleanReply(text){
       if(!text) return text;
       let out=text;
@@ -317,14 +318,9 @@
         /busc(a|á)rlo\s+en\s+la\s+ra[ií]z[^.\n]*[.\n]?/gi, /en\s+el\s+servicio\s+de\s+almacenamiento\s+seguro[^.\n]*[.\n]?/gi,
         /no\s+puedo\s+enviar\s+archivos[^.\n]*[.\n]?/gi
       ].forEach(rx=>out=out.replace(rx,''));
-
-      // Quita duplicados de “especialista en seguridad alimentaria”
-      out = out.replace(/\bespecialista en seguridad alimentaria\b(?:\s*,?\s*especialista en seguridad alimentaria\b)+/gi,
-                        'especialista en seguridad alimentaria');
-
+      out = out.replace(/\bespecialista en seguridad alimentaria\b(?:\s*,?\s*especialista en seguridad alimentaria\b)+/gi,'especialista en seguridad alimentaria');
       out = out.replace(/\b(\w+)(?:[,\s]+)\1\b/gi, '$1'); // duplicación accidental
       out = out.replace(/Licenciada\s+en\s+Tecnolog[ií]a\s+de\s+los\s+Alimentos/gi,'especialista en seguridad alimentaria');
-
       out = out.replace(/\n{3,}/g,'\n\n').trim();
       if(!out) out = "Aquí tienes el material solicitado:";
       return out;
@@ -365,7 +361,7 @@
               : chosen.replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\s+/g,' ').trim()
             ).replace(/\b\w/g,c=>c.toUpperCase());
 
-            // Adjunto compacto: nunca se sale de la burbuja
+            // Adjunto compacto dentro de la burbuja
             const bubble=botRow.querySelector('.bubble');
             bubble.appendChild(document.createElement('br'));
             const a=document.createElement('a');
@@ -389,11 +385,11 @@
     btn.addEventListener('click',sendMessage);
     box.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 
-    /* Viewer */
+    /* Viewer imagen */
     const viewer=document.getElementById('viewer');
-    document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.style.display='flex';document.body.style.overflow='hidden';});
-    viewer.addEventListener('click',()=>{viewer.style.display='none';document.body.style.overflow='';});
-    viewer.addEventListener('keydown',e=>{ if(e.key==='Escape'){ viewer.style.display='none'; document.body.style.overflow=''; } });
+    document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.classList.add('open');document.body.style.overflow='hidden';});
+    viewer.addEventListener('click',()=>{viewer.classList.remove('open');document.body.style.overflow='';});
+
   </script>
 </body>
 </html>
