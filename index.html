@@ -1,601 +1,276 @@
 <!DOCTYPE html>
-<html lang="es-AR">
+<html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Valeria · Seguridad Alimentaria</title>
+  <link rel="icon" href="favicon.png" />
   <style>
-    :root {
-      --header-bg: #0b66c3;
-      --app-bg: #f5f7fb;
-      --bubble-user: #20262e;
-      --bubble-user-text: #ffffff;
-      --bubble-bot: #ffffff;
-      --bubble-bot-text: #0f172a;
-      --border: #e5e7eb;
-      --muted: #6b7280;
-      --accent: #0b66c3;
-      --card-bg: #f9fafb;
-      --textarea-bg: #ffffff;
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #e6ecf0;
+      transition: background-color 0.3s;
     }
-    .dark {
-      --app-bg: #0f172a;
-      --bubble-user: #1f2937;
-      --bubble-user-text: #e5e7eb;
-      --bubble-bot: #111827;
-      --bubble-bot-text: #e5e7eb;
-      --border: #374151;
-      --muted: #9ca3af;
-      --card-bg: #0b1220;
-      --textarea-bg: #0b1220;
+    header {
+      background-color: #007bff;
+      color: white;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
     }
-
-    * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; background: var(--app-bg); color: var(--bubble-bot-text); }
-
-    /* Header estilo WhatsApp */
-    .header { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--header-bg); color: #fff; }
-    .avatar-mini { width: 38px; height: 38px; border-radius: 999px; overflow: hidden; flex: 0 0 auto; border: 2px solid rgba(255,255,255,0.35); cursor: pointer; }
-    .avatar-mini img { width: 100%; height: 100%; object-fit: cover; }
-    .title-wrap { display: flex; flex-direction: column; line-height: 1.1; }
-    .title { font-weight: 700; font-size: 16px; }
-    .subtitle { font-size: 12px; opacity: 0.9; }
-    .header-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-    .toggle { width: 40px; height: 24px; border-radius: 999px; position: relative; background: rgba(255,255,255,0.35); cursor: pointer; }
-    .toggle .knob { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: all .2s ease; }
-    .toggle.active .knob { left: 18px; }
-
-    /* Chat layout */
-    .chat { display: flex; flex-direction: column; height: calc(100vh - 58px); }
-    .messages { flex: 1 1 auto; overflow-y: auto; padding: 12px; scroll-behavior: smooth; }
-    .row { display: flex; margin-bottom: 10px; }
-    .row.user { justify-content: flex-end; }
-    .row.bot { justify-content: flex-start; }
-    .bubble { max-width: min(85%, 720px); padding: 10px 12px; border-radius: 16px; line-height: 1.35; font-size: 15px; border: 1px solid var(--border); white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; }
-    .row.user .bubble { background: var(--bubble-user); color: var(--bubble-user-text); border-color: transparent; border-bottom-right-radius: 6px; }
-    .row.bot .bubble { background: var(--bubble-bot); color: var(--bubble-bot-text); border-bottom-left-radius: 6px; }
-
-    /* Adjuntos compactos */
-    .attachments { margin-top: 6px; display: grid; grid-template-columns: 1fr; gap: 6px; }
-    .attach-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
-    .attach-title { font-weight: 600; margin-bottom: 4px; display: flex; gap: 6px; align-items: center; }
-    .attach-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-    .attach-actions a { display: inline-block; text-decoration: none; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--accent); color: var(--accent); font-weight: 600; font-size: 13px; }
-
-    /* Input fijo abajo */
-    .composer { flex: 0 0 auto; border-top: 1px solid var(--border); background: var(--app-bg); padding: 10px 10px 12px; }
-    .composer-wrap { display: flex; align-items: flex-end; gap: 8px; background: var(--textarea-bg); border: 1px solid var(--border); border-radius: 14px; padding: 8px; }
-    .composer textarea { flex: 1 1 auto; resize: none; border: none; outline: none; background: transparent; color: inherit; font: inherit; max-height: 200px; min-height: 22px; }
-    .send-btn { width: 40px; height: 40px; border-radius: 10px; border: none; background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; }
-    .send-btn svg { width: 20px; height: 20px; }
-
-    /* Modal avatar expandido */
-    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
-    .modal.open { display: flex; }
-    .modal-card { position: relative; max-width: 480px; width: 100%; background: #000; border-radius: 14px; overflow: hidden; }
-    .modal-card img { width: 100%; display: block; }
-    .modal-caption { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,0.75)); color: #fff; padding: 12px 14px; }
-    .modal-caption .line1 { font-weight: 700; }
-    .modal-caption .line2 { margin-top: 4px; opacity: 0.95; }
-    .modal-close { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.15); color: #fff; border: none; border-radius: 999px; width: 32px; height: 32px; cursor: pointer; font-size: 18px; display: grid; place-items: center; }
-
-    a { color: var(--accent); }
-    b { font-weight: 700; }
+    .profile {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+    .profile img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 10px;
+    }
+    .profile-name {
+      font-weight: bold;
+      font-size: 16px;
+      line-height: 1.2;
+    }
+    .profile-name small {
+      font-weight: normal;
+      font-size: 12px;
+      display: block;
+    }
+    .dark-mode-toggle {
+      background-color: white;
+      color: black;
+      border: none;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .chat-container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 10px;
+      height: calc(100vh - 60px);
+      overflow-y: auto;
+      background-color: #f1f1f1;
+    }
+    .message {
+      padding: 10px 14px;
+      margin: 8px;
+      max-width: 80%;
+      border-radius: 12px;
+      line-height: 1.4;
+      word-wrap: break-word;
+    }
+    .user {
+      background-color: #cce5ff;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+    .valeria {
+      background-color: #ffffff;
+      border: 1px solid #ccc;
+      align-self: flex-start;
+    }
+    .chat-box {
+      display: flex;
+      padding: 10px;
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #fff;
+      border-top: 1px solid #ccc;
+    }
+    .chat-box textarea {
+      flex: 1;
+      padding: 8px;
+      resize: none;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    .chat-box button {
+      margin-left: 10px;
+      background-color: #007bff;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+    }
+    .attachment {
+      border: 1px solid #007bff;
+      background-color: #e9f5ff;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 5px;
+      display: inline-block;
+    }
+    .attachment a {
+      color: #007bff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .dark-mode {
+      background-color: #1e1e1e;
+    }
+    .dark-mode .chat-container {
+      background-color: #121212;
+    }
+    .dark-mode .valeria {
+      background-color: #2c2c2c;
+      color: #e0e0e0;
+    }
+    .dark-mode .user {
+      background-color: #0056b3;
+      color: white;
+    }
+    .dark-mode .attachment {
+      background-color: #003f7f;
+      color: white;
+    }
+    .dark-mode .attachment a {
+      color: #9dd1ff;
+    }
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="avatar-mini" id="avatarMini" title="Ver perfil">
-      <img src="assets/valeria-mini.jpg" alt="Valeria mini" />
-    </div>
-    <div class="title-wrap">
-      <div class="title">Valeria</div>
-      <div class="subtitle">Seguridad Alimentaria</div>
-    </div>
-    <div class="header-actions">
-      <div class="toggle" id="themeToggle" title="Día / Noche">
-        <div class="knob"></div>
+  <header>
+    <div class="profile" onclick="openProfile()">
+      <img src="perfil-mini.jpg" alt="Valeria">
+      <div class="profile-name">
+        Valeria<br><small>Seguridad Alimentaria</small>
       </div>
     </div>
+    <button class="dark-mode-toggle" onclick="toggleDarkMode()">🌓</button>
+  </header>
+
+  <div class="chat-container" id="chat"></div>
+
+  <div class="chat-box">
+    <textarea id="input" placeholder="Mensaje" rows="1" oninput="autoExpand(this)"></textarea>
+    <button onclick="sendMessage()">➤</button>
   </div>
 
-  <div class="chat">
-    <div class="messages" id="messages"></div>
-    <div class="composer">
-      <div class="composer-wrap">
-        <textarea id="input" rows="1" placeholder="Mensaje"></textarea>
-        <button class="send-btn" id="sendBtn" aria-label="Enviar">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-4 8 4 8-16-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
-    </div>
+  <div id="profileModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:2000; text-align:center; padding-top:50px;">
+    <img src="perfil-full.jpg" alt="Valeria" style="width:200px; border-radius:50%; box-shadow: 0 0 10px gray;"><br><br>
+    <h2>Valeria · Seguridad Alimentaria</h2>
+    <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
+    <button onclick="closeProfile()" style="margin-top:20px; padding:8px 20px; border:none; background:#007bff; color:white; border-radius:20px;">Cerrar</button>
   </div>
+<script>
+  const chat = document.getElementById("chat");
+  const input = document.getElementById("input");
 
-  <div class="modal" id="avatarModal" aria-hidden="true">
-    <div class="modal-card">
-      <img src="assets/valeria-full.jpg" alt="Valeria perfil completo" />
-      <div class="modal-caption">
-        <div class="line1">Valeria · Seguridad Alimentaria</div>
-        <div class="line2">🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</div>
-      </div>
-      <button class="modal-close" id="modalClose" aria-label="Cerrar">×</button>
-    </div>
-  </div>
-  <script>
-    // ---------------------------
-    // Tema Día/Noche con memoria
-    // ---------------------------
-    const themeToggle = document.getElementById('themeToggle');
-    function setTheme(mode) {
-      if (mode === 'noche') {
-        document.body.classList.add('dark');
-        themeToggle.classList.add('active');
-        localStorage.setItem('valeria_theme', 'noche');
-      } else {
-        document.body.classList.remove('dark');
-        themeToggle.classList.remove('active');
-        localStorage.setItem('valeria_theme', 'dia');
-      }
-      // pista opcional para el motor de contexto
-      window.__VALERIA_STATE = window.__VALERIA_STATE || {};
-      window.__VALERIA_STATE.ultimo_modo = mode;
+  let temaContextual = "";
+
+  function sendMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+    appendMessage("user", text);
+    input.value = "";
+    handleValeriaResponse(text.toLowerCase());
+  }
+
+  function appendMessage(sender, text, isAttachment = false) {
+    const msg = document.createElement("div");
+    msg.className = `message ${sender}`;
+    if (isAttachment) {
+      msg.innerHTML = `<div class="attachment">✔️ <a href="${text}" target="_blank">Abrir documento</a></div>`;
+    } else {
+      msg.innerHTML = text
+        .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+        .replace(/:\)/g, "😊")
+        .replace(/:\(/g, "😟")
+        .replace(/<br>/g, "<br/>");
     }
-    themeToggle.addEventListener('click', () => {
-      const isDark = document.body.classList.contains('dark');
-      setTheme(isDark ? 'dia' : 'noche');
-    });
-    setTheme(localStorage.getItem('valeria_theme') || 'dia');
+    chat.appendChild(msg);
+    chat.scrollTop = chat.scrollHeight;
+  }
 
-    // ---------------------------
-    // Avatar expandido
-    // ---------------------------
-    const avatarMini = document.getElementById('avatarMini');
-    const avatarModal = document.getElementById('avatarModal');
-    const modalClose = document.getElementById('modalClose');
-    function openModal() { avatarModal.classList.add('open'); avatarModal.setAttribute('aria-hidden','false'); }
-    function closeModal() { avatarModal.classList.remove('open'); avatarModal.setAttribute('aria-hidden','true'); }
-    avatarMini.addEventListener('click', openModal);
-    modalClose.addEventListener('click', closeModal);
-    avatarModal.addEventListener('click', (e)=>{ if(e.target===avatarModal) closeModal(); });
-
-    // ---------------------------
-    // Utilidades UI
-    // ---------------------------
-    const messagesEl = document.getElementById('messages');
-    const inputEl = document.getElementById('input');
-    const sendBtn = document.getElementById('sendBtn');
-
-    function autoResizeTextarea(el) {
-      el.style.height = 'auto';
-      el.style.height = Math.min(el.scrollHeight, 200) + 'px';
-    }
-    inputEl.addEventListener('input', () => autoResizeTextarea(inputEl));
-    autoResizeTextarea(inputEl);
-
-    function scrollToBottom() {
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    function sanitize(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.textContent;
-    }
-
-    function renderMessage({ html, text, sender, attachments }) {
-      const row = document.createElement('div');
-      row.className = 'row ' + (sender === 'user' ? 'user' : 'bot');
-
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-
-      if (html) {
-        bubble.innerHTML = html;
-      } else if (text) {
-        bubble.textContent = text;
-      }
-
-      // Adjuntos compactos ✔️ (solo para bot)
-      if (sender !== 'user' && Array.isArray(attachments) && attachments.length) {
-        const wrap = document.createElement('div');
-        wrap.className = 'attachments';
-        attachments.forEach(att => {
-          const card = document.createElement('div');
-          card.className = 'attach-card';
-          card.innerHTML = `
-            <div class="attach-title">📄 <span>${att.title}</span></div>
-            <div class="attach-meta">Código: ${att.code}</div>
-            <div class="attach-actions">
-              <a href="docs/${att.pdfId}" download target="_blank" rel="noopener">✔️ Descargar PDF</a>
-            </div>
-          `;
-          wrap.appendChild(card);
-        });
-        bubble.appendChild(wrap);
-      }
-
-      row.appendChild(bubble);
-      messagesEl.appendChild(row);
-      scrollToBottom();
-    }
-
-    function sendUserMessage() {
-      const raw = inputEl.value;
-      const text = raw.trim();
-      if (!text) return;
-
-      // Render usuario
-      renderMessage({ text: sanitize(text), sender: 'user' });
-
-      // Limpiar y auto-resize
-      inputEl.value = '';
-      autoResizeTextarea(inputEl);
-
-      // Componer respuesta de Valeria (motor de contexto integrado)
-      try {
-        const { replyHtml, attachments } = window.valeriaCraftReply(text);
-        // Si replyHtml está vacío pero hay adjuntos: modo "PDF directo"
-        renderMessage({ html: replyHtml || '', sender: 'bot', attachments });
-      } catch (e) {
-        renderMessage({
-          html: '❗ Ocurrió un inconveniente al procesar la consulta. Probá de nuevo o especificá el <b>producto</b> o <b>proceso</b> que querés trabajar. 🙂',
-          sender: 'bot'
-        });
-        console.error(e);
-      }
-    }
-
-    // Enviar con click o Enter (Shift+Enter = salto)
-    sendBtn.addEventListener('click', sendUserMessage);
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendUserMessage();
-      }
-    });
-
-    // Sin saludo automático para no interferir en pruebas.
-  </script>
-  <!-- ==========================================================
-       🧠 Valeria Context Engine (Motor de comprensión e implícitos)
-       Integrado completo (sin parches aparte)
-       ========================================================== -->
-  <script>
-  (function () {
-    // -------------------------
-    // Estado de sesión (ligero)
-    // -------------------------
-    const defaultState = {
-      tema_actual: null,
-      procedimiento_relevante: null,
-      entidades: [],
-      riesgo_detectado: null,
-      ultimo_modo: null
-    };
-    window.__VALERIA_STATE = window.__VALERIA_STATE || { ...defaultState };
-
-    // -------------------------
-    // Utilidades
-    // -------------------------
-    const stripAccents = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const norm = (s) => stripAccents(String(s || '').toLowerCase().trim());
-
-    // Normalizador (sinónimos AR y errores comunes)
-    const SYN = [
-      // Productos
-      { find: [/carne\s+vacuna/], to: 'carnes rojas' },
-      { find: [/queso?s?/], to: 'quesos' },
-      { find: [/lacteos?/], to: 'lacteos' },
-      { find: [/milanesa?s?/], to: 'milanesas' },
-      { find: [/dulce?s?|mermeladas?|confituras?/], to: 'dulces' },
-      { find: [/pollo?s?/], to: 'pollo' },
-      { find: [/ovina|cordero|carne\s+ovina/], to: 'carne ovina' },
-      // Acciones
-      { find: [/fraccion(ar|ado|amiento)/], to: 'fraccionar' },
-      { find: [/etiquet(ar|ado)|rotul(ar|ado)/], to: 'etiquetar' },
-      { find: [/sanitiz(ar|ante)|desinfect(ar|ante)/], to: 'sanitizar' },
-      { find: [/retir(ar|o)|venc(e|imien)|vida util|aptitud/], to: 'retiro' },
-      { find: [/embandej(ad|ar|ado)|ambandejado/], to: 'en bandeja' },
-      // Insumos
-      { find: [/lavandina|cloro/], to: 'lavandina' },
-      { find: [/amonio\s+cuaternario|j-?512/], to: 'amonio cuaternario' },
-      // Documentos / nociones
-      { find: [/procedimiento|poe|instructivo/], to: 'procedimiento' },
-      { find: [/plan\s+de\s+accion|plan\s+correctivo/], to: 'plan de accion' },
-      { find: [/registro\s+de\s+sucursales/], to: 'registro de sucursales' }
-    ];
-
-    function normalizeTokens(text) {
-      const t = norm(text);
-      let out = t;
-      SYN.forEach(({ find, to }) => {
-        find.forEach((re) => { out = out.replace(re, to); });
-      });
-      return out.replace(/\s+/g,' ').trim();
-    }
-
-    // -------------------------
-    // Catálogo de procedimientos (respetando nombres/rutas en docs/)
-    // -------------------------
-    const PROCEDURES = {
-      'fraccionado_quesos': {
-        title: 'Procedimiento de fraccionado de quesos',
-        code: 'G-PG-QUESOS',
-        tags: ['quesos', 'fraccionar', 'etiquetar', 'en bandeja', 'rotular'],
-        summary: [
-          'Mise en place higiénica y superficie sanitizada.',
-          'Tiempo de exposición al ambiente: minimizar.',
-          'Corte/porcionado y <b>etiquetado interno</b> (fecha fraccionado, vencimiento original, responsable).',
-          'Almacenamiento en <b>refrigeración</b>; FEFO/FIFO.'
-        ],
-        pdfId: 'proc_fraccionado_quesos.pdf'
+  function handleValeriaResponse(text) {
+    const incluye = (palabras) => palabras.some(p => text.includes(p));
+    const pdfBase = "./docs/";
+    const respuestas = {
+      queso: {
+        texto: `Para rotular el 🧀 queso correctamente, debes seguir el 📋 procedimiento de fraccionado de quesos.<br><br>1. Envuelto: Cada fracción debe estar envuelta en film plástico.<br>2. 🏷️ Etiqueta con:<br>• Tipo de queso<br>• Fecha de fraccionado<br>• Fecha de vencimiento original<br>• Responsable del fraccionado<br><br>¿Querés que te pase el PDF con el modelo? ✔️`,
+        archivo: pdfBase + "proc_fraccionado_quesos.pdf"
       },
-      'procedimiento_pollo': {
-        title: 'Procedimiento de pollo',
-        code: 'PROC-POLLO',
-        tags: ['pollo', 'fraccionar', 'etiquetar', 'en bandeja'],
-        summary: [
-          'Higiene de manos, utensilios exclusivos, superficie sanitizada.',
-          'Control de <b>temperaturas</b> y tiempos de exposición.',
-          'Etiquetado interno (fecha/hora de fraccionado).',
-          'Refrigeración y segregación por riesgo cruzado.'
-        ],
-        pdfId: 'proc_pollo.pdf'
-      },
-      'manejo_carne_ovina': {
-        title: 'Procedimiento de manejo de carne ovina',
-        code: 'PROC-OVINA',
-        tags: ['carne ovina', 'fraccionar', 'etiquetar'],
-        summary: [
-          'Desposte/porcionado en área autorizada.',
-          'Control de T°; evitar goteo y contaminación cruzada.',
-          'Etiquetado interno y trazabilidad por lote.'
-        ],
-        pdfId: 'proc_carne_ovina.pdf'
-      },
-      'procedimiento_milanesas': {
-        title: 'Procedimiento de milanesas',
-        code: 'PROC-MILA',
-        tags: ['milanesas', 'fraccionar', 'etiquetar', 'en bandeja'],
-        summary: [
-          'Superficie sanitizada, utensilios exclusivos.',
-          'Etiquetado con <b>fecha de elaboración</b>; <b>máx. 48 h</b> en heladera.',
-          'Separadores entre capas para evitar compactación.'
-        ],
-        pdfId: 'proc_milanesas.pdf'
-      },
-      'fraccionado_dulces': {
-        title: 'Procedimiento de fraccionado de dulces',
-        code: 'PROC-DULCES',
-        tags: ['dulces', 'fraccionar', 'etiquetar'],
-        summary: [
-          'Fraccionado con utensilios limpios y secos.',
-          'Envases aptos y rotulados con lote y fecha.',
-          'Evitar contaminación por humedad.'
-        ],
-        pdfId: 'proc_dulces.pdf'
-      },
-      'medicion_sanitizante': {
-        title: 'Medición de sanitizante (amonio cuaternario 200 ppm)',
-        code: 'G-PG-007',
-        tags: ['amonio cuaternario', 'sanitizar', 'medicion', 'mesada'],
-        summary: [
-          '<b>No usamos lavandina</b> en esta operación.',
-          'Preparar <b>J-512 a 200 ppm</b> según instrucciones.',
-          'Verificar concentración con tiras/reactivo (G‑PG‑007).'
-        ],
-        pdfId: 'G-PG-007_medicion_sanitizante.pdf'
-      },
-      'registro_sucursales': {
-        title: 'Registro de sucursales',
-        code: 'RG 01-SUC-ML-002',
-        tags: ['registro de sucursales', 'registro', 'documento'],
-        summary: [
-          'Formato estandarizado de registro por sucursal.',
-          'Completar campos obligatorios y firma responsable.'
-        ],
-        pdfId: 'RG_01-SUC-ML-002_registro_sucursales.pdf'
-      },
-      'plan_accion': {
-        title: 'Plan de acción',
-        code: 'PLAN-ACCION',
-        tags: ['plan de accion', 'no conformidad', 'incidente'],
-        summary: [
-          'Acción inmediata y correctiva.',
-          'Análisis de <b>causa raíz</b> (5 porqués, espina de pescado).',
-          'Seguimiento y verificación de efectividad.'
-        ],
-        pdfId: 'plan_de_accion.pdf'
-      }
-    };
-
-    // -------------------------
-    // Reglas internas clave (complementarias)
-    // -------------------------
-    const RULES = {
       sanitizante: {
-        message: 'En esta operación <b>no usamos lavandina</b>. Usá <b>amonio cuaternario (J‑512) a 200 ppm</b> y verificá con tiras/reactivo conforme <b>G‑PG‑007</b>.',
-        tags: ['sanitizar', 'mesada', 'amonio cuaternario', 'medicion', '200 ppm']
+        texto: `No está permitido el uso de lavandina. Debe utilizarse 🧪 J-512 a 200 ppm para desinfección, según el 📋 procedimiento G-PG-007. ¿Querés el documento completo? ✔️`,
+        archivo: pdfBase + "G-PG-007_medicion_sanitizante.pdf"
       },
-      retiro_anticipado: {
-        message: 'Recordá <b>retiro anticipado</b>: <b>congelados/masivos</b> a <b>10 días</b> del vencimiento; <b>perecederos</b> a <b>2 días</b>.',
-        tags: ['retiro', 'vencimiento', 'góndola', 'deposito']
+      pollo: {
+        texto: `El manejo del pollo debe respetar temperatura, higiene, rotulación y tiempos. Si querés te paso el 📋 procedimiento oficial. ✔️`,
+        archivo: pdfBase + "proc_manejo_pollo.pdf"
+      },
+      plan: {
+        texto: `El 📋 plan de acción se utiliza para documentar acciones inmediatas y preventivas ante desvíos o no conformidades. ¿Querés el modelo en PDF? ✔️`,
+        archivo: pdfBase + "plan_accion.pdf"
       }
     };
 
-    // -------------------------
-    // Detección de intención + entidades
-    // -------------------------
-    function detectIntent(textN) {
-      const intents = [];
-      if (/\b(dame|pasame|mandame|enviame|mostrame)\s+el\s+procedimiento\b/.test(textN) ||
-          /\b(dame|pasame|mandame|enviame|mostrame)\s+el\s+pdf\b/.test(textN) ||
-          /\b(quiero|necesito)\s+el\s+procedimiento\b/.test(textN) ||
-          /\b(quiero|necesito)\s+el\s+pdf\b/.test(textN) ||
-          (/\b(pdf|procedimiento)\b/.test(textN) && textN.length <= 35)) {
-        intents.push('pedido_pdf_directo');
-        intents.push('solicitar_procedimiento');
-      } else if (/\b(procedimiento|poe|instructivo)\b/.test(textN)) {
-        intents.push('solicitar_procedimiento');
-      }
-      if (/\b(fraccionar|etiquetar|rotular|en bandeja|sanitizar|desinfectar)\b/.test(textN)) {
-        intents.push('consulta_operativa');
-      }
-      if (/\b(venc|retir|retiro|fecha limite|fecha de vencimiento|vida util|aptitud)\b/.test(textN)) {
-        intents.push('normativa');
-      }
-      if (/\b(incidente|olor|temperatura elevada|no conformidad|riesgo)\b/.test(textN)) {
-        intents.push('riesgo');
-      }
-      if (!intents.length) intents.push('general');
-      return intents;
+    if (incluye(["quién sos", "quien sos"])) {
+      appendMessage("valeria", "👩🏻‍⚕️ Soy Valeria, especialista en seguridad alimentaria. Estoy acá para ayudarte con todo lo que necesites relacionado a BPM, CAA y procedimientos internos. 😊");
+      return;
     }
 
-    const ENTITY_TERMS = [
-      'quesos','pollo','carne ovina','carnes rojas','milanesas','dulces','lacteos',
-      'mesada','amonio cuaternario','lavandina','en bandeja','etiquetar','fraccionar',
-      'sanitizar','retiro','vencimiento','procedimiento','plan de accion','registro de sucursales'
-    ];
-
-    function extractEntities(textN) {
-      const found = new Set();
-      ENTITY_TERMS.forEach(k => { if (textN.includes(k)) found.add(k); });
-      return Array.from(found);
+    if (incluye(["modo noche", "modo oscuro"])) {
+      toggleDarkMode();
+      appendMessage("valeria", "🌗 Modo noche activado.");
+      return;
     }
 
-    function resolveTema(state, entities) {
-      const products = ['quesos','pollo','carne ovina','carnes rojas','milanesas','dulces','lacteos'];
-      const hit = entities.find(e => products.includes(e));
-      return hit || state.tema_actual || null;
+    // Detectar si es pedido directo del procedimiento
+    if (incluye(["dame el procedimiento", "pasame el pdf", "mostrame el documento", "pasame el documento"])) {
+      if (temaContextual && respuestas[temaContextual]) {
+        appendMessage("valeria", respuestas[temaContextual].archivo, true);
+      } else {
+        appendMessage("valeria", "📄 ¿Sobre qué tema querés el procedimiento? (Por ejemplo: queso, sanitizante, pollo...)");
+      }
+      return;
     }
 
-    function guessProcedure(tema, intents, entities) {
-      const has = (arr, key) => arr && arr.some(e => e === key);
-      if (tema === 'quesos') return 'fraccionado_quesos';
-      if (tema === 'pollo') return 'procedimiento_pollo';
-      if (tema === 'carne ovina') return 'manejo_carne_ovina';
-      if (tema === 'milanesas') return 'procedimiento_milanesas';
-      if (tema === 'dulces') return 'fraccionado_dulces';
-      if (has(entities, 'amonio cuaternario') || has(entities, 'sanitizar') || has(entities, 'mesada')) {
-        return 'medicion_sanitizante';
+    // Determinar contexto y responder
+    for (const clave in respuestas) {
+      if (text.includes(clave)) {
+        temaContextual = clave;
+        appendMessage("valeria", respuestas[clave].texto);
+        return;
       }
-      if (has(entities, 'registro de sucursales')) return 'registro_sucursales';
-      if (intents.includes('riesgo')) return 'plan_accion';
-      return null;
     }
 
-    function attachmentCard(proc) {
-      return {
-        title: `${proc.title}`,
-        code: proc.code,
-        pdfId: proc.pdfId
-      };
-    }
+    // Respuesta genérica si no se identifica tema
+    appendMessage("valeria", "🤔 No entendí del todo. ¿Podés reformular o decirme sobre qué procedimiento o tema querés hablar?");
+  }
 
-    function renderBullets(lines) {
-      return lines.map(l => `• ${l}`).join('<br>');
-    }
+  function autoExpand(textarea) {
+    textarea.style.height = 'auto';
+    textarea.style.height = (textarea.scrollHeight) + 'px';
+  }
 
-    function buildReply({ intents, tema, procedureKey, textN }) {
-      const parts = [];
-      const attachments = [];
+  function toggleDarkMode() {
+    document.body.classList.toggle("dark-mode");
+  }
 
-      const needsSanitizante = /sanitizar|mesada|amonio cuaternario/.test(textN);
-      const needsRetiro = /retiro|venc|vida util|aptitud/.test(textN);
+  function openProfile() {
+    document.getElementById("profileModal").style.display = "block";
+  }
 
-      // Procedimiento principal (si existe y NO es pedido directo)
-      if (procedureKey && !intents.includes('pedido_pdf_directo')) {
-        const proc = PROCEDURES[procedureKey];
-        if (proc) {
-          parts.push(`🔎 Tema: <b>${tema || 'general'}</b>`);
-          parts.push(`<b>📋 ${proc.title}</b><br>${renderBullets(proc.summary)}`);
-          attachments.push(attachmentCard(proc));
-        }
-      }
-
-      // Si no hubo procedimiento pero hay intención operativa y no es pedido directo
-      if (!procedureKey && intents.includes('consulta_operativa') && !intents.includes('pedido_pdf_directo')) {
-        parts.push('Entiendo que necesitás una <b>indicación operativa</b>. ¿Sobre qué producto/área (p. ej., <b>quesos</b>, <b>pollo</b>, <b>mesada</b>) te doy el paso a paso exacto? 🙂');
-      }
-
-      // Reglas sanitizante (complemento)
-      if (needsSanitizante && !intents.includes('pedido_pdf_directo')) {
-        parts.push(`🧼 ${RULES.sanitizante.message}`);
-        attachments.push(attachmentCard(PROCEDURES['medicion_sanitizante']));
-      }
-
-      // Regla retiro/aptitud (complemento)
-      if (needsRetiro && !intents.includes('pedido_pdf_directo')) {
-        parts.push(`⏱️ ${RULES.retiro_anticipado.message}`);
-        attachments.push(attachmentCard(PROCEDURES['plan_accion']));
-      }
-
-      // Ayuda por defecto
-      if (!parts.length && !intents.includes('pedido_pdf_directo')) {
-        parts.push('Estoy para ayudarte en <b>inocuidad alimentaria</b> (CAA, BPM y procedimientos internos). Decime el <b>producto</b> o el <b>proceso</b> y te doy el paso a paso + PDF. ✨');
-      }
-
-      const replyHtml = parts.join('<br><br>');
-      return { replyHtml, attachments };
-    }
-
-    function processTurn({ userText, state }) {
-      const safeState = { ...defaultState, ...(state || {}) };
-      const textN = normalizeTokens(userText);
-
-      // 1) Intención y entidades
-      const intents = detectIntent(textN);
-      const entities = extractEntities(textN);
-
-      // 2) Resolver tema (conserva el último si no hay nuevo)
-      let tema = resolveTema(safeState, entities);
-
-      // 3) Adivinar procedimiento principal
-      let procedureKey = guessProcedure(tema, intents, entities);
-
-      // 4) Si pidió procedimiento/PDF y no hay tema, usar el de sesión si existe
-      if (!procedureKey && intents.includes('solicitar_procedimiento') && safeState.tema_actual) {
-        tema = safeState.tema_actual;
-        procedureKey = guessProcedure(tema, intents, entities);
-      }
-
-      // 5) Construir respuesta preliminar
-      let { replyHtml, attachments } = buildReply({ intents, tema, procedureKey, textN });
-
-      // 6) **Modo PDF directo**: ante pedido explícito => SOLO PDF
-      if (intents.includes('pedido_pdf_directo')) {
-        // Si no hay procedimiento todavía, intentamos inferirlo con tema actual
-        if (!procedureKey && tema) {
-          procedureKey = guessProcedure(tema, intents, entities);
-        }
-        // Si lo tenemos, adjuntamos SOLO ese PDF (sin texto)
-        if (procedureKey) {
-          const proc = PROCEDURES[procedureKey];
-          attachments = [attachmentCard(proc)];
-          replyHtml = ''; // sin rodeos
-        } else {
-          // Sin contexto suficiente: pedir 1 dato crítico mínimo
-          attachments = [];
-          replyHtml = 'Para enviarte el <b>PDF</b> directo, decime el <b>producto o proceso</b> (p. ej., <b>quesos</b>, <b>pollo</b>, <b>mesada</b>).';
-        }
-      }
-
-      // 7) Actualizar estado de sesión
-      safeState.tema_actual = tema || safeState.tema_actual || null;
-      safeState.procedimiento_relevante = procedureKey || safeState.procedimiento_relevante || null;
-      safeState.entidades = Array.from(new Set([...(safeState.entidades || []), ...entities]));
-
-      return { replyHtml, attachments, state: safeState };
-    }
-
-    // API pública para la UI
-    window.valeriaCraftReply = function(userText) {
-      const out = processTurn({ userText, state: window.__VALERIA_STATE });
-      window.__VALERIA_STATE = out.state;
-      return out;
-    };
-  })();
-  </script>
-
+  function closeProfile() {
+    document.getElementById("profileModal").style.display = "none";
+  }
+</script>
 </body>
 </html>
