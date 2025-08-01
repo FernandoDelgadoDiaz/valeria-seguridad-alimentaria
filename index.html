@@ -17,7 +17,7 @@
   <link rel="mask-icon" href="/icons/valeria-maskable.svg" color="#0a2f73">
   <!-- Fallback si no están los íconos aún -->
   <link rel="icon" href="/valeria-mini.jpg" />
-  <!-- v-2025.08.01-definitivo -->
+  <!-- v-2025.08.01-definitivo + contexto -->
   <style>
     :root{
       --brand-blue:#0a2f73; --header-bg:var(--brand-blue); --header-fg:#fff;
@@ -174,7 +174,7 @@
       </button>
     </header>
 
-    <!-- Visor de imagen expandida con frase adentro -->
+    <!-- Visor de imagen -->
     <div id="viewer" class="viewer" aria-modal="true" role="dialog" tabindex="-1">
       <img src="/valeria-full.jpg" alt="Valeria" />
       <div class="motto">🛡️ La inocuidad alimentaria comienza con cada decisión que tomamos.</div>
@@ -202,7 +202,7 @@
     const $ = s => document.querySelector(s);
     const msgs=$('#msgs'), box=$('#box'), btn=$('#send'), themeToggle=$('#themeToggle'), themeIcon=$('#themeIcon'), composer=$('#composer');
 
-    /* Tema (día/noche) */
+    /* ===================== Tema (día/noche) ===================== */
     const storageKey='valeria_theme';
     function applyTheme(theme){
       const prefersDark=window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -219,7 +219,7 @@
     themeToggle.addEventListener('click', toggleTheme);
     if(window.matchMedia){window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(currentTheme()===null)applyTheme(null);});}
 
-    /* Viewport real (para teclado iOS/Android) */
+    /* ===================== Viewport (iOS/Android) ===================== */
     function setVH(){
       const vv=window.visualViewport;
       const h=vv ? vv.height : (window.innerHeight||document.documentElement.clientHeight);
@@ -239,7 +239,7 @@
     }
     setupViewportListeners();
 
-    /* Autosize textarea */
+    /* ===================== Autosize textarea ===================== */
     function autosizeTextarea(){
       box.style.height='auto';
       const lineH=parseFloat(getComputedStyle(box).lineHeight)||20;
@@ -250,7 +250,7 @@
     box.addEventListener('input', autosizeTextarea);
     box.addEventListener('focus', ()=>{ setTimeout(()=>{ autosizeTextarea(); msgs.scrollTop=msgs.scrollHeight; }, 50); });
 
-    /* Helpers UI (emojis/negritas) */
+    /* ===================== Helpers UI (emojis/negritas) ===================== */
     function escapeHTML(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');}
     function injectWhatsAppEmojis(html){
       const patterns=[
@@ -283,7 +283,54 @@
       return /^hola([ !,.¿?]|$)/.test(t) || /^buen(d[ií]a|as tardes|as noches)/.test(t);
     }
 
-    /* Mensajería (UI) */
+    /* ===================== CONTEXTO (tema activo) ===================== */
+    let lastTopic = null;
+    const TOPIC_KEYS = [
+      { rx: /\bques(o|os)\b|\bfraccionamiento de quesos?\b/i, topic: 'fraccionamiento de quesos', pdfKey: 'fraccionamiento de quesos' },
+      { rx: /\bsanitizante\b|\bj-?512\b|\b200\s*ppm\b/i, topic: 'sanitizante j-512', pdfKey: 'j-512' },
+      { rx: /\brotulad(o|a)|etiquetado\b/i, topic: 'rotulado/etiquetado', pdfKey: 'rotulado' },
+      { rx: /\bfefo\b/i, topic: 'FEFO', pdfKey: 'fefo' },
+      { rx: /\bpoes\b|\bmip\b|\bbpm\b/i, topic: 'POES/BPM/MIP', pdfKey: 'poes' }
+      // Podés sumar más
+    ];
+    function detectTopic(text){
+      const s = (text||'');
+      for (const {rx, topic, pdfKey} of TOPIC_KEYS){
+        if (rx.test(s)) return { topic, pdfKey };
+      }
+      return null;
+    }
+    function updateTopicFromText(text){
+      const hit = detectTopic(text);
+      if (hit) lastTopic = hit; // {topic, pdfKey}
+    }
+    function resolveImplicitRequest(userText){
+      const t = (userText || '').toLowerCase().trim();
+      const wantsProcedure = /^(dame|pasame|enviame|mandame)\s+(el\s+)?procedimiento(s)?\b/i.test(t)
+                           || /^procedimiento(s)?$/i.test(t);
+      if (wantsProcedure && lastTopic){
+        if (!t.includes(lastTopic.topic)) return `${userText} de ${lastTopic.topic}`;
+      }
+      return userText;
+    }
+    function deGenericize(reply){
+      if (!reply || !lastTopic) return reply;
+      const askArea = /(indic(a|á)me|decime|dime|por favor ind(i|í)ca)\s+cu[aá]l\s+es\s+el\s+(tema|área)[^.\n]*[.\n]?/i;
+      if (askArea.test(reply)){
+        const hint = `Te comparto el procedimiento de ${lastTopic.topic}.`;
+        reply = reply.replace(askArea, hint + ' ');
+      }
+      return reply;
+    }
+
+    /* ===================== Historial corto (opcional) ===================== */
+    const history = []; // {role:'user'|'assistant', content:'...'}
+    function pushHistory(role, content){
+      history.push({ role, content });
+      if (history.length > 12) history.shift(); // ~6 turnos
+    }
+
+    /* ===================== Mensajería (UI) ===================== */
     let interacted=false;
     function addMsg(role,text){
       const row=document.createElement('div'); row.className=`row ${role}`;
@@ -303,14 +350,20 @@
     box.addEventListener('keydown',mark); box.addEventListener('focus',mark); btn.addEventListener('click',mark);
     setTimeout(()=>{ if(!interacted && !msgs.querySelector('.row.user')) addMsg('bot','Hola, soy Valeria. ¿En qué te puedo ayudar para fortalecer la cultura de inocuidad?'); },5000);
 
-    /* —— Lógica de envío / PDFs (SIN cambios) —— */
+    /* ===================== PDFs (misma lógica + sesgo por tema) ===================== */
     async function ensurePdfMap(){ try{const r=await fetch('/docs/keyword_to_file.json',{cache:'no-store'}); return r.ok?await r.json():{}; }catch{return{};} }
     function wantsPdf(t){t=(t||'').toLowerCase();return t.includes('pdf')||t.includes('adjunto')||t.includes('documento');}
     const PRIORITY_KEYS=['sanitizante','j-512','j512','200 ppm','amonio cuaternario','amonio','fefo','retiro anticipado','proximo a vencer','rotulado','etiquetado','fraccionamiento de quesos','quesos','queso','milanesas','pollo','carne vacuna','carne ovina','poes','bpm','bpa','mip','5s','reclamos','retiro de mercado'];
-    function bestMatch(txt,map){const t=(txt||'').toLowerCase();for(const k of PRIORITY_KEYS){if(map[k]&&t.includes(k.toLowerCase()))return map[k];}const keys=Object.keys(map).sort((a,b)=>b.length-a.length);for(const k of keys){if(t.includes(k.toLowerCase()))return map[k];}return'index.html';}
+    function bestMatch(txt,map){
+      const t=(txt||'').toLowerCase();
+      for(const k of PRIORITY_KEYS){if(map[k]&&t.includes(k.toLowerCase()))return map[k];}
+      const keys=Object.keys(map).sort((a,b)=>b.length-a.length);
+      for(const k of keys){if(t.includes(k.toLowerCase()))return map[k];}
+      return 'index.html';
+    }
     async function fileExists(url){try{const r=await fetch(url,{method:'HEAD',cache:'no-store'});return r.ok;}catch{return false;}}
 
-    // Limpieza mínima de frases indeseadas / duplicados
+    /* ===================== Limpieza mínima de respuestas ===================== */
     function cleanReply(text){
       if(!text) return text;
       let out=text;
@@ -326,42 +379,67 @@
       return out;
     }
 
+    /* ===================== Envío ===================== */
     async function sendMessage(){
-      const text=box.value.trim(); if(!text) return;
-      addMsg('user',text); box.value=''; autosizeTextarea(); btn.disabled=true;
+      let text=box.value.trim(); if(!text) return;
+
+      // 1) UI muestra lo que escribió el usuario
+      addMsg('user',text);
+      updateTopicFromText(text);
+      pushHistory('user', text);
+
+      // 2) Expandir pedido implícito usando tema activo
+      const expanded = resolveImplicitRequest(text);
+
+      box.value=''; autosizeTextarea(); btn.disabled=true;
 
       try{
         const res=await fetch('/.netlify/functions/chat',{
           method:'POST', headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({message:text})
+          body:JSON.stringify({
+            message: expanded,           // ← lo que realmente pedimos al modelo
+            context_hint: lastTopic,     // ← opcional (si tu backend lo utiliza)
+            history                      // ← opcional (si se ignora, no afecta)
+          })
         });
 
         if(!res.ok){
           const t=await res.text().catch(()=> '');
           addMsg('bot',`⚠️ Error del servidor (${res.status}). ${t.slice(0,200)}`);
+          pushHistory('assistant', `Error ${res.status}`);
           return;
         }
 
         const data=await res.json().catch(()=> ({}));
         let reply = cleanReply(data.reply || data.answer || '');
 
+        // 3) Si el modelo pidió "indicame el área/tema..." pero hay contexto, lo resolvemos
+        reply = deGenericize(reply);
+
         const userWantsPdf = wantsPdf(text);
 
         if(reply){
           const botRow=addMsg('bot',reply);
+          updateTopicFromText(reply);
+          pushHistory('assistant', reply);
 
+          // 4) PDF: priorizamos el tema activo si existe
           if(userWantsPdf){
             const map=await ensurePdfMap();
-            const chosen=bestMatch(text,map);
-            const isIndex=chosen.toLowerCase()==='index.html';
+            let chosen;
+            if (lastTopic && lastTopic.pdfKey && map[lastTopic.pdfKey]) {
+              chosen = map[lastTopic.pdfKey];
+            } else {
+              chosen = bestMatch(text, map);
+            }
+            const isIndex=String(chosen||'').toLowerCase()==='index.html';
             const url=isIndex?'/docs/index.html':`/docs/${chosen}`;
             const ok=await fileExists(url);
 
             const prettyName=(isIndex?'Ver Todos Los PDFs'
-              : chosen.replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\s+/g,' ').trim()
+              : String(chosen||'').replace(/[-_]/g,' ').replace(/\.pdf$/i,'').replace(/\s+/g,' ').trim()
             ).replace(/\b\w/g,c=>c.toUpperCase());
 
-            // Adjunto compacto dentro de la burbuja
             const bubble=botRow.querySelector('.bubble');
             bubble.appendChild(document.createElement('br'));
             const a=document.createElement('a');
@@ -374,9 +452,11 @@
 
         }else{
           addMsg('bot','No llegó texto en "reply" ni en "answer". Verificá en Network → Response.');
+          pushHistory('assistant', 'Respuesta vacía');
         }
       }catch(e){
         addMsg('bot','❌ Error de red. ¿Estás online?');
+        pushHistory('assistant', 'Error de red');
       }finally{
         btn.disabled=false;
         msgs.scrollTop=msgs.scrollHeight;
@@ -385,11 +465,10 @@
     btn.addEventListener('click',sendMessage);
     box.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
 
-    /* Viewer imagen */
+    /* ===================== Viewer imagen ===================== */
     const viewer=document.getElementById('viewer');
     document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.classList.add('open');document.body.style.overflow='hidden';});
     viewer.addEventListener('click',()=>{viewer.classList.remove('open');document.body.style.overflow='';});
-
   </script>
 </body>
 </html>
