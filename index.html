@@ -6,11 +6,11 @@
   <title>Valeria · Seguridad Alimentaria</title>
   <style>
     :root {
-      --header-bg: #0b66c3;      /* Azul encabezado */
-      --app-bg: #f5f7fb;         /* Fondo día */
-      --bubble-user: #20262e;    /* Burbuja usuario (no verde) */
+      --header-bg: #0b66c3;
+      --app-bg: #f5f7fb;
+      --bubble-user: #20262e;
       --bubble-user-text: #ffffff;
-      --bubble-bot: #ffffff;     /* Burbuja Valeria */
+      --bubble-bot: #ffffff;
       --bubble-bot-text: #0f172a;
       --border: #e5e7eb;
       --muted: #6b7280;
@@ -19,7 +19,7 @@
       --textarea-bg: #ffffff;
     }
     .dark {
-      --app-bg: #0f172a;         /* Fondo noche */
+      --app-bg: #0f172a;
       --bubble-user: #1f2937;
       --bubble-user-text: #e5e7eb;
       --bubble-bot: #111827;
@@ -31,174 +31,61 @@
     }
 
     * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      background: var(--app-bg);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif;
-      color: var(--bubble-bot-text);
-    }
+    html, body { height: 100%; margin: 0; font-family: system-ui, sans-serif; background: var(--app-bg); color: var(--bubble-bot-text); }
 
-    /* Header fijo estilo WhatsApp */
-    .header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 14px;
-      background: var(--header-bg);
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-    .avatar-mini {
-      width: 38px; height: 38px;
-      border-radius: 999px;
-      overflow: hidden;
-      flex: 0 0 auto;
-      border: 2px solid rgba(255,255,255,0.35);
-      cursor: pointer;
-    }
-    .avatar-mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    /* Header estilo WhatsApp */
+    .header { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--header-bg); color: #fff; }
+    .avatar-mini { width: 38px; height: 38px; border-radius: 999px; overflow: hidden; flex: 0 0 auto; border: 2px solid rgba(255,255,255,0.35); cursor: pointer; }
+    .avatar-mini img { width: 100%; height: 100%; object-fit: cover; }
     .title-wrap { display: flex; flex-direction: column; line-height: 1.1; }
     .title { font-weight: 700; font-size: 16px; }
     .subtitle { font-size: 12px; opacity: 0.9; }
-
     .header-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-    .toggle {
-      width: 40px; height: 24px; border-radius: 999px; position: relative;
-      background: rgba(255,255,255,0.35); cursor: pointer;
-    }
-    .toggle .knob {
-      position: absolute; top: 2px; left: 2px;
-      width: 20px; height: 20px; border-radius: 50%;
-      background: #fff; transition: all .2s ease;
-    }
+    .toggle { width: 40px; height: 24px; border-radius: 999px; position: relative; background: rgba(255,255,255,0.35); cursor: pointer; }
+    .toggle .knob { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: all .2s ease; }
     .toggle.active .knob { left: 18px; }
 
     /* Chat layout */
-    .chat {
-      display: flex; flex-direction: column;
-      height: calc(100vh - 58px);
-    }
-    .messages {
-      flex: 1 1 auto;
-      overflow-y: auto;
-      padding: 12px;
-      scroll-behavior: smooth;
-    }
+    .chat { display: flex; flex-direction: column; height: calc(100vh - 58px); }
+    .messages { flex: 1 1 auto; overflow-y: auto; padding: 12px; scroll-behavior: smooth; }
     .row { display: flex; margin-bottom: 10px; }
     .row.user { justify-content: flex-end; }
     .row.bot { justify-content: flex-start; }
+    .bubble { max-width: min(85%, 720px); padding: 10px 12px; border-radius: 16px; line-height: 1.35; font-size: 15px; border: 1px solid var(--border); white-space: pre-wrap; word-wrap: break-word; overflow-wrap: anywhere; }
+    .row.user .bubble { background: var(--bubble-user); color: var(--bubble-user-text); border-color: transparent; border-bottom-right-radius: 6px; }
+    .row.bot .bubble { background: var(--bubble-bot); color: var(--bubble-bot-text); border-bottom-left-radius: 6px; }
 
-    .bubble {
-      max-width: min(85%, 720px);
-      padding: 10px 12px;
-      border-radius: 16px;
-      line-height: 1.35;
-      font-size: 15px;
-      border: 1px solid var(--border);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      overflow-wrap: anywhere;
-    }
-    .row.user .bubble {
-      background: var(--bubble-user);
-      color: var(--bubble-user-text);
-      border-color: transparent;
-      border-bottom-right-radius: 6px;
-    }
-    .row.bot .bubble {
-      background: var(--bubble-bot);
-      color: var(--bubble-bot-text);
-      border-bottom-left-radius: 6px;
-    }
-
-    /* Adjuntos compactos ✔️ */
-    .attachments {
-      margin-top: 6px;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 6px;
-    }
-    .attach-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 12px;
-    }
-    .attach-title { font-weight: 600; margin: 0 0 4px 0; display: flex; gap: 6px; align-items: center; }
+    /* Adjuntos compactos */
+    .attachments { margin-top: 6px; display: grid; grid-template-columns: 1fr; gap: 6px; }
+    .attach-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+    .attach-title { font-weight: 600; margin-bottom: 4px; display: flex; gap: 6px; align-items: center; }
     .attach-meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-    .attach-actions a {
-      display: inline-block; text-decoration: none;
-      padding: 6px 10px; border-radius: 10px;
-      border: 1px solid var(--accent);
-      color: var(--accent);
-      font-weight: 600; font-size: 13px;
-    }
+    .attach-actions a { display: inline-block; text-decoration: none; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--accent); color: var(--accent); font-weight: 600; font-size: 13px; }
 
     /* Input fijo abajo */
-    .composer {
-      flex: 0 0 auto;
-      border-top: 1px solid var(--border);
-      background: var(--app-bg);
-      padding: 10px 10px 12px;
-    }
-    .composer-wrap {
-      display: flex; align-items: flex-end; gap: 8px;
-      background: var(--textarea-bg); border: 1px solid var(--border);
-      border-radius: 14px; padding: 8px;
-    }
-    .composer textarea {
-      flex: 1 1 auto; resize: none; border: none; outline: none;
-      background: transparent; color: inherit; font: inherit;
-      max-height: 200px; min-height: 22px;
-    }
-    .send-btn {
-      width: 40px; height: 40px; border-radius: 10px; border: none;
-      background: var(--accent); color: #fff; display: grid; place-items: center;
-      cursor: pointer;
-    }
-    .send-btn svg { width: 20px; height: 20px; display: block; }
+    .composer { flex: 0 0 auto; border-top: 1px solid var(--border); background: var(--app-bg); padding: 10px 10px 12px; }
+    .composer-wrap { display: flex; align-items: flex-end; gap: 8px; background: var(--textarea-bg); border: 1px solid var(--border); border-radius: 14px; padding: 8px; }
+    .composer textarea { flex: 1 1 auto; resize: none; border: none; outline: none; background: transparent; color: inherit; font: inherit; max-height: 200px; min-height: 22px; }
+    .send-btn { width: 40px; height: 40px; border-radius: 10px; border: none; background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; }
+    .send-btn svg { width: 20px; height: 20px; }
 
     /* Modal avatar expandido */
-    .modal {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-      display: none; align-items: center; justify-content: center; z-index: 50;
-      padding: 20px;
-    }
+    .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
     .modal.open { display: flex; }
-    .modal-card {
-      position: relative; max-width: 480px; width: 100%;
-      background: #000; border-radius: 14px; overflow: hidden;
-    }
+    .modal-card { position: relative; max-width: 480px; width: 100%; background: #000; border-radius: 14px; overflow: hidden; }
     .modal-card img { width: 100%; display: block; }
-    .modal-caption {
-      position: absolute; left: 0; right: 0; bottom: 0;
-      background: linear-gradient(transparent, rgba(0,0,0,0.75));
-      color: #fff; padding: 12px 14px;
-    }
+    .modal-caption { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, rgba(0,0,0,0.75)); color: #fff; padding: 12px 14px; }
     .modal-caption .line1 { font-weight: 700; }
     .modal-caption .line2 { margin-top: 4px; opacity: 0.95; }
-    .modal-close {
-      position: absolute; top: 8px; right: 8px;
-      background: rgba(255,255,255,0.15);
-      color: #fff; border: none; border-radius: 999px;
-      width: 32px; height: 32px; cursor: pointer;
-      font-size: 18px; display: grid; place-items: center;
-    }
+    .modal-close { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.15); color: #fff; border: none; border-radius: 999px; width: 32px; height: 32px; cursor: pointer; font-size: 18px; display: grid; place-items: center; }
 
     a { color: var(--accent); }
     b { font-weight: 700; }
   </style>
 </head>
 <body>
-  <!-- Header estilo WhatsApp -->
   <div class="header">
     <div class="avatar-mini" id="avatarMini" title="Ver perfil">
-      <!-- Imagen mini SIN texto (podés reemplazar el archivo sin tocar código) -->
       <img src="assets/valeria-mini.jpg" alt="Valeria mini" />
     </div>
     <div class="title-wrap">
@@ -206,35 +93,26 @@
       <div class="subtitle">Seguridad Alimentaria</div>
     </div>
     <div class="header-actions">
-      <!-- Toggle día/noche -->
       <div class="toggle" id="themeToggle" title="Día / Noche">
         <div class="knob"></div>
       </div>
     </div>
   </div>
 
-  <!-- Chat -->
   <div class="chat">
     <div class="messages" id="messages"></div>
-
-    <!-- Composer -->
     <div class="composer">
       <div class="composer-wrap">
         <textarea id="input" rows="1" placeholder="Mensaje"></textarea>
         <button class="send-btn" id="sendBtn" aria-label="Enviar">
-          <!-- Flecha, sin color verde -->
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M4 12l16-8-4 8 4 8-16-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-          </svg>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 12l16-8-4 8 4 8-16-8z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Modal avatar expandido (con frase adentro) -->
   <div class="modal" id="avatarModal" aria-hidden="true">
     <div class="modal-card">
-      <!-- Imagen FULL con overlay de texto (tu imagen puede no tener texto) -->
       <img src="assets/valeria-full.jpg" alt="Valeria perfil completo" />
       <div class="modal-caption">
         <div class="line1">Valeria · Seguridad Alimentaria</div>
@@ -243,12 +121,10 @@
       <button class="modal-close" id="modalClose" aria-label="Cerrar">×</button>
     </div>
   </div>
-
   <script>
     // ---------------------------
     // Tema Día/Noche con memoria
     // ---------------------------
-    const root = document.documentElement;
     const themeToggle = document.getElementById('themeToggle');
     function setTheme(mode) {
       if (mode === 'noche') {
@@ -260,7 +136,7 @@
         themeToggle.classList.remove('active');
         localStorage.setItem('valeria_theme', 'dia');
       }
-      // Guardamos pista para la capa de razonamiento si quiere usarlo
+      // pista opcional para el motor de contexto
       window.__VALERIA_STATE = window.__VALERIA_STATE || {};
       window.__VALERIA_STATE.ultimo_modo = mode;
     }
@@ -268,7 +144,6 @@
       const isDark = document.body.classList.contains('dark');
       setTheme(isDark ? 'dia' : 'noche');
     });
-    // Cargar preferencia previa
     setTheme(localStorage.getItem('valeria_theme') || 'dia');
 
     // ---------------------------
@@ -302,7 +177,6 @@
     }
 
     function sanitize(text) {
-      // Simple sanitización para mensajes de usuario
       const div = document.createElement('div');
       div.textContent = text;
       return div.textContent;
@@ -317,7 +191,7 @@
 
       if (html) {
         bubble.innerHTML = html;
-      } else {
+      } else if (text) {
         bubble.textContent = text;
       }
 
@@ -332,7 +206,7 @@
             <div class="attach-title">📄 <span>${att.title}</span></div>
             <div class="attach-meta">Código: ${att.code}</div>
             <div class="attach-actions">
-              <a href="docs/${att.pdfId}" download target="_blank" rel="noopener">✔️ ${att.downloadHint}</a>
+              <a href="docs/${att.pdfId}" download target="_blank" rel="noopener">✔️ Descargar PDF</a>
             </div>
           `;
           wrap.appendChild(card);
@@ -357,10 +231,11 @@
       inputEl.value = '';
       autoResizeTextarea(inputEl);
 
-      // Componer respuesta de Valeria (usa el motor de contexto integrado)
+      // Componer respuesta de Valeria (motor de contexto integrado)
       try {
         const { replyHtml, attachments } = window.valeriaCraftReply(text);
-        renderMessage({ html: replyHtml, sender: 'bot', attachments });
+        // Si replyHtml está vacío pero hay adjuntos: modo "PDF directo"
+        renderMessage({ html: replyHtml || '', sender: 'bot', attachments });
       } catch (e) {
         renderMessage({
           html: '❗ Ocurrió un inconveniente al procesar la consulta. Probá de nuevo o especificá el <b>producto</b> o <b>proceso</b> que querés trabajar. 🙂',
@@ -379,19 +254,11 @@
       }
     });
 
-    // Mensaje inicial (no intrusivo; solo si el usuario no escribió aún)
-    // Podés desactivarlo si no querés saludo automático.
-    /*
-    renderMessage({
-      html: '👋 Soy <b>Valeria</b>, especialista en <b>seguridad alimentaria</b>. Contame el <b>producto</b> o <b>proceso</b> y te doy el paso a paso + PDF. ✨',
-      sender: 'bot'
-    });
-    */
+    // Sin saludo automático para no interferir en pruebas.
   </script>
-
   <!-- ==========================================================
        🧠 Valeria Context Engine (Motor de comprensión e implícitos)
-       Integrado completo y listo (puede vivir al final del index)
+       Integrado completo (sin parches aparte)
        ========================================================== -->
   <script>
   (function () {
@@ -413,6 +280,7 @@
     const stripAccents = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const norm = (s) => stripAccents(String(s || '').toLowerCase().trim());
 
+    // Normalizador (sinónimos AR y errores comunes)
     const SYN = [
       // Productos
       { find: [/carne\s+vacuna/], to: 'carnes rojas' },
@@ -426,7 +294,7 @@
       { find: [/fraccion(ar|ado|amiento)/], to: 'fraccionar' },
       { find: [/etiquet(ar|ado)|rotul(ar|ado)/], to: 'etiquetar' },
       { find: [/sanitiz(ar|ante)|desinfect(ar|ante)/], to: 'sanitizar' },
-      { find: [/retir(ar|o)|venc(e|imien)/], to: 'retiro' },
+      { find: [/retir(ar|o)|venc(e|imien)|vida util|aptitud/], to: 'retiro' },
       { find: [/embandej(ad|ar|ado)|ambandejado/], to: 'en bandeja' },
       // Insumos
       { find: [/lavandina|cloro/], to: 'lavandina' },
@@ -434,7 +302,7 @@
       // Documentos / nociones
       { find: [/procedimiento|poe|instructivo/], to: 'procedimiento' },
       { find: [/plan\s+de\s+accion|plan\s+correctivo/], to: 'plan de accion' },
-      { find: [/registro\s+de\s+sucursales/], to: 'registro de sucursales' },
+      { find: [/registro\s+de\s+sucursales/], to: 'registro de sucursales' }
     ];
 
     function normalizeTokens(text) {
@@ -443,11 +311,11 @@
       SYN.forEach(({ find, to }) => {
         find.forEach((re) => { out = out.replace(re, to); });
       });
-      return out;
+      return out.replace(/\s+/g,' ').trim();
     }
 
     // -------------------------
-    // Catálogo de procedimientos
+    // Catálogo de procedimientos (respetando nombres/rutas en docs/)
     // -------------------------
     const PROCEDURES = {
       'fraccionado_quesos': {
@@ -542,7 +410,7 @@
     };
 
     // -------------------------
-    // Reglas internas clave
+    // Reglas internas clave (complementarias)
     // -------------------------
     const RULES = {
       sanitizante: {
@@ -556,11 +424,18 @@
     };
 
     // -------------------------
-    // Intención + entidades
+    // Detección de intención + entidades
     // -------------------------
     function detectIntent(textN) {
       const intents = [];
-      if (/\b(procedimiento|poe|instructivo|dame el procedimiento|pasame el procedimiento)\b/.test(textN)) {
+      if (/\b(dame|pasame|mandame|enviame|mostrame)\s+el\s+procedimiento\b/.test(textN) ||
+          /\b(dame|pasame|mandame|enviame|mostrame)\s+el\s+pdf\b/.test(textN) ||
+          /\b(quiero|necesito)\s+el\s+procedimiento\b/.test(textN) ||
+          /\b(quiero|necesito)\s+el\s+pdf\b/.test(textN) ||
+          (/\b(pdf|procedimiento)\b/.test(textN) && textN.length <= 35)) {
+        intents.push('pedido_pdf_directo');
+        intents.push('solicitar_procedimiento');
+      } else if (/\b(procedimiento|poe|instructivo)\b/.test(textN)) {
         intents.push('solicitar_procedimiento');
       }
       if (/\b(fraccionar|etiquetar|rotular|en bandeja|sanitizar|desinfectar)\b/.test(textN)) {
@@ -605,7 +480,7 @@
         return 'medicion_sanitizante';
       }
       if (has(entities, 'registro de sucursales')) return 'registro_sucursales';
-      if (detectIntent(entities.join(' ')).includes('riesgo')) return 'plan_accion';
+      if (intents.includes('riesgo')) return 'plan_accion';
       return null;
     }
 
@@ -613,8 +488,7 @@
       return {
         title: `${proc.title}`,
         code: proc.code,
-        pdfId: proc.pdfId,
-        downloadHint: 'Descargar PDF'
+        pdfId: proc.pdfId
       };
     }
 
@@ -622,15 +496,15 @@
       return lines.map(l => `• ${l}`).join('<br>');
     }
 
-    function buildReply({ state, intents, tema, procedureKey, entities, textN }) {
+    function buildReply({ intents, tema, procedureKey, textN }) {
       const parts = [];
       const attachments = [];
 
       const needsSanitizante = /sanitizar|mesada|amonio cuaternario/.test(textN);
       const needsRetiro = /retiro|venc|vida util|aptitud/.test(textN);
 
-      // Procedimiento principal (si existe)
-      if (procedureKey) {
+      // Procedimiento principal (si existe y NO es pedido directo)
+      if (procedureKey && !intents.includes('pedido_pdf_directo')) {
         const proc = PROCEDURES[procedureKey];
         if (proc) {
           parts.push(`🔎 Tema: <b>${tema || 'general'}</b>`);
@@ -639,25 +513,25 @@
         }
       }
 
-      // Si no hubo procedimiento pero hay intención operativa
-      if (!procedureKey && intents.includes('consulta_operativa')) {
+      // Si no hubo procedimiento pero hay intención operativa y no es pedido directo
+      if (!procedureKey && intents.includes('consulta_operativa') && !intents.includes('pedido_pdf_directo')) {
         parts.push('Entiendo que necesitás una <b>indicación operativa</b>. ¿Sobre qué producto/área (p. ej., <b>quesos</b>, <b>pollo</b>, <b>mesada</b>) te doy el paso a paso exacto? 🙂');
       }
 
-      // Reglas sanitizante
-      if (needsSanitizante) {
+      // Reglas sanitizante (complemento)
+      if (needsSanitizante && !intents.includes('pedido_pdf_directo')) {
         parts.push(`🧼 ${RULES.sanitizante.message}`);
         attachments.push(attachmentCard(PROCEDURES['medicion_sanitizante']));
       }
 
-      // Regla retiro/aptitud
-      if (needsRetiro) {
+      // Regla retiro/aptitud (complemento)
+      if (needsRetiro && !intents.includes('pedido_pdf_directo')) {
         parts.push(`⏱️ ${RULES.retiro_anticipado.message}`);
-        // Ofrecer plan de acción si se trata de producto fuera de aptitud
         attachments.push(attachmentCard(PROCEDURES['plan_accion']));
       }
 
-      if (!parts.length) {
+      // Ayuda por defecto
+      if (!parts.length && !intents.includes('pedido_pdf_directo')) {
         parts.push('Estoy para ayudarte en <b>inocuidad alimentaria</b> (CAA, BPM y procedimientos internos). Decime el <b>producto</b> o el <b>proceso</b> y te doy el paso a paso + PDF. ✨');
       }
 
@@ -666,32 +540,47 @@
     }
 
     function processTurn({ userText, state }) {
-      const defaultClone = { ...defaultState };
-      const safeState = { ...defaultClone, ...(state || {}) };
+      const safeState = { ...defaultState, ...(state || {}) };
       const textN = normalizeTokens(userText);
 
-      // 1) Normalización de tokens
-      const normalized = normalizeTokens(textN);
+      // 1) Intención y entidades
+      const intents = detectIntent(textN);
+      const entities = extractEntities(textN);
 
-      // 2) Intención y entidades
-      const intents = detectIntent(normalized);
-      const entities = extractEntities(normalized);
+      // 2) Resolver tema (conserva el último si no hay nuevo)
+      let tema = resolveTema(safeState, entities);
 
-      // 3) Resolver tema (persistir si no hay nuevo)
-      const tema = resolveTema(safeState, entities);
-
-      // 4) Adivinar procedimiento
+      // 3) Adivinar procedimiento principal
       let procedureKey = guessProcedure(tema, intents, entities);
 
-      // 5) Si pidió “dame el procedimiento” y hay tema en estado previo
+      // 4) Si pidió procedimiento/PDF y no hay tema, usar el de sesión si existe
       if (!procedureKey && intents.includes('solicitar_procedimiento') && safeState.tema_actual) {
-        procedureKey = guessProcedure(safeState.tema_actual, intents, entities);
+        tema = safeState.tema_actual;
+        procedureKey = guessProcedure(tema, intents, entities);
       }
 
-      // 6) Construir respuesta
-      const { replyHtml, attachments } = buildReply({ state: safeState, intents, tema, procedureKey, entities, textN: normalized });
+      // 5) Construir respuesta preliminar
+      let { replyHtml, attachments } = buildReply({ intents, tema, procedureKey, textN });
 
-      // 7) Actualizar estado
+      // 6) **Modo PDF directo**: ante pedido explícito => SOLO PDF
+      if (intents.includes('pedido_pdf_directo')) {
+        // Si no hay procedimiento todavía, intentamos inferirlo con tema actual
+        if (!procedureKey && tema) {
+          procedureKey = guessProcedure(tema, intents, entities);
+        }
+        // Si lo tenemos, adjuntamos SOLO ese PDF (sin texto)
+        if (procedureKey) {
+          const proc = PROCEDURES[procedureKey];
+          attachments = [attachmentCard(proc)];
+          replyHtml = ''; // sin rodeos
+        } else {
+          // Sin contexto suficiente: pedir 1 dato crítico mínimo
+          attachments = [];
+          replyHtml = 'Para enviarte el <b>PDF</b> directo, decime el <b>producto o proceso</b> (p. ej., <b>quesos</b>, <b>pollo</b>, <b>mesada</b>).';
+        }
+      }
+
+      // 7) Actualizar estado de sesión
       safeState.tema_actual = tema || safeState.tema_actual || null;
       safeState.procedimiento_relevante = procedureKey || safeState.procedimiento_relevante || null;
       safeState.entidades = Array.from(new Set([...(safeState.entidades || []), ...entities]));
@@ -703,15 +592,6 @@
     window.valeriaCraftReply = function(userText) {
       const out = processTurn({ userText, state: window.__VALERIA_STATE });
       window.__VALERIA_STATE = out.state;
-      // Enriquecer adjuntos con prefijo de ícono aquí (UI se encarga del 📄 y ✔️)
-      // Devolvemos tal cual para que la UI los pinte.
-      // Adjuntamos también el título con 📄 al render de UI.
-      if (Array.isArray(out.attachments)) {
-        out.attachments = out.attachments.map(a => ({
-          ...a,
-          title: a.title // el ícono 📄 lo agregamos en UI
-        }));
-      }
       return out;
     };
   })();
