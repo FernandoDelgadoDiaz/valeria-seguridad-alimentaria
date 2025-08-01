@@ -2,275 +2,233 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Valeria · Seguridad Alimentaria</title>
-  <link rel="icon" href="favicon.png" />
+  <link rel="icon" href="favicon-valeria.png" type="image/png">
   <style>
     body {
       margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #e6ecf0;
-      transition: background-color 0.3s;
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
     header {
       background-color: #007bff;
       color: white;
-      padding: 12px;
+      padding: 10px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
     }
-    .profile {
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-    }
-    .profile img {
-      width: 40px;
+    header img {
+      border-radius: 50%;
       height: 40px;
-      border-radius: 50%;
+      width: 40px;
       object-fit: cover;
-      margin-right: 10px;
-    }
-    .profile-name {
-      font-weight: bold;
-      font-size: 16px;
-      line-height: 1.2;
-    }
-    .profile-name small {
-      font-weight: normal;
-      font-size: 12px;
-      display: block;
-    }
-    .dark-mode-toggle {
-      background-color: white;
-      color: black;
-      border: none;
-      border-radius: 50%;
-      width: 28px;
-      height: 28px;
-      font-size: 16px;
       cursor: pointer;
     }
-    .chat-container {
-      max-width: 600px;
-      margin: 0 auto;
+    #chat {
+      flex-grow: 1;
       padding: 10px;
-      height: calc(100vh - 60px);
       overflow-y: auto;
-      background-color: #f1f1f1;
+      background: #e5ddd5;
     }
     .message {
-      padding: 10px 14px;
-      margin: 8px;
       max-width: 80%;
-      border-radius: 12px;
-      line-height: 1.4;
-      word-wrap: break-word;
+      margin: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      clear: both;
     }
     .user {
-      background-color: #cce5ff;
-      align-self: flex-end;
-      margin-left: auto;
+      background-color: #dcf8c6;
+      float: right;
+      text-align: right;
     }
     .valeria {
-      background-color: #ffffff;
-      border: 1px solid #ccc;
-      align-self: flex-start;
+      background-color: #fff;
+      float: left;
+      text-align: left;
     }
-    .chat-box {
+    footer {
       display: flex;
       padding: 10px;
-      max-width: 600px;
-      margin: 0 auto;
-      background-color: #fff;
-      border-top: 1px solid #ccc;
+      background: #fff;
     }
-    .chat-box textarea {
-      flex: 1;
-      padding: 8px;
-      resize: none;
+    textarea {
+      flex-grow: 1;
+      padding: 10px;
       border-radius: 20px;
       border: 1px solid #ccc;
-      max-height: 100px;
+      resize: none;
+      max-height: 120px;
       overflow-y: auto;
     }
-    .chat-box button {
-      margin-left: 10px;
+    button {
       background-color: #007bff;
       border: none;
-      border-radius: 50%;
-      width: 36px;
-      height: 36px;
       color: white;
-      font-size: 18px;
+      padding: 10px 15px;
+      margin-left: 10px;
+      border-radius: 50%;
       cursor: pointer;
     }
     .attachment {
-      border: 1px solid #007bff;
-      background-color: #e9f5ff;
-      padding: 10px;
-      border-radius: 10px;
-      margin-top: 5px;
+      background: #eef;
+      padding: 8px;
+      border-radius: 8px;
       display: inline-block;
     }
-    .attachment a {
-      color: #007bff;
-      text-decoration: none;
-      font-weight: bold;
-    }
     .dark-mode {
+      background-color: #121212;
+      color: white;
+    }
+    .dark-mode #chat {
       background-color: #1e1e1e;
     }
-    .dark-mode .chat-container {
-      background-color: #121212;
-    }
-    .dark-mode .valeria {
-      background-color: #2c2c2c;
-      color: #e0e0e0;
-    }
-    .dark-mode .user {
-      background-color: #0056b3;
+    .dark-mode .message.user {
+      background-color: #2e7d32;
       color: white;
     }
-    .dark-mode .attachment {
-      background-color: #003f7f;
+    .dark-mode .message.valeria {
+      background-color: #333;
       color: white;
     }
-    .dark-mode .attachment a {
-      color: #9dd1ff;
+    #profileModal {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      z-index: 999;
+      text-align: center;
+    }
+    #profileModal img {
+      width: 150px;
+      border-radius: 50%;
+    }
+    #profileModal p {
+      margin-top: 10px;
+    }
+    .profile-title {
+      font-weight: bold;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
   <header>
-    <div class="profile" onclick="openProfile()">
-      <img src="perfil-mini.jpg" alt="Valeria">
-      <div class="profile-name">
-        Valeria<br><small>Seguridad Alimentaria</small>
-      </div>
-    </div>
-    <button class="dark-mode-toggle" onclick="toggleDarkMode()">🌓</button>
+    <div style="color:white; font-weight: bold;">Valeria</div>
+    <img src="mini-valeria.jpg" alt="Perfil" onclick="openProfile()">
   </header>
 
-  <div class="chat-container" id="chat"></div>
+  <div id="chat"></div>
 
-  <div class="chat-box">
-    <textarea id="input" placeholder="Mensaje" rows="1" oninput="autoExpand(this)"></textarea>
+  <footer>
+    <textarea id="input" rows="1" placeholder="Mensaje" oninput="autoExpand(this)"></textarea>
     <button onclick="sendMessage()">➤</button>
-  </div>
+  </footer>
 
-  <div id="profileModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:2000; text-align:center; padding-top:50px;">
-    <img src="perfil-full.jpg" alt="Valeria" style="width:200px; border-radius:50%; box-shadow: 0 0 10px gray;"><br><br>
-    <h2>Valeria · Seguridad Alimentaria</h2>
+  <div id="profileModal">
+    <img src="valeria-profile-full.jpg" alt="Valeria" />
+    <div class="profile-title">Valeria · Seguridad Alimentaria</div>
     <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
-    <button onclick="closeProfile()" style="margin-top:20px; padding:8px 20px; border:none; background:#007bff; color:white; border-radius:20px;">Cerrar</button>
+    <button onclick="closeProfile()">Cerrar</button>
   </div>
-<script>
-  const chat = document.getElementById("chat");
-  const input = document.getElementById("input");
 
-  let temaContextual = "";
+  <script>
+    const chat = document.getElementById("chat");
+    const input = document.getElementById("input");
+    let contexto = "";
 
-  function sendMessage() {
-    const text = input.value.trim();
-    if (!text) return;
-    appendMessage("user", text);
-    input.value = "";
-    handleValeriaResponse(text.toLowerCase());
-  }
-
-  function appendMessage(sender, text, isAttachment = false) {
-    const msg = document.createElement("div");
-    msg.className = `message ${sender}`;
-    if (isAttachment) {
-      msg.innerHTML = `<div class="attachment">✔️ <a href="${text}" target="_blank">Abrir documento</a></div>`;
-    } else {
-      msg.innerHTML = text
-        .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
-        .replace(/:\)/g, "😊")
-        .replace(/:\(/g, "😟")
-        .replace(/<br>/g, "<br/>");
-    }
-    chat.appendChild(msg);
-    chat.scrollTop = chat.scrollHeight;
-  }
-
-  function handleValeriaResponse(text) {
-    const incluye = (palabras) => palabras.some(p => text.includes(p));
-    const pdfBase = "./docs/";
-    const respuestas = {
-      queso: {
-        texto: `Para rotular el 🧀 queso correctamente, debes seguir el 📋 procedimiento de fraccionado de quesos.<br><br>1. Envuelto: Cada fracción debe estar envuelta en film plástico.<br>2. 🏷️ Etiqueta con:<br>• Tipo de queso<br>• Fecha de fraccionado<br>• Fecha de vencimiento original<br>• Responsable del fraccionado<br><br>¿Querés que te pase el PDF con el modelo? ✔️`,
-        archivo: pdfBase + "proc_fraccionado_quesos.pdf"
-      },
-      sanitizante: {
-        texto: `No está permitido el uso de lavandina. Debe utilizarse 🧪 J-512 a 200 ppm para desinfección, según el 📋 procedimiento G-PG-007. ¿Querés el documento completo? ✔️`,
-        archivo: pdfBase + "G-PG-007_medicion_sanitizante.pdf"
-      },
-      pollo: {
-        texto: `El manejo del pollo debe respetar temperatura, higiene, rotulación y tiempos. Si querés te paso el 📋 procedimiento oficial. ✔️`,
-        archivo: pdfBase + "proc_manejo_pollo.pdf"
-      },
-      plan: {
-        texto: `El 📋 plan de acción se utiliza para documentar acciones inmediatas y preventivas ante desvíos o no conformidades. ¿Querés el modelo en PDF? ✔️`,
-        archivo: pdfBase + "plan_accion.pdf"
-      }
-    };
-
-    if (incluye(["quién sos", "quien sos"])) {
-      appendMessage("valeria", "👩🏻‍⚕️ Soy Valeria, especialista en seguridad alimentaria. Estoy acá para ayudarte con todo lo que necesites relacionado a BPM, CAA y procedimientos internos. 😊");
-      return;
+    function sendMessage() {
+      const text = input.value.trim();
+      if (!text) return;
+      appendMessage("user", text);
+      input.value = "";
+      responderValeria(text.toLowerCase());
     }
 
-    if (incluye(["modo noche", "modo oscuro"])) {
-      toggleDarkMode();
-      appendMessage("valeria", "🌗 Modo noche activado.");
-      return;
+    function appendMessage(sender, text, isAttachment = false) {
+      const msg = document.createElement("div");
+      msg.className = `message ${sender}`;
+      msg.innerHTML = isAttachment
+        ? `<div class="attachment">✔️ <a href="${text}" target="_blank">Abrir documento</a></div>`
+        : text.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")
+              .replace(/:\)/g, "😊")
+              .replace(/:\(/g, "😟")
+              .replace(/<br>/g, "<br/>");
+      chat.appendChild(msg);
+      chat.scrollTop = chat.scrollHeight;
     }
 
-    // Detectar si es pedido directo del procedimiento
-    if (incluye(["dame el procedimiento", "pasame el pdf", "mostrame el documento", "pasame el documento"])) {
-      if (temaContextual && respuestas[temaContextual]) {
-        appendMessage("valeria", respuestas[temaContextual].archivo, true);
-      } else {
-        appendMessage("valeria", "📄 ¿Sobre qué tema querés el procedimiento? (Por ejemplo: queso, sanitizante, pollo...)");
-      }
-      return;
-    }
+    function responderValeria(text) {
+      const incluye = (palabras) => palabras.some(p => text.includes(p));
+      const ruta = "./docs/";
+      const temas = {
+        queso: {pdf: "proc_fraccionado_quesos.pdf", mensaje: "🏷️ Recordá rotular con tipo de queso, fecha de fraccionado, vencimiento original y responsable. ¿Querés el modelo de etiqueta? ✔️"},
+        sanitizante: {pdf: "G-PG-007_medicion_sanitizante.pdf", mensaje: "🧪 Para desinfectar usá J-512 a 200 ppm, según procedimiento G-PG-007. ¿Te paso el PDF? ✔️"},
+        pollo: {pdf: "proc_manejo_pollo.pdf", mensaje: "🍗 El pollo requiere cuidados especiales. ¿Querés el procedimiento completo? ✔️"},
+        plan: {pdf: "plan_accion.pdf", mensaje: "📝 El plan de acción documenta desvíos y medidas. ¿Querés ver el formato? ✔️"}
+      };
 
-    // Determinar contexto y responder
-    for (const clave in respuestas) {
-      if (text.includes(clave)) {
-        temaContextual = clave;
-        appendMessage("valeria", respuestas[clave].texto);
+      if (incluye(["quién sos", "quien sos"])) {
+        appendMessage("valeria", "👩🏻‍⚕️ Soy Valeria, especialista en seguridad alimentaria. Estoy para ayudarte con BPM, CAA y procedimientos internos. 😊");
         return;
       }
+
+      if (incluye(["modo noche", "modo oscuro"])) {
+        toggleDarkMode();
+        appendMessage("valeria", "🌗 Modo noche activado.");
+        return;
+      }
+
+      if (incluye(["dame", "pasame", "enviame", "mostrame"]) && incluye(["pdf", "procedimiento", "documento"])) {
+        if (contexto && temas[contexto]) {
+          appendMessage("valeria", ruta + temas[contexto].pdf, true);
+        } else {
+          appendMessage("valeria", "📄 ¿De qué tema querés el procedimiento? Ej: queso, sanitizante, pollo...");
+        }
+        return;
+      }
+
+      for (const t in temas) {
+        if (text.includes(t)) {
+          contexto = t;
+          appendMessage("valeria", temas[t].mensaje);
+          return;
+        }
+      }
+
+      appendMessage("valeria", "🤔 No entendí del todo. ¿Podés reformular o decirme sobre qué procedimiento o tema querés hablar?");
     }
 
-    // Respuesta genérica si no se identifica tema
-    appendMessage("valeria", "🤔 No entendí del todo. ¿Podés reformular o decirme sobre qué procedimiento o tema querés hablar?");
-  }
+    function autoExpand(textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = (textarea.scrollHeight) + 'px';
+    }
 
-  function autoExpand(textarea) {
-    textarea.style.height = 'auto';
-    textarea.style.height = (textarea.scrollHeight) + 'px';
-  }
+    function toggleDarkMode() {
+      document.body.classList.toggle("dark-mode");
+    }
 
-  function toggleDarkMode() {
-    document.body.classList.toggle("dark-mode");
-  }
+    function openProfile() {
+      document.getElementById("profileModal").style.display = "block";
+    }
 
-  function openProfile() {
-    document.getElementById("profileModal").style.display = "block";
-  }
-
-  function closeProfile() {
-    document.getElementById("profileModal").style.display = "none";
-  }
-</script>
+    function closeProfile() {
+      document.getElementById("profileModal").style.display = "none";
+    }
+  </script>
 </body>
 </html>
