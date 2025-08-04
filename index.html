@@ -1,24 +1,25 @@
-<!doctype html>
+<!DOCTYPE html>
+
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-  <meta name="theme-color" content="#0a2f73" />
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Valeria · Seguridad Alimentaria</title>
-  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
-  <!-- Favicons opcionales -->
-  <link rel="icon" type="image/png" sizes="32x32" href="/icons/valeria-32.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/valeria-192.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="/icons/valeria-512.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/valeria-180.png">
-  <link rel="mask-icon" href="/icons/valeria-maskable.svg" color="#0a2f73">
-  <!-- Fallback si no están los íconos aún -->
-  <link rel="icon" href="/valeria-mini.jpg" />
-  <!-- v-2025.08.01-definitivo + contexto -->
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" name="viewport"/>
+<meta content="#0a2f73" name="theme-color"/>
+<link href="/manifest.webmanifest" rel="manifest"/>
+<meta content="yes" name="apple-mobile-web-app-capable"/>
+<meta content="default" name="apple-mobile-web-app-status-bar-style"/>
+<title>Valeria · Seguridad Alimentaria</title>
+<meta content="Asistente Valeria - Seguridad Alimentaria (Argentina)" name="description"/>
+<!-- Favicons opcionales -->
+<link href="/icons/valeria-32.png" rel="icon" sizes="32x32" type="image/png"/>
+<link href="/icons/valeria-192.png" rel="icon" sizes="192x192" type="image/png"/>
+<link href="/icons/valeria-512.png" rel="icon" sizes="512x512" type="image/png"/>
+<link href="/icons/valeria-180.png" rel="apple-touch-icon" sizes="180x180"/>
+<link color="#0a2f73" href="/icons/valeria-maskable.svg" rel="mask-icon"/>
+<!-- Fallback si no están los íconos aún -->
+<link href="/valeria-mini.jpg" rel="icon">
+<!-- v-2025.08.01-definitivo + contexto -->
+<style>
     :root{
       --brand-blue:#0a2f73; --header-bg:var(--brand-blue); --header-fg:#fff;
       --page-bg:#eef1f6; --chat-bg:#f5f7fb; --text:#0f172a; --muted:#64748b; --border:#e5e7eb;
@@ -159,46 +160,42 @@
       text-shadow:0 1px 2px rgba(0,0,0,.45);
     }
   </style>
-</head>
+</link></head>
 <body>
-  <div id="valeria-app">
-    <header>
-      <div class="avatar-wrap" id="avatarWrap" title="Ver imagen"></div>
-      <div class="title"><div class="name">Valeria</div><div class="role">Seguridad Alimentaria</div></div>
-      <div class="spacer"></div>
-      <button id="themeToggle" class="themebtn" aria-label="Cambiar tema" title="Cambiar tema">
-        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-          <circle cx="12" cy="12" r="5" stroke-width="2"></circle>
-          <path stroke-width="2" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-        </svg>
-      </button>
-    </header>
-
-    <!-- Visor de imagen -->
-    <div id="viewer" class="viewer" aria-modal="true" role="dialog" tabindex="-1">
-      <img src="/valeria-full.jpg" alt="Valeria" />
-      <div class="motto">🛡️ La inocuidad alimentaria comienza con cada decisión que tomamos.</div>
-    </div>
-
-    <main>
-      <div class="wrap">
-        <div class="chat">
-          <div id="msgs" class="msgs"></div>
-
-          <div class="composer" id="composer">
-            <div class="textarea-wrap"><textarea id="box" placeholder="Mensaje"></textarea></div>
-            <button id="send" class="sendbtn" aria-label="Enviar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 0" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    </main>
-  </div>
-
-  <script>
+<div id="valeria-app">
+<header>
+<div class="avatar-wrap" id="avatarWrap" title="Ver imagen"></div>
+<div class="title"><div class="name">Valeria</div><div class="role">Seguridad Alimentaria</div></div>
+<div class="spacer"></div>
+<button aria-label="Cambiar tema" class="themebtn" id="themeToggle" title="Cambiar tema">
+<svg aria-hidden="true" fill="none" id="themeIcon" stroke="currentColor" viewbox="0 0 24 24">
+<circle cx="12" cy="12" r="5" stroke-width="2"></circle>
+<path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke-width="2"></path>
+</svg>
+</button>
+</header>
+<!-- Visor de imagen -->
+<div aria-modal="true" class="viewer" id="viewer" role="dialog" tabindex="-1">
+<img alt="Valeria" src="/valeria-full.jpg"/>
+<div class="motto">🛡️ La inocuidad alimentaria comienza con cada decisión que tomamos.</div>
+</div>
+<main>
+<div class="wrap">
+<div class="chat">
+<div class="msgs" id="msgs"></div>
+<div class="composer" id="composer">
+<div class="textarea-wrap"><textarea id="box" placeholder="Mensaje"></textarea></div>
+<button aria-label="Enviar" class="sendbtn" id="send">
+<svg fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M5 12L3 4l18 8-18 8 2-8zm0 0l7 0" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<script>
     const $ = s => document.querySelector(s);
     const msgs=$('#msgs'), box=$('#box'), btn=$('#send'), themeToggle=$('#themeToggle'), themeIcon=$('#themeIcon'), composer=$('#composer');
 
@@ -470,29 +467,69 @@
     document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.classList.add('open');document.body.style.overflow='hidden';});
     viewer.addEventListener('click',()=>{viewer.classList.remove('open');document.body.style.overflow='';});
   </script>
+<script>
+let presentacionHecha = false;
+let saludoEsperado = true;
 
-idos = ['aconcagua', 'fútbol', 'clima', 'astronomía', 'presidente', 'argentina', 'turismo'];
-  if (temasRestringidos.some(palabra => lower.includes(palabra))) {
-    return "🛑 Lo siento, solo puedo ayudarte con temas relacionados a seguridad alimentaria, BPM, CAA y procedimientos internos.";
-  }
+const mensajesFueraDeTema = [
+  "aconcagua", "dólar", "clima", "geografía", "turismo", "historia", "astronomía"
+];
 
-  // Entrega directa de documentos si se detecta solicitud implícita
-  const combinaciones = [
-    { palabras: ['queso', 'procedimiento', 'documento'], archivo: 'procedimiento_fraccionado_quesos.pdf' },
-    { palabras: ['dulce', 'procedimiento', 'documento'], archivo: 'procedimiento_fraccionado_dulces.pdf' },
-    { palabras: ['sanitizante', 'procedimiento', 'documento'], archivo: 'procedimiento_medicion_sanitizante.pdf' }
-  ];
+const respuestasPDF = {
+  "sanitizante": "docs/sanitizante.pdf",
+  "dulce": "docs/dulce.pdf",
+  "queso": "docs/queso.pdf"
+};
 
-  for (const combo of combinaciones) {
-    if (combo.palabras.every(p => lower.includes(p))) {
-      return `📄 Aquí tenés el documento solicitado: <a href="docs/${combo.archivo}" target="_blank" download>Descargar ${combo.archivo}</a> ✔️`;
+function contienePalabraClave(mensaje, claves) {
+  return claves.some(p => mensaje.toLowerCase().includes(p));
+}
+
+function detectarPDF(mensaje) {
+  const keys = Object.keys(respuestasPDF);
+  for (const k of keys) {
+    if (mensaje.toLowerCase().includes(k) &&
+        contienePalabraClave(mensaje, ["procedimiento", "documento", "pdf", "entregame", "dame"])) {
+      return respuestasPDF[k];
     }
   }
+  return null;
+}
 
-  // Si no se encuentra coincidencia, Valeria pide reformulación
-  return "🤔 No entendí del todo. ¿Podés reformular o decirme sobre qué procedimiento o tema querés hablar?";
-};
-</script>
+function simularRespuesta(mensaje) {
+  mensaje = mensaje.toLowerCase();
+  if (contienePalabraClave(mensaje, mensajesFueraDeTema)) {
+    return "🛑 Lo siento, solo respondo consultas sobre seguridad alimentaria, BPM, CAA y procedimientos internos.";
+  }
 
-</body>
+  const pdf = detectarPDF(mensaje);
+  if (pdf) {
+    return `📄 Aquí tenés el procedimiento solicitado: <a href="${pdf}" target="_blank">Descargar PDF</a> ✔️`;
+  }
+
+  return null;
+}
+
+// Presentación automática
+setTimeout(() => {
+  if (!presentacionHecha && saludoEsperado) {
+    presentacionHecha = true;
+    agregarMensaje("👩🏻‍⚕️ Hola, soy Valeria, especialista en seguridad alimentaria. ¿En qué te puedo ayudar hoy?");
+  }
+}, 5000);
+
+// Captura de mensajes
+const input = document.getElementById("user-input");
+const form = document.getElementById("chat-form");
+form.addEventListener("submit", function(e) {
+  saludoEsperado = false;
+  const texto = input.value.trim();
+  const respuestaCustom = simularRespuesta(texto);
+  if (respuestaCustom) {
+    agregarMensaje(respuestaCustom, false);
+    input.value = "";
+    e.preventDefault();
+  }
+});
+</script></body>
 </html>
