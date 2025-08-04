@@ -470,6 +470,29 @@
     document.getElementById('avatarWrap').addEventListener('click',()=>{viewer.classList.add('open');document.body.style.overflow='hidden';});
     viewer.addEventListener('click',()=>{viewer.classList.remove('open');document.body.style.overflow='';});
   </script>
+
+idos = ['aconcagua', 'fútbol', 'clima', 'astronomía', 'presidente', 'argentina', 'turismo'];
+  if (temasRestringidos.some(palabra => lower.includes(palabra))) {
+    return "🛑 Lo siento, solo puedo ayudarte con temas relacionados a seguridad alimentaria, BPM, CAA y procedimientos internos.";
+  }
+
+  // Entrega directa de documentos si se detecta solicitud implícita
+  const combinaciones = [
+    { palabras: ['queso', 'procedimiento', 'documento'], archivo: 'procedimiento_fraccionado_quesos.pdf' },
+    { palabras: ['dulce', 'procedimiento', 'documento'], archivo: 'procedimiento_fraccionado_dulces.pdf' },
+    { palabras: ['sanitizante', 'procedimiento', 'documento'], archivo: 'procedimiento_medicion_sanitizante.pdf' }
+  ];
+
+  for (const combo of combinaciones) {
+    if (combo.palabras.every(p => lower.includes(p))) {
+      return `📄 Aquí tenés el documento solicitado: <a href="docs/${combo.archivo}" target="_blank" download>Descargar ${combo.archivo}</a> ✔️`;
+    }
+  }
+
+  // Si no se encuentra coincidencia, Valeria pide reformulación
+  return "🤔 No entendí del todo. ¿Podés reformular o decirme sobre qué procedimiento o tema querés hablar?";
+};
+</script>
+
 </body>
 </html>
-
