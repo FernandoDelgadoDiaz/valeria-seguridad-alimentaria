@@ -1,1 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#0a2f73" />
+  <title>Valeria · Seguridad Alimentaria</title>
+  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
+  <link rel="icon" href="icons/valeria-32.png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="icons/valeria-192.png" />
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f1f1f1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background-color: #0a2f73;
+      color: white;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      position: sticky;
+      top: 0;
+    }
+    header img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .message {
+      margin-bottom: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      max-width: 90%;
+    }
+    .user {
+      background-color: #d1e7dd;
+      align-self: flex-end;
+    }
+    .valeria {
+      background-color: #fff;
+      align-self: flex-start;
+    }
+    #input-container {
+      display: flex;
+      padding: 10px;
+      background-color: white;
+    }
+    #input {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      resize: none;
+      overflow-y: auto;
+      max-height: 120px;
+    }
+    #send-button {
+      background-color: #0a2f73;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      margin-left: 10px;
+      font-size: 18px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="icons/valeria-32.png" alt="Valeria" />
+    <div>
+      <strong>Valeria</strong><br />
+      Seguridad Alimentaria
+    </div>
+  </header>
+  <main id="chat"></main>
+  <div id="input-container">
+    <textarea id="input" placeholder="Mensaje" rows="1"></textarea>
+    <button id="send-button">➤</button>
+  </div>
 
+  <script>
+    const input = document.getElementById("input");
+    const button = document.getElementById("send-button");
+    const chat = document.getElementById("chat");
+
+    const apiKey = ""; // NO colocar aquí la API KEY. Usar Netlify.
+
+    const sistema = `Respondé como Valeria, especialista en seguridad alimentaria. No respondas temas que no estén relacionados con seguridad alimentaria, BPM, CAA o procedimientos internos.`;
+    
+    function agregarMensaje(texto, clase) {
+      const msg = document.createElement("div");
+      msg.className = "message " + clase;
+      msg.innerHTML = texto;
+      chat.appendChild(msg);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function enviarPregunta() {
+      const pregunta = input.value.trim();
+      if (!pregunta) return;
+      agregarMensaje(pregunta, "user");
+      input.value = "";
+
+      try {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + (await getApiKey())
+          },
+          body: JSON.stringify({
+            model: "gpt-3.5-turbo",
+            messages: [
+              { role: "system", content: sistema },
+              { role: "user", content: pregunta }
+            ]
+          })
+        });
+
+        const data = await response.json();
+        const respuesta = data.choices?.[0]?.message?.content || "❌ Hubo un error al obtener la respuesta.";
+        agregarMensaje(respuesta, "valeria");
+      } catch (e) {
+        agregarMensaje("❌ Error de conexión o clave API no configurada correctamente.", "valeria");
+      }
+    }
+
+    async function getApiKey() {
+      return await fetch("/.netlify/functions/get-key").then(r => r.text());
+    }
+
+    button.addEventListener("click", enviarPregunta);
+    input.addEventListener("keypress", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        enviarPregunta();
+      }
+    });
+  </script>
+</body>
+</html>
