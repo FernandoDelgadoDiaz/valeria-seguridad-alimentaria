@@ -3,30 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0a2f73" />
   <title>Valeria · Seguridad Alimentaria</title>
-  <link rel="icon" type="image/png" href="icons/valeria-32.png" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" />
+  <meta name="theme-color" content="#0a2f73" />
+  <link rel="icon" href="icons/valeria-32.png" type="image/png" />
   <style>
     body {
       margin: 0;
-      font-family: 'Roboto', sans-serif;
+      font-family: sans-serif;
       background-color: #f2f2f2;
-      color: #000;
       display: flex;
       flex-direction: column;
       height: 100vh;
-      overflow: hidden;
     }
     header {
       background-color: #0a2f73;
       color: white;
-      padding: 10px;
       display: flex;
       align-items: center;
+      padding: 10px;
       position: sticky;
       top: 0;
-      z-index: 2;
+      z-index: 1;
     }
     header img {
       width: 40px;
@@ -34,9 +31,25 @@
       border-radius: 50%;
       margin-right: 10px;
     }
-    header h1 {
+    .titulo {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    .titulo span:first-child {
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .titulo span:last-child {
+      font-size: 12px;
+    }
+    #modo {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: white;
       font-size: 18px;
-      margin: 0;
+      cursor: pointer;
     }
     #chat {
       flex: 1;
@@ -49,36 +62,34 @@
       margin: 8px 0;
       padding: 10px;
       border-radius: 10px;
-      line-height: 1.4;
       white-space: pre-wrap;
       word-wrap: break-word;
     }
     .usuario {
       align-self: flex-end;
-      background-color: #e1e1e1;
-      color: #000;
+      background-color: #cce3ff;
+      color: black;
     }
     .valeria {
       align-self: flex-start;
-      background-color: #2c2c2c;
-      color: #fff;
+      background-color: #0a2f73;
+      color: white;
     }
     #entrada {
       display: flex;
-      align-items: center;
       padding: 10px;
       background-color: #fff;
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      z-index: 3;
+      z-index: 2;
     }
     #mensaje {
       flex: 1;
       padding: 10px;
-      border-radius: 20px;
       border: 1px solid #ccc;
+      border-radius: 20px;
       font-size: 16px;
       resize: none;
       max-height: 150px;
@@ -86,8 +97,8 @@
     }
     #enviar {
       background-color: #0a2f73;
-      border: none;
       color: white;
+      border: none;
       padding: 10px;
       border-radius: 50%;
       margin-left: 10px;
@@ -95,41 +106,64 @@
       font-size: 16px;
     }
     .modo-oscuro {
-      background-color: #121212;
-      color: #fff;
+      background-color: #1e1e1e;
+      color: white;
     }
     .modo-oscuro .valeria {
       background-color: #333;
     }
     .modo-oscuro .usuario {
-      background-color: #555;
-      color: #fff;
+      background-color: #444;
+      color: white;
     }
     .modo-oscuro #entrada {
-      background-color: #1e1e1e;
+      background-color: #121212;
     }
-    #modo {
-      margin-left: auto;
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 5px;
+    #modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.7);
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
     }
-    strong {
-      font-weight: bold;
+    #modal img {
+      max-width: 90%;
+      border-radius: 10px;
+    }
+    #modal .frase {
+      color: white;
+      margin-top: 10px;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <header>
-    <img src="icons/valeria-mini.jpg" alt="Valeria" />
-    <h1>Valeria</h1>
+    <img src="icons/valeria-mini.jpg" alt="Perfil" onclick="abrirModal()" />
+    <div class="titulo">
+      <span>Valeria</span>
+      <span>Seguridad Alimentaria</span>
+    </div>
     <button id="modo">🌗</button>
   </header>
+
   <div id="chat"></div>
+
   <div id="entrada">
     <textarea id="mensaje" rows="1" placeholder="Mensaje"></textarea>
     <button id="enviar">➤</button>
+  </div>
+
+  <div id="modal" onclick="cerrarModal()">
+    <div>
+      <img src="icons/valeria-profile-full.jpg" alt="Valeria" />
+      <div class="frase">🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</div>
+    </div>
   </div>
 
   <script>
@@ -138,10 +172,6 @@
     const enviarBtn = document.getElementById('enviar');
     const modoBtn = document.getElementById('modo');
     const body = document.body;
-
-    const mensajesIniciales = [
-      "Hola, soy Valeria, especialista en seguridad alimentaria, ¿en qué te puedo ayudar hoy?"
-    ];
 
     function agregarMensaje(texto, clase) {
       const div = document.createElement('div');
@@ -158,45 +188,56 @@
       mensajeInput.value = '';
       mensajeInput.focus();
 
-      fetch('/.netlify/functions/chat', {
-        method: 'POST',
-        body: JSON.stringify({ message: texto }),
-        headers: { 'Content-Type': 'application/json' }
-      })
-      .then(r => r.json())
-      .then(data => {
-        const respuesta = data.reply;
+      // 🧠 Lógica de restricción temática
+      const fueraDeTema = !/(bpm|sanitizante|poa|inocuidad|manipulación|procedimiento|seguridad alimentaria|alimento|registro|fraccionado|etiquetado|análisis|no conformidad|verificación|documento|manual|control|superficie|cadena de frío|carne|queso|dulce)/i.test(texto);
+      if (fueraDeTema) {
+        agregarMensaje("🛑 Solo puedo ayudarte con temas de seguridad alimentaria, BPM, el CAA y procedimientos internos.", "valeria");
+        return;
+      }
 
-        if (texto.toLowerCase().includes('sanitizante')) {
-          agregarMensaje(`✅ <a href="docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">Procedimiento de Sanitizante</a>`, 'valeria');
-        } else if (respuesta) {
-          agregarMensaje(respuesta, 'valeria');
-        } else {
-          agregarMensaje('🛑 Lo siento, solo puedo ayudarte con temas de seguridad alimentaria, BPM, el CAA y procedimientos internos.', 'valeria');
-        }
+      if (/sanitizante|pdf.*sanitizante|procedimiento.*sanitizante/i.test(texto)) {
+        agregarMensaje('✅ <a href="docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">Procedimiento de Sanitizante</a>', 'valeria');
+        return;
+      }
+
+      fetch("/.netlify/functions/chat", {
+        method: "POST",
+        body: JSON.stringify({ message: texto }),
+        headers: { "Content-Type": "application/json" }
       })
-      .catch(() => {
-        agregarMensaje('⚠️ Hubo un error al procesar tu mensaje.', 'valeria');
-      });
+        .then(res => res.json())
+        .then(data => {
+          agregarMensaje(data.reply, "valeria");
+        })
+        .catch(() => {
+          agregarMensaje("⚠️ Hubo un error al procesar tu mensaje.", "valeria");
+        });
     }
 
     enviarBtn.addEventListener('click', enviarMensaje);
-    mensajeInput.addEventListener('keydown', e => {
+    mensajeInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         enviarMensaje();
       }
     });
 
-    modoBtn.addEventListener('click', () => {
-      body.classList.toggle('modo-oscuro');
-    });
-
     setTimeout(() => {
       if (chat.childElementCount === 0) {
-        agregarMensaje(mensajesIniciales[0], 'valeria');
+        agregarMensaje("Hola, soy Valeria, especialista en seguridad alimentaria, ¿en qué te puedo ayudar hoy?", "valeria");
       }
     }, 5000);
+
+    modoBtn.addEventListener('click', () => {
+      body.classList.toggle("modo-oscuro");
+    });
+
+    function abrirModal() {
+      document.getElementById('modal').style.display = 'flex';
+    }
+    function cerrarModal() {
+      document.getElementById('modal').style.display = 'none';
+    }
   </script>
 </body>
 </html>
