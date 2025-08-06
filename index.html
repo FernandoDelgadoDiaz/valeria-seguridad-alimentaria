@@ -2,19 +2,22 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0a2f73" />
   <title>Valeria · Seguridad Alimentaria</title>
-  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria" />
-  <link rel="icon" href="icons/valeria-logo.png" type="image/png" />
+  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
+  <link rel="icon" type="image/png" href="/icons/valeria-32.png" />
+  <link rel="apple-touch-icon" href="/icons/valeria-192.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <style>
     body {
       margin: 0;
-      font-family: "Segoe UI", sans-serif;
-      background-color: #f5f5f5;
+      font-family: 'Arial', sans-serif;
+      background-color: #e5ecfb;
       display: flex;
       flex-direction: column;
       height: 100vh;
+      overflow: hidden;
     }
     header {
       background-color: #0a2f73;
@@ -22,31 +25,29 @@
       padding: 10px;
       display: flex;
       align-items: center;
-      justify-content: start;
+      justify-content: space-between;
       position: sticky;
       top: 0;
+      z-index: 1;
     }
     header img {
-      width: 32px;
-      height: 32px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
-      margin-right: 10px;
+      cursor: pointer;
     }
-    header div {
-      display: flex;
-      flex-direction: column;
-    }
-    #chat {
+    .chat-container {
       flex: 1;
       overflow-y: auto;
       padding: 10px;
+      display: flex;
+      flex-direction: column;
     }
     .message {
       max-width: 80%;
       margin-bottom: 10px;
-      padding: 10px;
-      border-radius: 10px;
-      line-height: 1.4;
+      padding: 8px 12px;
+      border-radius: 12px;
       white-space: pre-wrap;
     }
     .user {
@@ -55,111 +56,165 @@
     }
     .valeria {
       align-self: flex-start;
-      background-color: #e8eaf6;
+      background-color: #f8d7da;
     }
-    #inputContainer {
+    .input-container {
       display: flex;
       padding: 10px;
       background-color: white;
     }
-    #messageInput {
+    .input-container textarea {
       flex: 1;
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 20px;
       resize: none;
-      max-height: 150px;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+      max-height: 120px;
       overflow-y: auto;
     }
-    #sendButton {
-      background-color: #0a2f73;
-      color: white;
+    .input-container button {
+      background: none;
       border: none;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
+      font-size: 1.5em;
+      cursor: pointer;
       margin-left: 10px;
-      display: flex;
+      color: #0a2f73;
+    }
+    .dark-mode {
+      background-color: #1e1e1e;
+      color: #eaeaea;
+    }
+    .dark-mode .valeria {
+      background-color: #333;
+    }
+    .dark-mode .user {
+      background-color: #2a7;
+    }
+    .dark-mode .input-container {
+      background-color: #111;
+    }
+    .dark-mode .input-container textarea {
+      background-color: #222;
+      color: white;
+    }
+    #profileModal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      display: none;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
     }
-    #sendButton:hover {
-      background-color: #084298;
+    #profileModalContent {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      max-width: 90%;
+    }
+    #profileModalContent img {
+      width: 200px;
+      border-radius: 10px;
+    }
+    #profileModalContent h2 {
+      margin-top: 10px;
+      margin-bottom: 5px;
+    }
+    #profileModalContent p {
+      font-style: italic;
     }
   </style>
 </head>
 <body>
   <header>
-    <img src="icons/valeria-logo.png" alt="Valeria" />
-    <div>
-      <strong>Valeria</strong>
-      <small>Seguridad Alimentaria</small>
-    </div>
+    <strong>Valeria</strong>
+    <img src="valeria-perfil.jpg" alt="Valeria" id="profileIcon" />
   </header>
 
-  <div id="chat"></div>
-
-  <div id="inputContainer">
-    <textarea id="messageInput" rows="1" placeholder="Mensaje"></textarea>
-    <button id="sendButton">➤</button>
+  <div id="profileModal">
+    <div id="profileModalContent">
+      <img src="valeria-perfil-full.jpg" alt="Valeria Expandida" />
+      <h2>Valeria · Seguridad Alimentaria</h2>
+      <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
+    </div>
   </div>
+
+  <div class="chat-container" id="chat"></div>
+
+  <form class="input-container" id="chatForm">
+    <textarea id="userInput" placeholder="Mensaje" rows="1"></textarea>
+    <button type="submit">➤</button>
+  </form>
 
   <script>
     const chat = document.getElementById('chat');
-    const input = document.getElementById('messageInput');
-    const button = document.getElementById('sendButton');
+    const form = document.getElementById('chatForm');
+    const input = document.getElementById('userInput');
+    const profileIcon = document.getElementById('profileIcon');
+    const profileModal = document.getElementById('profileModal');
 
-    const agregarMensaje = (texto, clase) => {
-      const burbuja = document.createElement('div');
-      burbuja.className = 'message ' + clase;
-      burbuja.textContent = texto;
-      chat.appendChild(burbuja);
+    let presented = false;
+
+    function addMessage(content, sender) {
+      const div = document.createElement('div');
+      div.className = `message ${sender}`;
+      div.innerHTML = content;
+      chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
-    };
+    }
 
-    const enviarMensaje = async () => {
-      const texto = input.value.trim();
-      if (!texto) return;
-      agregarMensaje(texto, 'user');
-      input.value = '';
-      input.style.height = 'auto';
+    async function askValeria(message) {
+      addMessage(message, 'user');
+      const res = await fetch('/.netlify/functions/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message })
+      });
+      const data = await res.json();
+      addMessage(data.reply || 'Lo siento, no tengo una respuesta para eso.', 'valeria');
+    }
 
-      try {
-        const response = await fetch('/.netlify/functions/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: texto })
-        });
-
-        const data = await response.json();
-        agregarMensaje(data.reply || '⚠️ Error al procesar la respuesta.', 'valeria');
-      } catch (err) {
-        agregarMensaje('❌ Error de conexión o clave API no configurada correctamente.', 'valeria');
-      }
-    };
-
-    button.addEventListener('click', enviarMensaje);
-    input.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        enviarMensaje();
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (message) {
+        askValeria(message);
+        input.value = '';
+        input.style.height = 'auto';
       }
     });
 
-    // Autoexpandir textarea como WhatsApp
     input.addEventListener('input', () => {
       input.style.height = 'auto';
-      input.style.height = (input.scrollHeight) + 'px';
+      input.style.height = input.scrollHeight + 'px';
     });
 
-    // Presentación automática si no escriben en 5s
+    profileIcon.onclick = () => profileModal.style.display = 'flex';
+    profileModal.onclick = () => profileModal.style.display = 'none';
+
     setTimeout(() => {
-      if (chat.children.length === 0) {
-        agregarMensaje('Hola, soy Valeria, especialista en seguridad alimentaria 👩‍🔬 ¿En qué te puedo ayudar hoy?', 'valeria');
+      if (!presented) {
+        askValeria("Hola");
+        presented = true;
       }
     }, 5000);
+
+    // Modo oscuro alternar
+    const modeBtn = document.createElement('button');
+    modeBtn.textContent = '🌓';
+    modeBtn.style.position = 'fixed';
+    modeBtn.style.bottom = '15px';
+    modeBtn.style.right = '15px';
+    modeBtn.style.fontSize = '1.5em';
+    modeBtn.style.border = 'none';
+    modeBtn.style.background = '#fff';
+    modeBtn.style.borderRadius = '50%';
+    modeBtn.style.width = '50px';
+    modeBtn.style.height = '50px';
+    modeBtn.style.cursor = 'pointer';
+    modeBtn.onclick = () => document.body.classList.toggle('dark-mode');
+    document.body.appendChild(modeBtn);
   </script>
 </body>
 </html>
