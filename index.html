@@ -3,241 +3,209 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Valeria · Seguridad Alimentaria</title>
   <meta name="theme-color" content="#0a2f73" />
-  <link rel="icon" href="icons/valeria-32.png" type="image/png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="icons/valeria-logo.png" />
+  <title>Valeria · Seguridad Alimentaria</title>
   <style>
     body {
       margin: 0;
-      font-family: sans-serif;
-      background-color: #f2f2f2;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
     }
     header {
       background-color: #0a2f73;
       color: white;
+      padding: 10px;
       display: flex;
       align-items: center;
-      padding: 10px;
       position: sticky;
       top: 0;
-      z-index: 1;
+      z-index: 10;
     }
     header img {
       width: 40px;
       height: 40px;
       border-radius: 50%;
       margin-right: 10px;
-    }
-    .titulo {
-      display: flex;
-      flex-direction: column;
-      line-height: 1.2;
-    }
-    .titulo span:first-child {
-      font-size: 16px;
-      font-weight: bold;
-    }
-    .titulo span:last-child {
-      font-size: 12px;
-    }
-    #modo {
-      margin-left: auto;
-      background: none;
-      border: none;
-      color: white;
-      font-size: 18px;
       cursor: pointer;
     }
-    #chat {
-      flex: 1;
+    header h1 {
+      margin: 0;
+      font-size: 18px;
+    }
+    header p {
+      margin: 0;
+      font-size: 12px;
+    }
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 100px);
       overflow-y: auto;
       padding: 10px;
-      scroll-behavior: smooth;
     }
-    .mensaje {
+    .message {
       max-width: 80%;
-      margin: 8px 0;
+      margin: 5px 0;
       padding: 10px;
       border-radius: 10px;
       white-space: pre-wrap;
-      word-wrap: break-word;
     }
-    .usuario {
+    .user {
       align-self: flex-end;
-      background-color: #cce3ff;
-      color: black;
+      background-color: #e0f0ff;
     }
     .valeria {
       align-self: flex-start;
       background-color: #0a2f73;
       color: white;
     }
-    #entrada {
+    .input-container {
       display: flex;
       padding: 10px;
-      background-color: #fff;
-      position: fixed;
+      background-color: white;
+      position: sticky;
       bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 2;
     }
-    #mensaje {
+    .input-container textarea {
       flex: 1;
+      resize: none;
       padding: 10px;
+      font-size: 14px;
       border: 1px solid #ccc;
       border-radius: 20px;
-      font-size: 16px;
-      resize: none;
       max-height: 150px;
       overflow-y: auto;
     }
-    #enviar {
+    .input-container button {
       background-color: #0a2f73;
       color: white;
       border: none;
-      padding: 10px;
       border-radius: 50%;
+      width: 40px;
+      height: 40px;
       margin-left: 10px;
       cursor: pointer;
       font-size: 16px;
     }
-    .modo-oscuro {
-      background-color: #1e1e1e;
-      color: white;
-    }
-    .modo-oscuro .valeria {
-      background-color: #333;
-    }
-    .modo-oscuro .usuario {
-      background-color: #444;
-      color: white;
-    }
-    .modo-oscuro #entrada {
-      background-color: #121212;
-    }
-    #modal {
-      display: none;
+    #profileModal {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.7);
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: none;
       justify-content: center;
       align-items: center;
-      z-index: 10;
     }
-    #modal img {
+    #profileModalContent {
+      background-color: white;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
       max-width: 90%;
+    }
+    #profileModalContent img {
+      width: 150px;
       border-radius: 10px;
     }
-    #modal .frase {
-      color: white;
-      margin-top: 10px;
-      text-align: center;
+    #profileModalContent h2 {
+      margin: 10px 0 5px;
+    }
+    #profileModalContent p {
+      font-style: italic;
+      font-size: 14px;
+      color: #444;
     }
   </style>
 </head>
 <body>
   <header>
-    <img src="icons/valeria-mini.jpg" alt="Perfil" onclick="abrirModal()" />
-    <div class="titulo">
-      <span>Valeria</span>
-      <span>Seguridad Alimentaria</span>
+    <img src="icons/valeria-logo.png" id="profileImage" alt="Perfil" />
+    <div>
+      <h1>Valeria</h1>
+      <p>Seguridad Alimentaria</p>
     </div>
-    <button id="modo">🌗</button>
   </header>
 
-  <div id="chat"></div>
-
-  <div id="entrada">
-    <textarea id="mensaje" rows="1" placeholder="Mensaje"></textarea>
-    <button id="enviar">➤</button>
+  <div class="chat-container" id="chat">
+    <div class="message valeria">Hola, soy Valeria, especialista en seguridad alimentaria, ¿en qué te puedo ayudar hoy?</div>
   </div>
 
-  <div id="modal" onclick="cerrarModal()">
-    <div>
-      <img src="icons/valeria-profile-full.jpg" alt="Valeria" />
-      <div class="frase">🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</div>
+  <div class="input-container">
+    <textarea id="userInput" rows="1" placeholder="Mensaje" oninput="autoExpand(this)"></textarea>
+    <button onclick="sendMessage()">➤</button>
+  </div>
+
+  <div id="profileModal" onclick="this.style.display='none'">
+    <div id="profileModalContent" onclick="event.stopPropagation()">
+      <img src="icons/valeria-profile-full.jpg" alt="Valeria expandida" />
+      <h2>Valeria · Seguridad Alimentaria</h2>
+      <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
     </div>
   </div>
 
   <script>
     const chat = document.getElementById('chat');
-    const mensajeInput = document.getElementById('mensaje');
-    const enviarBtn = document.getElementById('enviar');
-    const modoBtn = document.getElementById('modo');
-    const body = document.body;
 
-    function agregarMensaje(texto, clase) {
-      const div = document.createElement('div');
-      div.className = `mensaje ${clase}`;
-      div.innerHTML = texto;
-      chat.appendChild(div);
+    function autoExpand(field) {
+      field.style.height = 'inherit';
+      field.style.height = field.scrollHeight + 'px';
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('userInput');
+      const text = input.value.trim();
+      if (!text) return;
+      appendMessage(text, 'user');
+      input.value = '';
+      input.style.height = 'auto';
+      generateResponse(text);
+    }
+
+    function appendMessage(text, sender) {
+      const msg = document.createElement('div');
+      msg.className = 'message ' + sender;
+      msg.innerHTML = text;
+      chat.appendChild(msg);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    function enviarMensaje() {
-      const texto = mensajeInput.value.trim();
-      if (!texto) return;
-      agregarMensaje(texto, 'usuario');
-      mensajeInput.value = '';
-      mensajeInput.focus();
+    function generateResponse(input) {
+      const lower = input.toLowerCase();
 
-      // 🧠 Lógica de restricción temática
-      const fueraDeTema = !/(bpm|sanitizante|poa|inocuidad|manipulación|procedimiento|seguridad alimentaria|alimento|registro|fraccionado|etiquetado|análisis|no conformidad|verificación|documento|manual|control|superficie|cadena de frío|carne|queso|dulce)/i.test(texto);
-      if (fueraDeTema) {
-        agregarMensaje("🛑 Solo puedo ayudarte con temas de seguridad alimentaria, BPM, el CAA y procedimientos internos.", "valeria");
+      // respuesta "quién sos"
+      if (['quien sos', 'quién sos', 'quién sos vos', 'quien es valeria', 'quién es valeria'].includes(lower)) {
+        appendMessage("👩‍🔬 Soy Valeria, especialista en seguridad alimentaria. Estoy entrenada para ayudarte con todo lo relacionado al CAA, las BPM y los procedimientos internos. ¿En qué tema puntual querés que te ayude?", 'valeria');
         return;
       }
 
-      if (/sanitizante|pdf.*sanitizante|procedimiento.*sanitizante/i.test(texto)) {
-        agregarMensaje('✅ <a href="docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">Procedimiento de Sanitizante</a>', 'valeria');
+      // respuesta BPM
+      if (lower.includes('bpm') || lower.includes('qué es bpm') || lower.includes('que es bpm')) {
+        appendMessage(`Las Buenas Prácticas de Manufactura (BPM) son un conjunto de principios y procedimientos que garantizan la producción de alimentos seguros y de calidad. Estas prácticas son obligatorias en todas las áreas de producción y ventas, y su objetivo principal es prevenir la contaminación y asegurar la inocuidad de los productos alimenticios.
+
+Las BPM incluyen aspectos como:
+
+1. **Limpieza y desinfección**: Mantenimiento de un ambiente limpio en las instalaciones y equipos.
+2. **Control de plagas**: Implementación de medidas para prevenir la infestación de plagas que puedan comprometer la seguridad alimentaria.
+3. **Capacitación del personal**: Formación continua sobre prácticas seguras en el manejo de alimentos.
+4. **Trazabilidad**: Registro de la procedencia y el recorrido de los productos alimenticios.`, 'valeria');
         return;
       }
 
-      fetch("/.netlify/functions/chat", {
-        method: "POST",
-        body: JSON.stringify({ message: texto }),
-        headers: { "Content-Type": "application/json" }
-      })
-        .then(res => res.json())
-        .then(data => {
-          agregarMensaje(data.reply, "valeria");
-        })
-        .catch(() => {
-          agregarMensaje("⚠️ Hubo un error al procesar tu mensaje.", "valeria");
-        });
+      appendMessage("🤖 Lo siento, por ahora solo puedo ayudarte con temas de seguridad alimentaria, BPM, el CAA y procedimientos internos.", 'valeria');
     }
 
-    enviarBtn.addEventListener('click', enviarMensaje);
-    mensajeInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        enviarMensaje();
-      }
-    });
+    document.getElementById('profileImage').onclick = function () {
+      document.getElementById('profileModal').style.display = 'flex';
+    };
 
+    // presentación automática a los 5 segundos si no hay interacción
     setTimeout(() => {
-      if (chat.childElementCount === 0) {
-        agregarMensaje("Hola, soy Valeria, especialista en seguridad alimentaria, ¿en qué te puedo ayudar hoy?", "valeria");
+      if (chat.children.length <= 1) {
+        appendMessage("Hola, soy Valeria, especialista en seguridad alimentaria, ¿en qué te puedo ayudar hoy?", 'valeria');
       }
     }, 5000);
-
-    modoBtn.addEventListener('click', () => {
-      body.classList.toggle("modo-oscuro");
-    });
-
-    function abrirModal() {
-      document.getElementById('modal').style.display = 'flex';
-    }
-    function cerrarModal() {
-      document.getElementById('modal').style.display = 'none';
-    }
   </script>
 </body>
 </html>
