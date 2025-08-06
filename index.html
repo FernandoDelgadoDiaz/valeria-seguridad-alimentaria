@@ -2,210 +2,218 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Valeria · Seguridad Alimentaria</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="theme-color" content="#0a2f73" />
-  <link rel="icon" href="/icons/valeria-32.png" />
-  <link rel="apple-touch-icon" href="/icons/valeria-192.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Valeria · Seguridad Alimentaria</title>
+  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/valeria-512.png" />
+  <link rel="apple-touch-icon" href="/icons/valeria-512.png" />
   <style>
     body {
       margin: 0;
-      font-family: sans-serif;
-      background-color: #e6ecf2;
-      color: #000;
+      background: #e5ddd5;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
     header {
       background-color: #0a2f73;
       color: white;
       padding: 10px;
-      font-weight: bold;
       display: flex;
       align-items: center;
-      justify-content: space-between;
       position: sticky;
       top: 0;
-      z-index: 1000;
+      z-index: 10;
     }
     header img {
-      width: 32px;
-      height: 32px;
       border-radius: 50%;
-      object-fit: cover;
-      margin-right: 8px;
+      height: 40px;
+      width: 40px;
+      margin-right: 10px;
     }
-    .chat-container {
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      height: calc(100vh - 130px);
+    #toggle-theme {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    #chat {
+      flex: 1;
       overflow-y: auto;
-    }
-    .user, .valeria {
-      max-width: 80%;
       padding: 10px;
-      border-radius: 15px;
-      word-wrap: break-word;
     }
-    .user {
-      background-color: #d9fdd3;
-      align-self: flex-end;
-    }
-    .valeria {
-      background-color: #fddde0;
-      align-self: flex-start;
+    .message {
+      max-width: 80%;
+      padding: 8px 12px;
+      margin: 6px;
+      border-radius: 10px;
       white-space: pre-wrap;
     }
-    .input-container {
+    .user {
+      align-self: flex-end;
+      background-color: #dcf8c6;
+    }
+    .bot {
+      align-self: flex-start;
+      background-color: white;
+    }
+    #input-container {
       display: flex;
-      padding: 10px;
-      position: fixed;
-      bottom: 0;
-      width: 100%;
-      background: #fff;
+      padding: 8px;
+      background: #f0f0f0;
+      border-top: 1px solid #ccc;
     }
     #input {
       flex: 1;
-      padding: 10px;
+      padding: 8px;
       font-size: 16px;
+      border-radius: 20px;
       border: 1px solid #ccc;
-      border-radius: 15px;
       resize: none;
-      max-height: 200px;
+      max-height: 150px;
       overflow-y: auto;
     }
     #send {
       background: none;
       border: none;
-      font-size: 20px;
+      font-size: 24px;
       margin-left: 8px;
       cursor: pointer;
     }
-    .dark-mode {
-      background-color: #121212;
-      color: white;
-    }
-    .dark-mode .valeria {
-      background-color: #333;
-    }
-    .dark-mode .user {
-      background-color: #285430;
-    }
-    .dark-mode header {
-      background-color: #1a1a1a;
-    }
-    .dark-mode .input-container {
-      background-color: #1a1a1a;
-    }
-    #mode-toggle {
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 20px;
-    }
-    #profile-picture {
+    #profile-modal {
       position: fixed;
-      top: 50px;
+      top: 50%;
       left: 50%;
-      transform: translateX(-50%);
-      width: 300px;
+      transform: translate(-50%, -50%);
       background: white;
-      border-radius: 15px;
-      text-align: center;
-      padding: 15px;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 0 10px #0005;
       display: none;
-      z-index: 999;
+      flex-direction: column;
+      align-items: center;
     }
-    #profile-picture img {
-      width: 100px;
+    #profile-modal img {
       border-radius: 50%;
+      height: 120px;
+      width: 120px;
+      margin-bottom: 10px;
     }
-    #profile-picture h2 {
-      margin: 10px 0 0;
+    #profile-modal h2 {
+      margin: 0;
     }
-    #profile-picture p {
-      margin: 5px 0 0;
+    #profile-modal p {
       font-style: italic;
+      text-align: center;
+    }
+    #profile-close {
+      margin-top: 10px;
+      background: #0a2f73;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    html.dark {
+      background: #121212;
+      color: #eee;
+    }
+    html.dark #chat {
+      background: #1e1e1e;
+    }
+    html.dark .message.bot {
+      background: #2a2a2a;
+    }
+    html.dark #input-container {
+      background: #222;
     }
   </style>
 </head>
 <body>
-  <header>
-    <div style="display:flex; align-items:center;" onclick="toggleProfile()">
-      <img src="icons/valeria-192.png" alt="Perfil" />
-      Valeria
-    </div>
-    <button id="mode-toggle" onclick="toggleMode()">🌗</button>
+  <header onclick="showProfile()">
+    <img src="/icons/valeria-512.png" alt="Perfil" />
+    <strong>Valeria</strong>
+    <button id="toggle-theme" onclick="toggleTheme()">🌗</button>
   </header>
 
-  <div id="profile-picture">
-    <img src="icons/valeria-192.png" alt="Valeria" />
-    <h2>Valeria · Seguridad Alimentaria</h2>
-    <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
-  </div>
+  <div id="chat"></div>
 
-  <div id="chat" class="chat-container">
-    <div class="valeria">¡Hola! ¿En qué puedo ayudarte hoy?</div>
-  </div>
-
-  <form class="input-container" onsubmit="sendMessage(event)">
-    <textarea id="input" placeholder="Mensaje" rows="1"></textarea>
+  <form id="input-container" onsubmit="sendMessage(event)">
+    <textarea id="input" rows="1" placeholder="Mensaje" required></textarea>
     <button id="send">➤</button>
   </form>
+
+  <div id="profile-modal">
+    <img src="/icons/valeria-512.png" alt="Valeria" />
+    <h2>Valeria · Seguridad Alimentaria</h2>
+    <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
+    <button id="profile-close" onclick="hideProfile()">Cerrar</button>
+  </div>
 
   <script>
     const chat = document.getElementById("chat");
     const input = document.getElementById("input");
-    const profile = document.getElementById("profile-picture");
 
-    function toggleMode() {
-      document.body.classList.toggle("dark-mode");
-    }
-
-    function toggleProfile() {
-      profile.style.display = profile.style.display === "block" ? "none" : "block";
-    }
-
-    function appendMessage(message, className) {
-      const div = document.createElement("div");
-      div.className = className;
-      div.innerHTML = message;
-      chat.appendChild(div);
+    function appendMessage(text, className) {
+      const msg = document.createElement("div");
+      msg.className = "message " + className;
+      msg.innerHTML = text;
+      chat.appendChild(msg);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    async function sendMessage(e) {
-      e.preventDefault();
-      const message = input.value.trim();
-      if (!message) return;
-      appendMessage(message, "user");
-      input.value = "";
-
-      try {
-        const response = await fetch("/.netlify/functions/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message })
-        });
-
-        const data = await response.json();
-        let reply = data.reply || "Lo siento, no pude responderte.";
-
-        // Entrega directa de PDF si se detecta una mención clara
-        if (reply.toLowerCase().includes("g-pg-007")) {
-          reply += `<br><a href="docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">✔️ Descargar PDF</a>`;
-        }
-
-        appendMessage(reply, "valeria");
-      } catch {
-        appendMessage("No recibí tu mensaje.", "valeria");
-      }
+    function showProfile() {
+      document.getElementById("profile-modal").style.display = "flex";
     }
 
-    input.addEventListener("input", () => {
-      input.style.height = "auto";
-      input.style.height = input.scrollHeight + "px";
-    });
+    function hideProfile() {
+      document.getElementById("profile-modal").style.display = "none";
+    }
+
+    function toggleTheme() {
+      document.documentElement.classList.toggle("dark");
+    }
+
+    let presented = false;
+    setTimeout(() => {
+      if (!presented && chat.children.length === 0) {
+        appendMessage("Hola, soy Valeria, especialista en seguridad alimentaria 👩‍🔬 ¿En qué te puedo ayudar hoy?", "bot");
+        presented = true;
+      }
+    }, 5000);
+
+    async function sendMessage(event) {
+      event.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      appendMessage(text, "user");
+      input.value = "";
+      const res = await fetch("/.netlify/functions/chat", {
+        method: "POST",
+        body: JSON.stringify({ message: text })
+      });
+      const data = await res.json();
+      let reply = data.reply || "Lo siento, no tengo una respuesta para eso.";
+
+      const lower = text.toLowerCase();
+      if (lower.includes("procedimiento") && lower.includes("sanitizante")) {
+        reply = '✅ <strong>Procedimiento de Sanitizante</strong><br><a href="docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">Descargar PDF</a>';
+      }
+
+      if (["aconcagua", "planeta", "galaxia", "historia", "capital"].some(t => lower.includes(t))) {
+        reply = "Lo siento, solo puedo ayudarte con temas relacionados a seguridad alimentaria, BPM y procedimientos internos.";
+      }
+
+      appendMessage(reply, "bot");
+    }
   </script>
 </body>
 </html>
