@@ -3,245 +3,208 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a2f73" />
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Valeria · Seguridad Alimentaria</title>
-  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
-
-  <!-- Íconos -->
-  <link rel="icon" href="/icons/valeria-32.png" sizes="32x32" type="image/png">
-  <link rel="apple-touch-icon" href="/icons/valeria-192.png">
-
+  <meta name="theme-color" content="#0a2f73" />
+  <link rel="icon" href="/icons/valeria-32.png" />
+  <link rel="apple-touch-icon" href="/icons/valeria-192.png" />
   <style>
-    :root {
-      --color-bg: #e5ebf5;
-      --color-user: #d9ead3;
-      --color-valeria: #f4cccc;
-      --color-header: #0a2f73;
-    }
-
-    [data-theme="dark"] {
-      --color-bg: #1e1e2f;
-      --color-user: #444c38;
-      --color-valeria: #663e3e;
-      --color-header: #081c3d;
-    }
-
     body {
       margin: 0;
-      padding: 0;
-      font-family: "Segoe UI", sans-serif;
-      background-color: var(--color-bg);
-      display: flex;
-      flex-direction: column;
-      height: 100dvh;
+      font-family: sans-serif;
+      background-color: #e6ecf2;
+      color: #000;
     }
-
     header {
-      background-color: var(--color-header);
+      background-color: #0a2f73;
       color: white;
-      padding: 12px;
-      text-align: left;
+      padding: 10px;
+      font-weight: bold;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
     }
-
-    #profilePic {
-      border-radius: 50%;
+    header img {
       width: 32px;
       height: 32px;
-      object-fit: cover;
-      cursor: pointer;
-      margin-left: 10px;
-    }
-
-    #modal {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background-color: rgba(0,0,0,0.8);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 10;
-    }
-
-    #modalContent {
-      background-color: white;
-      border-radius: 16px;
-      padding: 20px;
-      text-align: center;
-      max-width: 90%;
-    }
-
-    #modalContent img {
-      max-width: 150px;
       border-radius: 50%;
+      object-fit: cover;
+      margin-right: 8px;
     }
-
-    #modalContent h2 {
-      margin: 10px 0 0 0;
-    }
-
-    #modalContent p {
-      font-style: italic;
-      color: #333;
-    }
-
-    #chat {
-      flex-grow: 1;
+    .chat-container {
       padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: calc(100vh - 130px);
       overflow-y: auto;
-      scroll-behavior: smooth;
     }
-
-    .msg {
+    .user, .valeria {
       max-width: 80%;
       padding: 10px;
-      margin-bottom: 8px;
       border-radius: 15px;
+      word-wrap: break-word;
+    }
+    .user {
+      background-color: #d9fdd3;
+      align-self: flex-end;
+    }
+    .valeria {
+      background-color: #fddde0;
+      align-self: flex-start;
       white-space: pre-wrap;
     }
-
-    .user {
-      background-color: var(--color-user);
-      align-self: flex-end;
-      text-align: right;
-    }
-
-    .valeria {
-      background-color: var(--color-valeria);
-      align-self: flex-start;
-    }
-
-    #inputArea {
+    .input-container {
       display: flex;
       padding: 10px;
-      background-color: var(--color-bg);
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      background: #fff;
     }
-
     #input {
-      flex-grow: 1;
-      resize: none;
+      flex: 1;
       padding: 10px;
-      border-radius: 8px;
+      font-size: 16px;
       border: 1px solid #ccc;
-      font-size: 1em;
-      max-height: 150px;
+      border-radius: 15px;
+      resize: none;
+      max-height: 200px;
       overflow-y: auto;
     }
-
     #send {
       background: none;
       border: none;
-      font-size: 1.5em;
+      font-size: 20px;
+      margin-left: 8px;
       cursor: pointer;
-      margin-left: 10px;
     }
-
-    #themeToggle {
+    .dark-mode {
+      background-color: #121212;
+      color: white;
+    }
+    .dark-mode .valeria {
+      background-color: #333;
+    }
+    .dark-mode .user {
+      background-color: #285430;
+    }
+    .dark-mode header {
+      background-color: #1a1a1a;
+    }
+    .dark-mode .input-container {
+      background-color: #1a1a1a;
+    }
+    #mode-toggle {
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 1.2em;
-      margin-right: 10px;
+      font-size: 20px;
+    }
+    #profile-picture {
+      position: fixed;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300px;
+      background: white;
+      border-radius: 15px;
+      text-align: center;
+      padding: 15px;
+      display: none;
+      z-index: 999;
+    }
+    #profile-picture img {
+      width: 100px;
+      border-radius: 50%;
+    }
+    #profile-picture h2 {
+      margin: 10px 0 0;
+    }
+    #profile-picture p {
+      margin: 5px 0 0;
+      font-style: italic;
     }
   </style>
 </head>
 <body>
   <header>
-    <div style="display: flex; align-items: center;">
-      <strong>Valeria</strong>
-      <img id="profilePic" src="valeria-perfil-mini.jpg" alt="Perfil">
+    <div style="display:flex; align-items:center;" onclick="toggleProfile()">
+      <img src="icons/valeria-192.png" alt="Perfil" />
+      Valeria
     </div>
-    <button id="themeToggle">🌗</button>
+    <button id="mode-toggle" onclick="toggleMode()">🌗</button>
   </header>
 
-  <div id="chat"></div>
-
-  <form id="inputArea">
-    <textarea id="input" placeholder="Mensaje" rows="1"></textarea>
-    <button type="submit" id="send">➤</button>
-  </form>
-
-  <div id="modal">
-    <div id="modalContent">
-      <img src="valeria-perfil-full.jpg" alt="Valeria" />
-      <h2>Valeria · Seguridad Alimentaria</h2>
-      <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
-    </div>
+  <div id="profile-picture">
+    <img src="icons/valeria-192.png" alt="Valeria" />
+    <h2>Valeria · Seguridad Alimentaria</h2>
+    <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
   </div>
 
+  <div id="chat" class="chat-container">
+    <div class="valeria">¡Hola! ¿En qué puedo ayudarte hoy?</div>
+  </div>
+
+  <form class="input-container" onsubmit="sendMessage(event)">
+    <textarea id="input" placeholder="Mensaje" rows="1"></textarea>
+    <button id="send">➤</button>
+  </form>
+
   <script>
-    const chat = document.getElementById('chat');
-    const input = document.getElementById('input');
-    const form = document.getElementById('inputArea');
-    const profilePic = document.getElementById('profilePic');
-    const modal = document.getElementById('modal');
-    const themeToggle = document.getElementById('themeToggle');
+    const chat = document.getElementById("chat");
+    const input = document.getElementById("input");
+    const profile = document.getElementById("profile-picture");
 
-    let firstInteraction = true;
-    let presented = false;
+    function toggleMode() {
+      document.body.classList.toggle("dark-mode");
+    }
 
-    // Presentación automática a los 5 segundos si no escriben
-    setTimeout(() => {
-      if (!presented) {
-        addMessage("¡Hola! ¿En qué puedo ayudarte hoy?", "valeria");
-        presented = true;
-      }
-    }, 5000);
+    function toggleProfile() {
+      profile.style.display = profile.style.display === "block" ? "none" : "block";
+    }
 
-    profilePic.onclick = () => {
-      modal.style.display = 'flex';
-    };
-
-    modal.onclick = () => {
-      modal.style.display = 'none';
-    };
-
-    themeToggle.onclick = () => {
-      const theme = document.documentElement.getAttribute("data-theme");
-      document.documentElement.setAttribute("data-theme", theme === "dark" ? "light" : "dark");
-    };
-
-    function addMessage(text, sender) {
-      const msg = document.createElement("div");
-      msg.className = `msg ${sender}`;
-      msg.innerHTML = text;
-      chat.appendChild(msg);
+    function appendMessage(message, className) {
+      const div = document.createElement("div");
+      div.className = className;
+      div.innerHTML = message;
+      chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    form.onsubmit = async (e) => {
+    async function sendMessage(e) {
       e.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
+      const message = input.value.trim();
+      if (!message) return;
+      appendMessage(message, "user");
       input.value = "";
-      addMessage(text, "user");
 
-      const response = await fetch("/.netlify/functions/chat", {
-        method: "POST",
-        body: JSON.stringify({ prompt: text })
-      });
+      try {
+        const response = await fetch("/.netlify/functions/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message })
+        });
 
-      const data = await response.json();
-      let reply = data.reply || "No se encontró respuesta.";
+        const data = await response.json();
+        let reply = data.reply || "Lo siento, no pude responderte.";
 
-      // Lógica específica para PDF sanitizante
-      const lower = text.toLowerCase();
-      if (lower.includes("sanitizante") || lower.includes("g-pg-007")) {
-        reply = '✔️ Aquí tenés el procedimiento solicitado: <a href="docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">g-pg-007-med-cc-sanitizante-rev-002.pdf</a>';
+        // Entrega directa de PDF si se detecta una mención clara
+        if (reply.toLowerCase().includes("g-pg-007")) {
+          reply += `<br><a href="docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">✔️ Descargar PDF</a>`;
+        }
+
+        appendMessage(reply, "valeria");
+      } catch {
+        appendMessage("No recibí tu mensaje.", "valeria");
       }
-
-      addMessage(reply, "valeria");
-    };
+    }
 
     input.addEventListener("input", () => {
       input.style.height = "auto";
-      input.style.height = (input.scrollHeight) + "px";
+      input.style.height = input.scrollHeight + "px";
     });
   </script>
 </body>
