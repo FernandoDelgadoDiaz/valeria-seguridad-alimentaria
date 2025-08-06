@@ -2,24 +2,26 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+  <title>Valeria · Seguridad Alimentaria</title>
+  <meta name="description" content="Asistente de Seguridad Alimentaria">
   <meta name="theme-color" content="#0a2f73" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Valeria · Seguridad Alimentaria</title>
-  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
-  <link rel="icon" type="image/png" sizes="512x512" href="/icons/valeria-512.png" />
-  <link rel="apple-touch-icon" href="/icons/valeria-512.png" />
+  <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
+  <link rel="apple-touch-icon" href="/favicon.jpg" />
   <style>
     body {
       margin: 0;
-      background: #e5ddd5;
-      font-family: system-ui, sans-serif;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      transition: background-color 0.3s, color 0.3s;
     }
+
+    body.dark-mode {
+      background-color: #121212;
+      color: white;
+    }
+
     header {
       background-color: #0a2f73;
       color: white;
@@ -30,190 +32,230 @@
       top: 0;
       z-index: 10;
     }
-    header img {
+
+    .profile-pic {
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
-      height: 40px;
-      width: 40px;
+      object-fit: cover;
       margin-right: 10px;
-    }
-    #toggle-theme {
-      margin-left: auto;
-      background: none;
-      border: none;
-      color: white;
-      font-size: 20px;
       cursor: pointer;
     }
-    #chat {
-      flex: 1;
-      overflow-y: auto;
+
+    .title {
+      font-weight: bold;
+      font-size: 1.2em;
+    }
+
+    .chat-container {
       padding: 10px;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
     }
-    .message {
-      max-width: 80%;
-      padding: 8px 12px;
-      margin: 6px;
-      border-radius: 10px;
-      white-space: pre-wrap;
+
+    .bubble {
+      margin: 10px 0;
+      padding: 10px 14px;
+      border-radius: 16px;
+      max-width: 90%;
+      line-height: 1.4;
+      word-wrap: break-word;
     }
+
     .user {
+      background-color: #d9fdd3;
       align-self: flex-end;
-      background-color: #dcf8c6;
     }
+
     .bot {
+      background-color: #f0f0f0;
       align-self: flex-start;
-      background-color: white;
     }
-    #input-container {
+
+    .dark-mode .bot {
+      background-color: #2c2c2c;
+    }
+
+    .chat-box {
       display: flex;
       padding: 8px;
-      background: #f0f0f0;
       border-top: 1px solid #ccc;
     }
-    #input {
+
+    .chat-box textarea {
       flex: 1;
-      padding: 8px;
-      font-size: 16px;
+      resize: none;
+      padding: 10px;
       border-radius: 20px;
       border: 1px solid #ccc;
-      resize: none;
+      font-size: 1em;
+      line-height: 1.4;
       max-height: 150px;
       overflow-y: auto;
     }
-    #send {
-      background: none;
-      border: none;
-      font-size: 24px;
-      margin-left: 8px;
-      cursor: pointer;
-    }
-    #profile-modal {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      border-radius: 10px;
-      padding: 20px;
-      box-shadow: 0 0 10px #0005;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-    }
-    #profile-modal img {
-      border-radius: 50%;
-      height: 120px;
-      width: 120px;
-      margin-bottom: 10px;
-    }
-    #profile-modal h2 {
-      margin: 0;
-    }
-    #profile-modal p {
-      font-style: italic;
-      text-align: center;
-    }
-    #profile-close {
-      margin-top: 10px;
-      background: #0a2f73;
+
+    .chat-box button {
+      background-color: #0a2f73;
       color: white;
       border: none;
-      padding: 6px 12px;
-      border-radius: 6px;
+      padding: 0 14px;
+      border-radius: 50%;
+      margin-left: 8px;
+      font-size: 1.2em;
       cursor: pointer;
     }
-    html.dark {
-      background: #121212;
-      color: #eee;
+
+    .dark-mode .chat-box button {
+      background-color: #1a1a1a;
     }
-    html.dark #chat {
-      background: #1e1e1e;
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: white;
+      color: black;
+      padding: 20px;
+      border-radius: 10px;
+      z-index: 100;
+      width: 80%;
+      max-width: 400px;
+      text-align: center;
     }
-    html.dark .message.bot {
-      background: #2a2a2a;
+
+    .modal img {
+      max-width: 100%;
+      border-radius: 10px;
     }
-    html.dark #input-container {
-      background: #222;
+
+    .modal .caption {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .modal .phrase {
+      font-size: 0.9em;
+      margin-top: 5px;
+    }
+
+    .modal button {
+      margin-top: 10px;
+      background-color: #0a2f73;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #toggle-mode {
+      position: absolute;
+      right: 10px;
+      top: 10px;
+      background-color: white;
+      border: none;
+      border-radius: 50%;
+      padding: 6px;
+      cursor: pointer;
+    }
+
+    .pdf-link {
+      background-color: #e6f9e6;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 5px;
+      font-weight: bold;
+    }
+
+    .pdf-link a {
+      display: block;
+      margin-top: 5px;
+      font-weight: normal;
+    }
+
+    .dark-mode .pdf-link {
+      background-color: #1e3f1e;
+      color: white;
     }
   </style>
 </head>
 <body>
-  <header onclick="showProfile()">
-    <img src="/icons/valeria-512.png" alt="Perfil" />
-    <strong>Valeria</strong>
-    <button id="toggle-theme" onclick="toggleTheme()">🌗</button>
+  <header>
+    <img src="valeria-mini.jpg" alt="Perfil" class="profile-pic" onclick="openModal()" />
+    <span class="title">Valeria</span>
+    <button id="toggle-mode" onclick="toggleMode()">🌓</button>
   </header>
 
-  <div id="chat"></div>
+  <div class="chat-container" id="chat"></div>
 
-  <form id="input-container" onsubmit="sendMessage(event)">
-    <textarea id="input" rows="1" placeholder="Mensaje" required></textarea>
-    <button id="send">➤</button>
-  </form>
+  <div class="chat-box">
+    <textarea id="message" rows="1" placeholder="Mensaje"></textarea>
+    <button onclick="sendMessage()">➤</button>
+  </div>
 
-  <div id="profile-modal">
-    <img src="/icons/valeria-512.png" alt="Valeria" />
-    <h2>Valeria · Seguridad Alimentaria</h2>
-    <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
-    <button id="profile-close" onclick="hideProfile()">Cerrar</button>
+  <div class="modal" id="profile-modal">
+    <img src="valeria-full.jpg" alt="Valeria Full" />
+    <div class="caption">Valeria · Seguridad Alimentaria</div>
+    <div class="phrase">🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</div>
+    <button onclick="closeModal()">Cerrar</button>
   </div>
 
   <script>
     const chat = document.getElementById("chat");
-    const input = document.getElementById("input");
+    const input = document.getElementById("message");
 
     function appendMessage(text, className) {
-      const msg = document.createElement("div");
-      msg.className = "message " + className;
-      msg.innerHTML = text;
-      chat.appendChild(msg);
+      const div = document.createElement("div");
+      div.className = `bubble ${className}`;
+      div.innerHTML = text;
+      chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    function showProfile() {
-      document.getElementById("profile-modal").style.display = "flex";
+    function sendMessage() {
+      const text = input.value.trim();
+      if (text === "") return;
+      appendMessage(text, "user");
+      input.value = "";
+      fetch("/.netlify/functions/chat", {
+        method: "POST",
+        body: JSON.stringify({ message: text }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (text.toLowerCase().includes("sanitizante") || text.toLowerCase().includes("g-pg-007")) {
+            appendMessage(`✅ <b>Procedimiento de Sanitizante</b><br><a href="/docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">Descargar PDF</a>`, "bot");
+          }
+          appendMessage(data.reply, "bot");
+        });
     }
 
-    function hideProfile() {
+    function openModal() {
+      document.getElementById("profile-modal").style.display = "block";
+    }
+
+    function closeModal() {
       document.getElementById("profile-modal").style.display = "none";
     }
 
-    function toggleTheme() {
-      document.documentElement.classList.toggle("dark");
+    function toggleMode() {
+      document.body.classList.toggle("dark-mode");
     }
 
-    let presented = false;
     setTimeout(() => {
-      if (!presented && chat.children.length === 0) {
-        appendMessage("Hola, soy Valeria, especialista en seguridad alimentaria 👩‍🔬 ¿En qué te puedo ayudar hoy?", "bot");
-        presented = true;
+      if (chat.children.length === 0) {
+        appendMessage("Hola, soy Valeria, especialista en seguridad alimentaria, ¿en qué te puedo ayudar hoy?", "bot");
       }
     }, 5000);
 
-    async function sendMessage(event) {
-      event.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
-      appendMessage(text, "user");
-      input.value = "";
-      const res = await fetch("/.netlify/functions/chat", {
-        method: "POST",
-        body: JSON.stringify({ message: text })
-      });
-      const data = await res.json();
-      let reply = data.reply || "Lo siento, no tengo una respuesta para eso.";
-
-      const lower = text.toLowerCase();
-      if (lower.includes("procedimiento") && lower.includes("sanitizante")) {
-        reply = '✅ <strong>Procedimiento de Sanitizante</strong><br><a href="docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">Descargar PDF</a>';
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
       }
-
-      if (["aconcagua", "planeta", "galaxia", "historia", "capital"].some(t => lower.includes(t))) {
-        reply = "Lo siento, solo puedo ayudarte con temas relacionados a seguridad alimentaria, BPM y procedimientos internos.";
-      }
-
-      appendMessage(reply, "bot");
-    }
+    });
   </script>
 </body>
 </html>
