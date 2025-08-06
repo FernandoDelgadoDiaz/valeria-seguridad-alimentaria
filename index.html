@@ -2,16 +2,21 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Valeria · Seguridad Alimentaria</title>
-  <link rel="stylesheet" href="styles.css" />
-  <link rel="icon" href="icons/valeria-32.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <meta name="theme-color" content="#0a2f73" />
+  <title>Valeria · Seguridad Alimentaria</title>
+  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
+  <link rel="icon" href="/icons/valeria-32.png" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/icons/valeria-192.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
+      font-family: sans-serif;
+      background-color: #f1f1f1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
     header {
       background-color: #0a2f73;
@@ -19,203 +24,185 @@
       padding: 10px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
       position: sticky;
       top: 0;
-      z-index: 1000;
+      z-index: 10;
     }
     header img {
-      border-radius: 50%;
       width: 40px;
       height: 40px;
+      border-radius: 50%;
+      margin-right: 10px;
       object-fit: cover;
     }
-    #profileModal {
-      display: none;
-      position: fixed;
-      top: 60px;
-      right: 10px;
-      background: white;
-      border: 1px solid #ccc;
-      padding: 15px;
-      z-index: 2000;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    header .titles {
+      display: flex;
+      flex-direction: column;
     }
-    #profileModal img {
-      width: 120px;
-      border-radius: 8px;
-      display: block;
-      margin: 0 auto;
-    }
-    #profileModal p {
-      text-align: center;
-      margin-top: 10px;
+    header .titles span:first-child {
+      font-size: 16px;
       font-weight: bold;
     }
-    #profileModal small {
-      display: block;
-      text-align: center;
-      font-style: italic;
-      margin-top: 5px;
+    header .titles span:last-child {
+      font-size: 12px;
     }
-    #chat {
-      padding: 10px;
-      max-width: 600px;
-      margin: 0 auto;
+    main {
+      flex: 1;
       overflow-y: auto;
-      height: calc(100vh - 120px);
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
     }
-    .bubble {
-      background-color: #e0e0e0;
+    .message {
+      max-width: 80%;
+      margin: 5px 0;
       padding: 10px;
       border-radius: 10px;
-      margin: 10px;
-      max-width: 80%;
-      clear: both;
+      line-height: 1.4;
+      word-wrap: break-word;
     }
     .user {
-      background-color: #d1e7ff;
-      float: right;
-      text-align: right;
+      align-self: flex-end;
+      background-color: #cfe2ff;
     }
     .valeria {
-      background-color: #f0f0f0;
-      float: left;
-      text-align: left;
+      align-self: flex-start;
+      background-color: #e0ecf8;
     }
-    #input-container {
+    form {
       display: flex;
       padding: 10px;
-      max-width: 600px;
-      margin: 0 auto;
+      border-top: 1px solid #ccc;
+      background-color: white;
     }
-    #user-input {
+    textarea {
       flex: 1;
-      padding: 10px;
-      font-size: 1em;
-      border-radius: 20px;
-      border: 1px solid #ccc;
       resize: none;
-      max-height: 120px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      font-size: 14px;
+      max-height: 150px;
       overflow-y: auto;
     }
-    #send-btn {
+    button {
       background: none;
       border: none;
-      font-size: 1.5em;
       margin-left: 10px;
+      font-size: 20px;
+      color: #0a2f73;
       cursor: pointer;
     }
-    .dark-mode {
-      background-color: #121212;
-      color: #eee;
+    .profile-modal {
+      display: none;
+      position: fixed;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      padding: 20px;
+      text-align: center;
+      z-index: 999;
     }
-    .dark-mode .bubble {
-      background-color: #2c2c2c;
+    .profile-modal img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
     }
-    .dark-mode .user {
-      background-color: #0a84ff;
+    .profile-modal h2 {
+      margin: 10px 0 5px;
     }
-    .dark-mode .valeria {
-      background-color: #3c3c3c;
+    .profile-modal p {
+      font-size: 14px;
+      color: #333;
     }
   </style>
 </head>
 <body>
   <header>
-    <div onclick="toggleProfileModal()" style="cursor:pointer; display:flex; align-items:center; gap:10px;">
-      <img src="valeria-mini.jpg" alt="Perfil" />
-      <strong>Valeria</strong>
+    <img src="/icons/valeria-mini.jpg" alt="Valeria" onclick="toggleProfile()" />
+    <div class="titles">
+      <span>Valeria</span>
+      <span>Seguridad Alimentaria</span>
     </div>
-    <button onclick="toggleDarkMode()">🌗</button>
   </header>
-
-  <div id="profileModal">
-    <img src="valeria-perfil-full.jpg" alt="Perfil Expandido" />
-    <p>Valeria · Seguridad Alimentaria</p>
-    <small>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</small>
+  <main id="chat"></main>
+  <form onsubmit="sendMessage(event)">
+    <textarea id="input" rows="1" placeholder="Mensaje"></textarea>
+    <button type="submit">➤</button>
+  </form>
+  <div class="profile-modal" id="profileModal">
+    <img src="/icons/valeria-full.jpg" alt="Valeria" />
+    <h2>Valeria · Seguridad Alimentaria</h2>
+    <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
   </div>
-
-  <main id="chat">
-    <div class="bubble valeria">¡Hola! ¿En qué puedo ayudarte hoy?</div>
-  </main>
-
-  <div id="input-container">
-    <textarea id="user-input" rows="1" placeholder="Mensaje" oninput="adjustHeight(this)"></textarea>
-    <button id="send-btn" onclick="sendMessage()">➤</button>
-  </div>
-
   <script>
-    let hasGreeted = false;
+    const chat = document.getElementById('chat');
+    const input = document.getElementById('input');
+    const modal = document.getElementById('profileModal');
+    let presented = false;
+    let idleTimer = setTimeout(showPresentation, 5000);
 
-    function toggleProfileModal() {
-      const modal = document.getElementById('profileModal');
+    function toggleProfile() {
       modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
     }
 
-    function toggleDarkMode() {
-      document.body.classList.toggle('dark-mode');
+    function appendMessage(content, sender = 'valeria') {
+      const msg = document.createElement('div');
+      msg.className = 'message ' + sender;
+      msg.innerHTML = content;
+      chat.appendChild(msg);
+      chat.scrollTop = chat.scrollHeight;
     }
 
-    function adjustHeight(el) {
-      el.style.height = 'auto';
-      el.style.height = el.scrollHeight + 'px';
+    function showPresentation() {
+      if (!presented) {
+        appendMessage('👋 Hola, soy <b>Valeria</b>, especialista en seguridad alimentaria. ¿En qué te puedo ayudar hoy?', 'valeria');
+        presented = true;
+      }
     }
 
-    async function sendMessage() {
-      const input = document.getElementById('user-input');
-      const message = input.value.trim();
-      if (!message) return;
-      appendMessage(message, 'user');
+    function sendMessage(e) {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      appendMessage(text, 'user');
       input.value = '';
       input.style.height = 'auto';
-
-      const response = await fetch('/.netlify/functions/chat', {
-        method: 'POST',
-        body: JSON.stringify({ message }),
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const data = await response.json();
-      const reply = data.reply || 'Lo siento, no pude encontrar una respuesta.';
-
-      appendMessage(reply, 'valeria');
+      handleMessage(text);
     }
 
-    function appendMessage(text, sender) {
-      const bubble = document.createElement('div');
-      bubble.className = `bubble ${sender}`;
-      bubble.innerHTML = parseLinks(text);
-      document.getElementById('chat').appendChild(bubble);
-      document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
-    }
-
-    function parseLinks(text) {
-      const pdfMap = {
-        'sanitizante': 'g-pg-007-med-cc-sanitizante-rev-002.pdf',
-        'queso': 'procedimiento-fraccionado-quesos.pdf',
-        'dulce': 'procedimiento-fraccionado-dulces.pdf'
-      };
-      for (const key in pdfMap) {
-        if (text.toLowerCase().includes(key)) {
-          return `✅ <a href="/docs/${pdfMap[key]}" target="_blank">Procedimiento de ${capitalize(key)}</a>`;
-        }
+    function handleMessage(text) {
+      const lower = text.toLowerCase();
+      if (/(pdf|procedimiento|documento).*(sanitizante)/.test(lower)) {
+        appendMessage('✅ <b>Procedimiento de Sanitizante</b><br><a href="/docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">Descargar PDF</a>');
+      } else if (["hola", "buen día", "buenas tardes", "buenas noches", "quién sos", "quien sos"].includes(lower)) {
+        appendMessage('👋 Soy <b>Valeria</b>, especialista en seguridad alimentaria. Estoy para ayudarte con BPM, el Código Alimentario Argentino y los procedimientos internos.');
+      } else if (/bpm/.test(lower)) {
+        appendMessage('📘 <b>BPM</b> significa Buenas Prácticas de Manufactura. Son un conjunto de normas para asegurar la calidad e inocuidad de los alimentos en todas las etapas del proceso.');
+      } else if (!/(alimento|inocuidad|sanitizante|bpm|procedimiento|fraccionado|limpieza|etiquetado|desinfección|cadena de frío|congelado|vencimiento|conservación|registro)/.test(lower)) {
+        appendMessage('⚠️ Solo puedo ayudarte con temas de seguridad alimentaria, BPM, Código Alimentario Argentino o procedimientos internos.');
+      } else {
+        fetch('/.netlify/functions/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        })
+        .then(res => res.json())
+        .then(data => {
+          appendMessage(data.reply || '❌ No se encontró una respuesta.');
+        })
+        .catch(() => appendMessage('❌ Error al procesar la respuesta.'));
       }
-      return text;
     }
 
-    function capitalize(str) {
-      return str.charAt(0).toUpperCase() + str.slice(1);
-    }
-
-    // Presentación automática si no hay saludo
-    setTimeout(() => {
-      if (!hasGreeted) {
-        appendMessage('Hola, soy Valeria, especialista en seguridad alimentaria 👩‍🔬 ¿En qué te puedo ayudar hoy?', 'valeria');
-        hasGreeted = true;
-      }
-    }, 5000);
+    input.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = input.scrollHeight + 'px';
+    });
   </script>
 </body>
 </html>
