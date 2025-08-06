@@ -17,6 +17,11 @@
       display: flex;
       flex-direction: column;
       height: 100vh;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    body.dark {
+      background-color: #1a1a1a;
+      color: white;
     }
     header {
       background-color: #0a2f73;
@@ -34,6 +39,7 @@
       border-radius: 50%;
       margin-right: 10px;
       object-fit: cover;
+      cursor: pointer;
     }
     header .titles {
       display: flex;
@@ -45,6 +51,17 @@
     }
     header .titles span:last-child {
       font-size: 12px;
+    }
+    #themeToggle {
+      margin-left: auto;
+      background: white;
+      color: #0a2f73;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      font-size: 16px;
+      cursor: pointer;
     }
     main {
       flex: 1;
@@ -68,8 +85,7 @@
     .valeria {
       align-self: flex-start;
       background-color: #e0ecf8;
-    }
-    form {
+    }form {
       display: flex;
       padding: 10px;
       border-top: 1px solid #ccc;
@@ -119,6 +135,10 @@
       font-size: 14px;
       color: #333;
     }
+    .dark .profile-modal {
+      background: #2a2a2a;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -128,6 +148,7 @@
       <span>Valeria</span>
       <span>Seguridad Alimentaria</span>
     </div>
+    <button id="themeToggle" onclick="toggleTheme()">☀️</button>
   </header>
   <main id="chat"></main>
   <form onsubmit="sendMessage(event)">
@@ -144,10 +165,20 @@
     const input = document.getElementById('input');
     const modal = document.getElementById('profileModal');
     let presented = false;
-    let idleTimer = setTimeout(showPresentation, 5000);
-
-    function toggleProfile() {
+    let idleTimer = setTimeout(showPresentation, 5000);function toggleProfile() {
       modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+    }
+
+    window.addEventListener('click', function (e) {
+      if (e.target !== modal && !modal.contains(e.target) && e.target.tagName !== 'IMG') {
+        modal.style.display = 'none';
+      }
+    });
+
+    function toggleTheme() {
+      document.body.classList.toggle('dark');
+      const btn = document.getElementById('themeToggle');
+      btn.textContent = document.body.classList.contains('dark') ? '🌙' : '☀️';
     }
 
     function appendMessage(content, sender = 'valeria') {
@@ -176,14 +207,15 @@
     }
 
     function handleMessage(text) {
-      const lower = text.toLowerCase();
-      if (/(pdf|procedimiento|documento).*(sanitizante)/.test(lower)) {
+      const lower = text.toLowerCase();if (/(pdf|procedimiento|documento).*(sanitizante)/.test(lower)) {
         appendMessage('✅ <b>Procedimiento de Sanitizante</b><br><a href="/docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">Descargar PDF</a>');
       } else if (["hola", "buen día", "buenas tardes", "buenas noches", "quién sos", "quien sos"].includes(lower)) {
         appendMessage('👋 Soy <b>Valeria</b>, especialista en seguridad alimentaria. Estoy para ayudarte con BPM, el Código Alimentario Argentino y los procedimientos internos.');
       } else if (/bpm/.test(lower)) {
         appendMessage('📘 <b>BPM</b> significa Buenas Prácticas de Manufactura. Son un conjunto de normas para asegurar la calidad e inocuidad de los alimentos en todas las etapas del proceso.');
-      } else if (!/(alimento|inocuidad|sanitizante|bpm|procedimiento|fraccionado|limpieza|etiquetado|desinfección|cadena de frío|congelado|vencimiento|conservación|registro)/.test(lower)) {
+      } else if (/no conformidad|vencido|vencimiento|rotación|fefo/.test(lower)) {
+        appendMessage('⚠️ Una <b>no conformidad</b> es una desviación respecto a lo establecido en los procedimientos, normas internas o el CAA. Si encontrás productos vencidos, deben ser retirados de góndola y gestionados según el procedimiento interno.');
+      } else if (!/(alimento|inocuidad|sanitizante|bpm|procedimiento|fraccionado|limpieza|etiquetado|no conformidad|desinfección|cadena de frío|congelado|vencimiento|conservación|registro)/.test(lower)) {
         appendMessage('⚠️ Solo puedo ayudarte con temas de seguridad alimentaria, BPM, Código Alimentario Argentino o procedimientos internos.');
       } else {
         fetch('/.netlify/functions/chat', {
