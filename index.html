@@ -2,26 +2,22 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
-  <title>Valeria · Seguridad Alimentaria</title>
-  <meta name="description" content="Asistente de Seguridad Alimentaria">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0a2f73" />
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="icon" type="image/jpeg" href="/favicon.jpg" />
-  <link rel="apple-touch-icon" href="/favicon.jpg" />
+  <title>Valeria · Seguridad Alimentaria</title>
+  <link rel="icon" type="image/png" href="icons/valeria-32.png" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" />
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-      transition: background-color 0.3s, color 0.3s;
+      font-family: 'Roboto', sans-serif;
+      background-color: #f2f2f2;
+      color: #000;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
     }
-
-    body.dark-mode {
-      background-color: #121212;
-      color: white;
-    }
-
     header {
       background-color: #0a2f73;
       color: white;
@@ -30,232 +26,177 @@
       align-items: center;
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 2;
     }
-
-    .profile-pic {
-      width: 36px;
-      height: 36px;
+    header img {
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      object-fit: cover;
       margin-right: 10px;
-      cursor: pointer;
     }
-
-    .title {
-      font-weight: bold;
-      font-size: 1.2em;
+    header h1 {
+      font-size: 18px;
+      margin: 0;
     }
-
-    .chat-container {
-      padding: 10px;
-      max-height: calc(100vh - 120px);
+    #chat {
+      flex: 1;
       overflow-y: auto;
+      padding: 10px;
+      scroll-behavior: smooth;
     }
-
-    .bubble {
-      margin: 10px 0;
-      padding: 10px 14px;
-      border-radius: 16px;
-      max-width: 90%;
+    .mensaje {
+      max-width: 80%;
+      margin: 8px 0;
+      padding: 10px;
+      border-radius: 10px;
       line-height: 1.4;
+      white-space: pre-wrap;
       word-wrap: break-word;
     }
-
-    .user {
-      background-color: #d9fdd3;
+    .usuario {
       align-self: flex-end;
+      background-color: #e1e1e1;
+      color: #000;
     }
-
-    .bot {
-      background-color: #f0f0f0;
+    .valeria {
       align-self: flex-start;
-    }
-
-    .dark-mode .bot {
       background-color: #2c2c2c;
+      color: #fff;
     }
-
-    .chat-box {
+    #entrada {
       display: flex;
-      padding: 8px;
-      border-top: 1px solid #ccc;
+      align-items: center;
+      padding: 10px;
+      background-color: #fff;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 3;
     }
-
-    .chat-box textarea {
+    #mensaje {
       flex: 1;
-      resize: none;
       padding: 10px;
       border-radius: 20px;
       border: 1px solid #ccc;
-      font-size: 1em;
-      line-height: 1.4;
+      font-size: 16px;
+      resize: none;
       max-height: 150px;
       overflow-y: auto;
     }
-
-    .chat-box button {
+    #enviar {
       background-color: #0a2f73;
+      border: none;
       color: white;
-      border: none;
-      padding: 0 14px;
-      border-radius: 50%;
-      margin-left: 8px;
-      font-size: 1.2em;
-      cursor: pointer;
-    }
-
-    .dark-mode .chat-box button {
-      background-color: #1a1a1a;
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      top: 10%;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: white;
-      color: black;
-      padding: 20px;
-      border-radius: 10px;
-      z-index: 100;
-      width: 80%;
-      max-width: 400px;
-      text-align: center;
-    }
-
-    .modal img {
-      max-width: 100%;
-      border-radius: 10px;
-    }
-
-    .modal .caption {
-      margin-top: 10px;
-      font-weight: bold;
-    }
-
-    .modal .phrase {
-      font-size: 0.9em;
-      margin-top: 5px;
-    }
-
-    .modal button {
-      margin-top: 10px;
-      background-color: #0a2f73;
-      color: white;
-      border: none;
-      padding: 8px 14px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    #toggle-mode {
-      position: absolute;
-      right: 10px;
-      top: 10px;
-      background-color: white;
-      border: none;
-      border-radius: 50%;
-      padding: 6px;
-      cursor: pointer;
-    }
-
-    .pdf-link {
-      background-color: #e6f9e6;
       padding: 10px;
-      border-radius: 10px;
-      margin-top: 5px;
+      border-radius: 50%;
+      margin-left: 10px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .modo-oscuro {
+      background-color: #121212;
+      color: #fff;
+    }
+    .modo-oscuro .valeria {
+      background-color: #333;
+    }
+    .modo-oscuro .usuario {
+      background-color: #555;
+      color: #fff;
+    }
+    .modo-oscuro #entrada {
+      background-color: #1e1e1e;
+    }
+    #modo {
+      margin-left: auto;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 5px;
+    }
+    strong {
       font-weight: bold;
-    }
-
-    .pdf-link a {
-      display: block;
-      margin-top: 5px;
-      font-weight: normal;
-    }
-
-    .dark-mode .pdf-link {
-      background-color: #1e3f1e;
-      color: white;
     }
   </style>
 </head>
 <body>
   <header>
-    <img src="valeria-mini.jpg" alt="Perfil" class="profile-pic" onclick="openModal()" />
-    <span class="title">Valeria</span>
-    <button id="toggle-mode" onclick="toggleMode()">🌓</button>
+    <img src="icons/valeria-mini.jpg" alt="Valeria" />
+    <h1>Valeria</h1>
+    <button id="modo">🌗</button>
   </header>
-
-  <div class="chat-container" id="chat"></div>
-
-  <div class="chat-box">
-    <textarea id="message" rows="1" placeholder="Mensaje"></textarea>
-    <button onclick="sendMessage()">➤</button>
-  </div>
-
-  <div class="modal" id="profile-modal">
-    <img src="valeria-full.jpg" alt="Valeria Full" />
-    <div class="caption">Valeria · Seguridad Alimentaria</div>
-    <div class="phrase">🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</div>
-    <button onclick="closeModal()">Cerrar</button>
+  <div id="chat"></div>
+  <div id="entrada">
+    <textarea id="mensaje" rows="1" placeholder="Mensaje"></textarea>
+    <button id="enviar">➤</button>
   </div>
 
   <script>
-    const chat = document.getElementById("chat");
-    const input = document.getElementById("message");
+    const chat = document.getElementById('chat');
+    const mensajeInput = document.getElementById('mensaje');
+    const enviarBtn = document.getElementById('enviar');
+    const modoBtn = document.getElementById('modo');
+    const body = document.body;
 
-    function appendMessage(text, className) {
-      const div = document.createElement("div");
-      div.className = `bubble ${className}`;
-      div.innerHTML = text;
+    const mensajesIniciales = [
+      "Hola, soy Valeria, especialista en seguridad alimentaria, ¿en qué te puedo ayudar hoy?"
+    ];
+
+    function agregarMensaje(texto, clase) {
+      const div = document.createElement('div');
+      div.className = `mensaje ${clase}`;
+      div.innerHTML = texto;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
     }
 
-    function sendMessage() {
-      const text = input.value.trim();
-      if (text === "") return;
-      appendMessage(text, "user");
-      input.value = "";
-      fetch("/.netlify/functions/chat", {
-        method: "POST",
-        body: JSON.stringify({ message: text }),
+    function enviarMensaje() {
+      const texto = mensajeInput.value.trim();
+      if (!texto) return;
+      agregarMensaje(texto, 'usuario');
+      mensajeInput.value = '';
+      mensajeInput.focus();
+
+      fetch('/.netlify/functions/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message: texto }),
+        headers: { 'Content-Type': 'application/json' }
       })
-        .then((res) => res.json())
-        .then((data) => {
-          if (text.toLowerCase().includes("sanitizante") || text.toLowerCase().includes("g-pg-007")) {
-            appendMessage(`✅ <b>Procedimiento de Sanitizante</b><br><a href="/docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">Descargar PDF</a>`, "bot");
-          }
-          appendMessage(data.reply, "bot");
-        });
+      .then(r => r.json())
+      .then(data => {
+        const respuesta = data.reply;
+
+        if (texto.toLowerCase().includes('sanitizante')) {
+          agregarMensaje(`✅ <a href="docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">Procedimiento de Sanitizante</a>`, 'valeria');
+        } else if (respuesta) {
+          agregarMensaje(respuesta, 'valeria');
+        } else {
+          agregarMensaje('🛑 Lo siento, solo puedo ayudarte con temas de seguridad alimentaria, BPM, el CAA y procedimientos internos.', 'valeria');
+        }
+      })
+      .catch(() => {
+        agregarMensaje('⚠️ Hubo un error al procesar tu mensaje.', 'valeria');
+      });
     }
 
-    function openModal() {
-      document.getElementById("profile-modal").style.display = "block";
-    }
-
-    function closeModal() {
-      document.getElementById("profile-modal").style.display = "none";
-    }
-
-    function toggleMode() {
-      document.body.classList.toggle("dark-mode");
-    }
-
-    setTimeout(() => {
-      if (chat.children.length === 0) {
-        appendMessage("Hola, soy Valeria, especialista en seguridad alimentaria, ¿en qué te puedo ayudar hoy?", "bot");
-      }
-    }, 5000);
-
-    input.addEventListener("keypress", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
+    enviarBtn.addEventListener('click', enviarMensaje);
+    mensajeInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        sendMessage();
+        enviarMensaje();
       }
     });
+
+    modoBtn.addEventListener('click', () => {
+      body.classList.toggle('modo-oscuro');
+    });
+
+    setTimeout(() => {
+      if (chat.childElementCount === 0) {
+        agregarMensaje(mensajesIniciales[0], 'valeria');
+      }
+    }, 5000);
   </script>
 </body>
 </html>
