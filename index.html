@@ -2,239 +2,236 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-  <meta name="theme-color" content="#0a2f73" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Valeria · Seguridad Alimentaria</title>
-  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria (Argentina)" />
-  <link rel="icon" href="/icons/valeria-32.png" sizes="32x32" />
-  <link rel="apple-touch-icon" href="/icons/valeria-192.png" />
-  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria" />
+  <link rel="icon" href="/favicon.jpg" />
   <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background-color: #f1f1f1;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      transition: background-color 0.3s, color 0.3s;
-    }
-    body.dark {
-      background-color: #1a1a1a;
-      color: white;
-    }
-    header {
-      background-color: #0a2f73;
-      color: white;
-      padding: 10px;
-      display: flex;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    header img {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      margin-right: 10px;
-      object-fit: cover;
-      cursor: pointer;
-    }
-    header .titles {
-      display: flex;
-      flex-direction: column;
-    }
-    header .titles span:first-child {
-      font-size: 16px;
-      font-weight: bold;
-    }
-    header .titles span:last-child {
-      font-size: 12px;
-    }
-    #themeToggle {
-      margin-left: auto;
-      background: white;
-      color: #0a2f73;
-      border: none;
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    main {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-    }
-    .message {
-      max-width: 80%;
-      margin: 5px 0;
-      padding: 10px;
-      border-radius: 10px;
-      line-height: 1.4;
-      word-wrap: break-word;
-    }
-    .user {
-      align-self: flex-end;
-      background-color: #cfe2ff;
-    }
-    .valeria {
-      align-self: flex-start;
-      background-color: #e0ecf8;
-    }form {
-      display: flex;
-      padding: 10px;
-      border-top: 1px solid #ccc;
-      background-color: white;
-    }
-    textarea {
-      flex: 1;
-      resize: none;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 20px;
-      font-size: 14px;
-      max-height: 150px;
-      overflow-y: auto;
-    }
-    button {
-      background: none;
-      border: none;
-      margin-left: 10px;
-      font-size: 20px;
-      color: #0a2f73;
-      cursor: pointer;
-    }
-    .profile-modal {
-      display: none;
-      position: fixed;
-      top: 50px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-      padding: 20px;
-      text-align: center;
-      z-index: 999;
-    }
-    .profile-modal img {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-    .profile-modal h2 {
-      margin: 10px 0 5px;
-    }
-    .profile-modal p {
-      font-size: 14px;
-      color: #333;
-    }
-    .dark .profile-modal {
-      background: #2a2a2a;
-      color: white;
-    }
+    :root{ --brand:#0a2f73; --bg:#f6f7fb; --fg:#0f172a; --muted:#64748b; --va:#eaf2ff; --us:#e8f5e9; --card:#fff; }
+    *{ box-sizing:border-box }
+    html,body{ height:100% }
+    body{ margin:0; font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--fg); display:flex; flex-direction:column }
+    header{ position:sticky; top:0; background:var(--brand); color:#fff; display:flex; gap:12px; align-items:center; padding:10px 12px; z-index:10 }
+    header img{ width:40px; height:40px; border-radius:50%; object-fit:cover; cursor:pointer }
+    main{ flex:1; overflow:auto; padding:14px; display:flex; flex-direction:column; gap:10px }
+    .msg{ max-width:820px; padding:12px 14px; border-radius:16px; line-height:1.45; box-shadow:0 1px 0 rgba(15,23,42,.04) }
+    .va{ align-self:flex-start; background:var(--va) }
+    .us{ align-self:flex-end; background:var(--us) }
+    form{ display:flex; gap:10px; padding:10px; background:var(--card); border-top:1px solid #e2e8f0 }
+    textarea{ flex:1; border:1px solid #cbd5e1; border-radius:14px; padding:10px 12px; font-size:14px; resize:none; max-height:180px }
+    .send{ border:0; background:var(--brand); color:#fff; border-radius:12px; padding:0 12px; font-size:18px; cursor:pointer }
+    .profile{ position:fixed; top:64px; left:50%; transform:translateX(-50%); background:var(--card); border-radius:16px; box-shadow:0 12px 28px rgba(15,23,42,.18); padding:18px; display:none; z-index:50; width:min(560px,92vw) }
+    .disclaimer{ color:var(--muted); font-size:12px }
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px }
+    .chip{ background:#eef2ff; border:1px solid #dbeafe; border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer }
   </style>
 </head>
 <body>
   <header>
-    <img src="/icons/valeria-mini.jpg" alt="Valeria" onclick="toggleProfile()" />
-    <div class="titles">
-      <span>Valeria</span>
-      <span>Seguridad Alimentaria</span>
+    <img id="avatar" src="/valeria-mini.jpg" alt="Valeria" title="Abrir perfil" />
+    <div>
+      <div style="font-weight:700">Valeria</div>
+      <div style="font-size:12px;opacity:.95">Seguridad Alimentaria</div>
     </div>
-    <button id="themeToggle" onclick="toggleTheme()">☀️</button>
   </header>
+
   <main id="chat"></main>
-  <form onsubmit="sendMessage(event)">
-    <textarea id="input" rows="1" placeholder="Mensaje"></textarea>
-    <button type="submit">➤</button>
+  <form id="form">
+    <textarea id="input" rows="1" placeholder="Ej.: POES carnicería, Recepción de perecederos, Procedimiento de sanitizantes"></textarea>
+    <button class="send" aria-label="Enviar">➤</button>
   </form>
-  <div class="profile-modal" id="profileModal">
-    <img src="/icons/valeria-full.jpg" alt="Valeria" />
-    <h2>Valeria · Seguridad Alimentaria</h2>
-    <p>🛡️ La inocuidad alimentaria empieza con cada decisión que tomamos.</p>
+
+  <!-- Perfil expandible -->
+  <div id="profile" class="profile">
+    <div style="display:flex;gap:14px;align-items:center">
+      <img src="/valeria-full.jpg" alt="Valeria" style="width:88px;height:88px;border-radius:50%;object-fit:cover" />
+      <div>
+        <h3 style="margin:6px 0 4px">Valeria · Seguridad Alimentaria</h3>
+        <div class="disclaimer">Respondo con base documental interna (procedimientos, POES, manuales, registros) y reglas operativas acordadas. Solo temas de seguridad alimentaria, BPM/CAA o procedimientos internos.</div>
+        <div class="chips" id="chips"></div>
+      </div>
+    </div>
   </div>
+
   <script>
-    const chat = document.getElementById('chat');
-    const input = document.getElementById('input');
-    const modal = document.getElementById('profileModal');
-    let presented = false;
-    let idleTimer = setTimeout(showPresentation, 5000);function toggleProfile() {
-      modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
-    }
+  // ============ Utilidades ============
+  const $ = s => document.querySelector(s);
+  const chat = $('#chat');
+  const form = $('#form');
+  const input = $('#input');
+  const profile = $('#profile');
+  const avatar = $('#avatar');
 
-    window.addEventListener('click', function (e) {
-      if (e.target !== modal && !modal.contains(e.target) && e.target.tagName !== 'IMG') {
-        modal.style.display = 'none';
+  function addMsg(html, who='va'){ const d=document.createElement('div'); d.className='msg '+(who==='va'?'va':'us'); d.innerHTML=html; chat.appendChild(d); chat.scrollTop=chat.scrollHeight; }
+  function norm(s){ return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,''); }
+
+  // Abre/cierra perfil
+  let open=false;
+  avatar.onclick = ()=>{ open=!open; profile.style.display = open? 'block':'none'; };
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ open=false; profile.style.display='none'; }});
+  document.addEventListener('click',e=>{ if(open && !profile.contains(e.target) && e.target!==avatar){ open=false; profile.style.display='none'; }});
+
+  // Intro a los 2s si no hay interacción
+  setTimeout(()=>{ if(chat.children.length===0){ addMsg('👋 Hola, soy <b>Valeria</b>. ¿En qué te puedo ayudar hoy?'); }}, 2000);
+
+  // Sugerencias
+  const SUG = ['¿Cómo sanitizo correctamente?','POES carnicería','Fraccionamiento de quesos','Recepción de perecederos','Gestión de reclamos','Retiro del mercado'];
+  const chips = $('#chips');
+  SUG.forEach(s=>{ const c=document.createElement('div'); c.className='chip'; c.textContent=s; c.onclick=()=>{input.value=s; form.requestSubmit();}; chips.appendChild(c); });
+
+  // ============ Reglas operativas (alto impacto) ============
+  function ruleDominio(q){
+    const ok = /(bpm|poes|proced|sanit|desinfect|j-512|amonio|recepcion|decomiso|retiro|reclamo|temperatura|rotulado|fraccion|dulce|queso|pollo|carne|milanesa|mip|\b5s\b|plan de accion|caa|codigo alimentario|limpieza|desengrasante|camara|cocina|comedor|panader|reposter|trastienda|fruta|verdura|fiambre|lacteo|mobiliario|utensilio|residuo|transporte|perecedero|muestra|reservorio|agua de red)/.test(q);
+    return ok ? null : '⚠️ Solo puedo ayudarte con <b>seguridad alimentaria, BPM/CAA o procedimientos internos</b>.';
+  }
+
+  function ruleSanitizacion(q){
+    if(!/(sanit|desinfect|j-512|amonio|qac)/.test(q)) return null;
+    return `🛡️ <b>Sanitización = paso final</b>. Antes hacé la <b>limpieza completa</b>: retirar residuos → pre-enjuague → <b>desengrasante</b> → fregado → enjuague final.
+Luego aplicá <b>J-512 a 200 ppm</b> con <b>dilutor</b> (manual solo si el dilutor falla). Verificá con <b>tiras QAC</b> (escala 50/100/200/400 ppm) y usá el <b>valor más cercano</b> a 200.`;
+  }
+
+  function ruleQuesos(q){
+    if(!/(ques|horma|fraccion)/.test(q)) return null;
+    return `🧀 <b>Sobrante de quesos ≠ consumo interno</b>. Resguardar a <b>0–5 °C</b>, <b>resinitar</b> y <b>etiquetar</b> (denominación, fecha de fraccionado, vencimiento, lote, peso, conservación). Tolerancia <b>5 días</b> para el fraccionado definitivo con <b>control diario</b>.`;
+  }
+
+  // ============ Catálogo de PDFs ============
+  // 1) Lista por defecto (nombres "limpios" más comunes que ya usamos)
+  let DOCS = [
+    "procedimiento de sanitizantes.pdf",
+    "medicion de sanitizante.pdf",
+    "fraccionamiento de quesos.pdf",
+    "fraccionamiento de dulces.pdf",
+    "poes sector carniceria.pdf",
+    "poes sector pollos.pdf",
+    "poes sector panaderia.pdf",
+    "poes sector reposteria.pdf",
+    "poes sector rotiseria.pdf",
+    "poes sector frutas y verduras.pdf",
+    "poes sector baños y vestuarios.pdf",
+    "poes camaras.pdf",
+    "poes trastienda.pdf",
+    "poes general comedor.pdf",
+    "poes general cocina.pdf",
+    "poes mobiliarios.pdf",
+    "poes utensilios general.pdf",
+    "poes general elementos de limpieza.pdf",
+    "recepcion de mercaderia.pdf",
+    "recepcion de perecederos y decomisos.pdf",
+    "registro de recepcion de mercaderia.pdf",
+    "retiro de alimentos del mercado.pdf",
+    "decomiso de mercaderia.pdf",
+    "gestion de reclamos.pdf",
+    "plan de accion.pdf",
+    "temperatura de carne picada.pdf",
+    "medicion de temperatura con termometro pinche.pdf",
+    "control de agua de red.pdf",
+    "higiene de reservorio de agua fria.pdf",
+    "instructivo de toma de muestras de agua.pdf",
+    "manual mip o manejo integrado de plagas.pdf",
+    "metodologia 5s.pdf",
+    "diagrama de pollo refrigerado.pdf",
+    "diagrama de pollo congelado.pdf",
+    "diagrama de carne vacuna refrigerada.pdf",
+    "diagrama de carne vacuna congelada.pdf",
+    "etiquetado de hormas fraccionadas.pdf",
+    "uso de etiqueta proximo a vencer.pdf",
+    "compra y distribucion de productos perecederos.pdf",
+    "tareas y evidencias sucursales.pdf",
+    "transporte de perecederos.pdf",
+    "recepcion de mercaderias.pdf",
+    "mercaderia no apta para la venta.pdf",
+    "desinfectacion quimica.pdf",
+    "informe de retiro de producto.pdf",
+    "equipo de retiro.pdf",
+    "documentacion fraccionados de quesos.pdf",
+    "documentacion manejo de milanesas.pdf",
+    "documentacion rotulado de productos intermedios.pdf",
+    "documentacion manejo de pollos.pdf",
+    "documentacion manejo de carne ovina y porcina.pdf",
+    "documentacion manejo de carne vacuna.pdf",
+    "documentacion fraccionado de dulces.pdf",
+    "documentacion manejo de menudencias.pdf",
+    "documentacion transporte de perecederos.pdf",
+    "escuela la anonima 1.pdf",
+    "escuela la anonima 2.pdf",
+    "escuela la anonima 3.pdf",
+    "planilla de recepcion de mercaderia.pdf",
+    "registro de temperaturas.pdf"
+  ];
+
+  // 2) Si existe /docs/lista_docs_total.txt, reemplaza DOCS por la lista real
+  fetch('/docs/lista_docs_total.txt').then(r => r.ok ? r.text() : null).then(t => {
+    if(!t) return;
+    const lines = t.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    if(lines.length) DOCS = lines;
+  }).catch(()=>{ /* sin drama */ });
+
+  // ============ Matching a PDFs ============
+  function bestPdfFor(q){
+    const n = norm(q);
+
+    // Preferencias por palabras → documento más lógico
+    const prefer = [
+      ['reclamo','reclamo'],
+      ['retiro','retiro'],
+      ['recepcion','recepcion'],
+      ['temperatura carne','temperatura de carne'],
+      ['fruta|verdura','verduras'],
+      ['carnicer','carniceria'],
+      ['poll','pollos'],
+      ['panader','panaderia'],
+      ['reposter','reposteria'],
+      ['rotiser','rotiseria'],
+      ['cocina','cocina'],
+      ['comedor','comedor'],
+      ['camar','camara'],
+      ['muestra de agua|muestras de agua','muestra'],
+      ['reservorio','reservorio'],
+      ['agua de red','agua de red'],
+      ['sanit','sanitizante'],
+      ['desinfect','desinfect|desinsect']
+    ];
+    for(const [pattern, needle] of prefer){
+      if(new RegExp(pattern).test(n)){
+        const hit = DOCS.find(fn => norm(fn).includes(needle));
+        if(hit) return hit;
       }
-    });
-
-    function toggleTheme() {
-      document.body.classList.toggle('dark');
-      const btn = document.getElementById('themeToggle');
-      btn.textContent = document.body.classList.contains('dark') ? '🌙' : '☀️';
     }
 
-    function appendMessage(content, sender = 'valeria') {
-      const msg = document.createElement('div');
-      msg.className = 'message ' + sender;
-      msg.innerHTML = content;
-      chat.appendChild(msg);
-      chat.scrollTop = chat.scrollHeight;
+    // Fuzzy simple por tokens
+    const tokens = n.split(/\s+/).filter(t => t.length > 3);
+    let best = null, bestScore = 0;
+    for(const fn of DOCS){
+      const nf = norm(fn);
+      let score = 0;
+      for(const t of tokens){ if(nf.includes(t)) score++; }
+      if(score > bestScore){ bestScore = score; best = fn; }
     }
+    return best;
+  }
 
-    function showPresentation() {
-      if (!presented) {
-        appendMessage('👋 Hola, soy <b>Valeria</b>, especialista en seguridad alimentaria. ¿En qué te puedo ayudar hoy?', 'valeria');
-        presented = true;
-      }
-    }
+  // ============ Pipeline de respuesta ============
+  form.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    const qRaw = input.value.trim(); if(!qRaw) return;
+    addMsg(qRaw,'us'); input.value='';
 
-    function sendMessage(e) {
-      e.preventDefault();
-      const text = input.value.trim();
-      if (!text) return;
-      appendMessage(text, 'user');
-      input.value = '';
-      input.style.height = 'auto';
-      handleMessage(text);
-    }
+    const q = norm(qRaw);
 
-    function handleMessage(text) {
-      const lower = text.toLowerCase();if (/(pdf|procedimiento|documento).*(sanitizante)/.test(lower)) {
-        appendMessage('✅ <b>Procedimiento de Sanitizante</b><br><a href="/docs/g-pg-007-med-cc-sanitizante-rev-002.pdf" target="_blank">Descargar PDF</a>');
-      } else if (["hola", "buen día", "buenas tardes", "buenas noches", "quién sos", "quien sos"].includes(lower)) {
-        appendMessage('👋 Soy <b>Valeria</b>, especialista en seguridad alimentaria. Estoy para ayudarte con BPM, el Código Alimentario Argentino y los procedimientos internos.');
-      } else if (/bpm/.test(lower)) {
-        appendMessage('📘 <b>BPM</b> significa Buenas Prácticas de Manufactura. Son un conjunto de normas para asegurar la calidad e inocuidad de los alimentos en todas las etapas del proceso.');
-      } else if (/no conformidad|vencido|vencimiento|rotación|fefo/.test(lower)) {
-        appendMessage('⚠️ Una <b>no conformidad</b> es una desviación respecto a lo establecido en los procedimientos, normas internas o el CAA. Si encontrás productos vencidos, deben ser retirados de góndola y gestionados según el procedimiento interno.');
-      } else if (!/(alimento|inocuidad|sanitizante|bpm|procedimiento|fraccionado|limpieza|etiquetado|no conformidad|desinfección|cadena de frío|congelado|vencimiento|conservación|registro)/.test(lower)) {
-        appendMessage('⚠️ Solo puedo ayudarte con temas de seguridad alimentaria, BPM, Código Alimentario Argentino o procedimientos internos.');
-      } else {
-        fetch('/.netlify/functions/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text })
-        })
-        .then(res => res.json())
-        .then(data => {
-          appendMessage(data.reply || '❌ No se encontró una respuesta.');
-        })
-        .catch(() => appendMessage('❌ Error al procesar la respuesta.'));
-      }
-    }
+    // 1) Dominio
+    const dom = ruleDominio(q); if(dom){ addMsg(dom); return; }
 
-    input.addEventListener('input', () => {
-      input.style.height = 'auto';
-      input.style.height = input.scrollHeight + 'px';
-    });
+    // 2) Reglas prioritarias
+    const rs = ruleSanitizacion(q); if(rs){ addMsg(rs); return; }
+    const rq = ruleQuesos(q); if(rq){ addMsg(rq); return; }
+
+    // 3) PDFs
+    const file = bestPdfFor(qRaw);
+    if(file){ addMsg('✅ <a href="/docs/' + encodeURIComponent(file) + '">Abrir PDF</a>'); }
+    else { addMsg('No encontré un documento directo para esa consulta. Probá con: "POES carnicería", "Recepción de perecederos", "Fraccionamiento de quesos".'); }
+  });
   </script>
 </body>
 </html>
