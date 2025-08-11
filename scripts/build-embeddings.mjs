@@ -2,127 +2,105 @@
 import fs from "fs";
 import fsp from "fs/promises";
 import path from "path";
-import { fileURLToPath } from "url";
 import fg from "fast-glob";
 import OpenAI from "openai";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const pdfParse = require("pdf-parse");
+const pdfParse = require("pdf-parse"); // build estable
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const EMB_MODEL = process.env.EMB_MODEL || "text-embedding-3-small";
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = process.cwd();
 const DOCS = path.join(ROOT, "docs");
 const DATA = path.join(ROOT, "data");
 
-function norm(s) {
-  return (s || "")
+function norm(s){
+  return (s||"")
     .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[_\-]+/g, " ")
-    .replace(/\s+/g, " ")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[_\-]+/g," ")
+    .replace(/\s+/g," ")
     .trim();
 }
-function tokensFromName(file) {
-  return norm(file).split(" ").filter(Boolean);
-}
-function chunkText(txt, max = 1800) {
-  const chunks = [];
-  let i = 0;
-  while (i < txt.length) {
-    chunks.push(txt.slice(i, i + max));
-    i += max;
+function chunkText(t, max=1200, overlap=200){
+  const out=[]; let i=0;
+  while(i<t.length){
+    let j=Math.min(t.length, i+max), cut=j;
+    for(const sep of [". ","\n"," "]){ const k=t.lastIndexOf(sep, j); if(k>i+200){ cut=k+sep.length; break; } }
+    const piece=t.slice(i,cut).trim();
+    if(piece) out.push(piece);
+    i=Math.max(cut-overlap, cut);
   }
-  return chunks.filter(c => c.trim().length > 0);
+  return out;
 }
 
-async function main() {
-  console.log("↪ Escaneando PDFs en /docs …");
-  if (!fs.existsSync(DOCS)) throw new Error("No existe /docs/");
-  await fsp.mkdir(DATA, { recursive: true });
+async function main(){
+  if(!fs.existsSync(DOCS)) throw new Error("No existe /docs.");
+  await fsp.mkdir(DATA, { recursive:true });
 
-  const files = await fg("**/*.pdf", { cwd: DOCS, dot: false });
-  console.log(`• Encontrados ${files.length} PDF(s)`);
+  const chunksPath = path.join(DATA, "chunks.jsonl");
+  const embsPath   = path.join(DATA, "embeddings.jsonl");
+  const filesIdx   = path.join(DATA, "files_index.json");
+  await fsp.writeFile(chunksPath, "");
+  await fsp.writeFile(embsPath,   "");
 
-  const chunks = [];
-  const embRows = [];
-  const filesIndex = [];
+  const pdfs = await fg("**/*.pdf", { cwd:DOCS });
+  console.log(`Encontrados ${pdfs.length} PDF(s) en /docs`);
 
-  for (let idx = 0; idx < files.length; idx++) {
-    const rel = files[idx];
-    const abs = path.join(DOCS, rel);
-    const fileName = path.basename(rel);
+  const ALL = [];
+  const FILES = [];
 
-    console.log(`  - Leyendo: ${fileName}`);
-    const buf = await fsp.readFile(abs);
+  for(const rel of pdfs){
+    const abs  = path.join(DOCS, rel);
+    const file = path.basename(rel);
+    const buf  = await fsp.readFile(abs);
 
     let text = "";
     try {
       const res = await pdfParse(buf);
-      text = (res.text || "").replace(/\r/g, "").trim();
-    } catch (e) {
-      console.log(`    ! pdf-parse falló en ${fileName} (seguiré)`);
+      text = (res.text||"").replace(/\r/g," ").replace(/\s+/g," ").trim();
+    } catch {
+      text = "";
     }
 
-    // Índice por nombre (para "Dame PDF de …")
-    filesIndex.push({
-      file: fileName,
-      path: `docs/${rel}`,
-      norm: norm(fileName.replace(/\.pdf$/i, "")),
-      tokens: tokensFromName(fileName.replace(/\.pdf$/i, ""))
-    });
+    // índice por nombre (para “dame pdf de …”)
+    const base = file.replace(/\.pdf$/i,"");
+    const normName = norm(base);
+    const tokens = Array.from(new Set(normName.split(" ").filter(Boolean)));
+    FILES.push({ file, path:`docs/${rel}`, norm:normName, tokens });
 
-    if (!text || text.length < 30) {
-      console.log(`    (sin texto utilizable → solo index por nombre)`);
+    if(text.length < 30){ // escaneado o vacío → no chunkear, igual queda en FILES
+      console.log(`(sin texto utilizable) ${file}`);
       continue;
     }
 
     const parts = chunkText(text);
-    for (let c = 0; c < parts.length; c++) {
-      chunks.push({
-        doc: fileName,
-        chunk: c,
-        path: `docs/${rel}`,
-        text: parts[c]
-      });
-    }
+    parts.forEach((t, idx)=>{
+      const rec = { doc:file, chunk:idx, text:t, path:`docs/${rel}` };
+      ALL.push(rec);
+      fs.appendFileSync(chunksPath, JSON.stringify(rec)+"\n");
+    });
   }
 
-  // Embeddings sólo de los chunks con texto
-  console.log(`↪ Generando embeddings de ${chunks.length} fragmentos…`);
-  for (let i = 0; i < chunks.length; i++) {
-    const { doc, chunk, text } = chunks[i];
-    const { data } = await client.embeddings.create({
+  console.log(`Generando embeddings para ${ALL.length} fragmentos…`);
+  const BATCH = 64;
+  for(let i=0;i<ALL.length;i+=BATCH){
+    const batch = ALL.slice(i, i+BATCH);
+    const resp = await client.embeddings.create({
       model: EMB_MODEL,
-      input: text
+      input: batch.map(r=>r.text)
     });
-    embRows.push({
-      doc,
-      chunk,
-      embedding: data[0].embedding
+    resp.data.forEach((e,k)=>{
+      const r = batch[k];
+      const row = { doc:r.doc, chunk:r.chunk, path:r.path, embedding:e.embedding };
+      fs.appendFileSync(embsPath, JSON.stringify(row)+"\n");
     });
-    if ((i + 1) % 50 === 0) console.log(`  • ${i + 1}/${chunks.length}`);
+    console.log(`Embeddings ${Math.min(i+BATCH,ALL.length)}/${ALL.length}`);
   }
 
-  // Guardar
-  const chunksPath = path.join(DATA, "chunks.jsonl");
-  const embPath = path.join(DATA, "embeddings.jsonl");
-  const filesIdxPath = path.join(DATA, "files_index.json");
-
-  await fsp.writeFile(chunksPath, chunks.map(o => JSON.stringify(o)).join("\n"));
-  await fsp.writeFile(embPath,   embRows.map(o => JSON.stringify(o)).join("\n"));
-  await fsp.writeFile(filesIdxPath, JSON.stringify(filesIndex, null, 2));
-
-  console.log("✔ Listo:");
-  console.log("  -", chunksPath);
-  console.log("  -", embPath);
-  console.log("  -", filesIdxPath);
+  await fsp.writeFile(filesIdx, JSON.stringify(FILES, null, 2));
+  console.log("Listo:", chunksPath, embsPath, filesIdx);
 }
 
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+main().catch(err=>{ console.error(err); process.exit(1); });
