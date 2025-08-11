@@ -1,17 +1,13 @@
+[build]
+  command = "npm install && npm run build-embeddings"
+  publish = "."
+
 [functions]
-  directory = "functions"
   node_bundler = "esbuild"
-  included_files = ["data/**"]
+  included_files = ["data/*"]
 
-[[headers]]
-  for = "/.netlify/functions/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Headers = "Content-Type, Authorization"
-    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-
-# (opcional) Si en algún lugar usás /api/..., esto lo mapea a Functions
+# Ocultar /data del público (el índice es solo para la función)
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
+  from = "/data/*"
+  to = "/404.html"
+  status = 404
