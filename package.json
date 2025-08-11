@@ -5,7 +5,9 @@
   },
   "dependencies": {
     "openai": "^4.56.0",
-    "pdf-parse": "^1.1.1"
+    "pdf-parse": "1.1.1"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18 <22"
+  }
 }
