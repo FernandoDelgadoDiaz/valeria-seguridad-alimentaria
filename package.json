@@ -1,11 +1,11 @@
 {
-  "name": "valeria-backend",
-  "private": true,
-  "version": "1.0.0",
-  "description": "Valeria Profesional - Netlify Functions + base vectorial simple",
+  "type": "module",
   "scripts": {
-    "dev": "netlify dev",
-    "build": "echo \"Netlify Functions se bundlean automáticamente\""
+    "build-embeddings": "node scripts/build-embeddings.mjs"
+  },
+  "dependencies": {
+    "openai": "^4.56.0",
+    "pdf-parse": "^1.1.1"
   },
   "engines": {
     "node": ">=18"
