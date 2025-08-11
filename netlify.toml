@@ -3,10 +3,10 @@
   publish = "."
 
 [functions]
+  directory = "functions"
   node_bundler = "esbuild"
   included_files = ["data/*"]
 
-# Ocultar /data del público (el índice es solo para la función)
 [[redirects]]
   from = "/data/*"
   to = "/404.html"
