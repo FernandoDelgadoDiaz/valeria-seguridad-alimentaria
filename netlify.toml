@@ -2,9 +2,9 @@
   publish = "."
 
 [functions]
-  directory = "netlify/functions"
+  directory = "functions"          # <- tu carpeta real de Functions
   node_bundler = "esbuild"
   included_files = [
-    "docs/**",
-    "data/**"
+    "docs/**",                     # <- empaqueta PDFs dentro del zip de la Function
+    "data/**"                      # <- empaqueta embeddings.json
   ]
