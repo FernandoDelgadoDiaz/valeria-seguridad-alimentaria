@@ -1,9 +1,10 @@
 // scripts/build-embeddings.mjs
-// Genera data/embeddings.json desde todos los PDF en /docs (usa OPENAI_API_KEY)
+// Genera data/embeddings.json desde /docs usando OpenAI (Node 18+)
 
 import fs from "fs";
 import path from "path";
-import pdf from "pdf-parse";
+// FIX: usar la implementación directa, evita el modo CLI del paquete
+import pdf from "pdf-parse/lib/pdf-parse.js";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 if (!OPENAI_API_KEY) {
@@ -13,25 +14,36 @@ if (!OPENAI_API_KEY) {
 
 const ROOT = process.cwd();
 const DOCS_DIR = path.join(ROOT, "docs");
-const OUT_DIR = path.join(ROOT, "data");
+const OUT_DIR  = path.join(ROOT, "data");
 const OUT_PATH = path.join(OUT_DIR, "embeddings.json");
+
 const MODEL = process.env.OPENAI_EMBEDDINGS_MODEL || "text-embedding-3-large";
 
-// Chunking simple
+// Chunking
 const CHUNK_SIZE = 1400;
 const CHUNK_OVERLAP = 200;
 
+// Utilidades
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const toLowerNoAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 
 const embed = async (text) => {
-  const res = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, input: text })
-  });
-  if (!res.ok) throw new Error(`Embeddings API ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  return data.data[0].embedding;
+  // backoff simple por si hay rate limit
+  for (let i=0;i<5;i++){
+    const res = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ model: MODEL, input: text })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.data[0].embedding;
+    }
+    const t = await res.text().catch(()=>String(res.status));
+    console.warn(`Embeddings API intento ${i+1}/5 → ${res.status}: ${t}`);
+    await sleep(500 * (i+1));
+  }
+  throw new Error("Embeddings API agotó reintentos");
 };
 
 const chunkText = (raw) => {
@@ -59,7 +71,7 @@ const main = async () => {
       const data = await pdf(fs.readFileSync(filePath));
       text = (data.text || "").trim();
     } catch (e) {
-      console.warn(`PDF sin texto/legible → ${file} (se saltea)`);
+      console.warn(`PDF no legible (o imagen escaneada) → ${file} (se saltea)`);
       continue;
     }
     if (!text) { console.warn(`Sin texto → ${file} (se saltea)`); continue; }
