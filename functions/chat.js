@@ -1,6 +1,6 @@
 // /netlify/functions/chat.js
-// Valeria · Backend RAG sobre /data/embeddings.json + entrega directa de PDFs /docs
-// Versión: v2025-08-12b
+// Valeria · RAG + entrega directa de PDFs con coincidencia flexible (guiones/espacios)
+// Versión: v2025-08-12c
 
 import fs from "fs";
 import path from "path";
@@ -14,43 +14,53 @@ const DOCS_DIR = path.resolve("./docs");
 const EMBEDDINGS_PATH = path.join(DATA_DIR, "embeddings.json");
 const MAX_CONTEXT_CHUNKS = 6;
 
-// Umbrales ajustados
-const MIN_SIMILARITY_GOOD = 0.80;
-const MIN_SIMILARITY_ANY = 0.65; // ↓ levemente para definiciones (BPM/POES/HACCP)
+// Umbrales
+const MIN_SIMILARITY_ANY = 0.65;
 
+// Hints de dominio
 const DOMAIN_HINTS = [
-  // Términos generales
-  "seguridad alimentaria","inocuidad","bpm","buenas prácticas de manufactura","buenas practicas de manufactura",
-  "poes","poe","procedimientos operativos estandarizados de saneamiento","haccp","appcc","pcc","ppro",
-  "sanitizante","sanitizacion","sanitización","limpieza","desinfeccion","desinfección","higiene","alérgenos","alergenos",
-  "cadena de frío","cadena de frio","freezer","refrigeracion","refrigeración","coccion","cocción","temperatura","trazabilidad",
-  "recepcion de perecederos","recepción de perecederos","fraccionado","fraccionamiento","etiquetado",
-  // Documentos y marcos normativos
-  "caa","código alimentario argentino","codigo alimentario argentino","manual de bpm","manual 5s","5s",
-  "mip","manejo integrado de plagas","poes comedor","procedimiento","registro","planilla","instructivo"
+  "seguridad alimentaria","inocuidad","bpm","buenas practicas de manufactura","buenas prácticas de manufactura",
+  "poes","poe","haccp","appcc","pcc","ppro","sanitizante","limpieza","desinfeccion","desinfección","higiene",
+  "alergenos","alérgenos","cadena de frio","cadena de frío","freezer","refrigeracion","refrigeración",
+  "coccion","cocción","temperatura","trazabilidad","recepcion de perecederos","recepción de perecederos",
+  "fraccionado","fraccionamiento","etiquetado","caa","codigo alimentario argentino","código alimentario argentino",
+  "manual de bpm","manual 5s","5s","mip","manejo integrado de plagas","poes comedor","procedimiento","registro","planilla","instructivo"
 ];
 
+// Alias de intención (para mejorar recall)
 const DIRECT_DOC_ALIASES = [
-  { keys: ["sanitizante","sanitizantes","medicion de sanitizante","medición de sanitizante","g-pg-007","j-512"], file: "procedimiento sanitizantes.pdf", title:"Procedimiento de Sanitizantes" },
-  { keys: ["queso","quesos","fraccionado de queso","fraccionado de quesos"], file: "procedimiento de quesos.pdf", title:"Procedimiento de Fraccionado de Quesos" },
-  { keys: ["dulce","dulces","fraccionado de dulce","fraccionado de dulces"], file: "procedimiento de dulces fraccionados.pdf", title:"Procedimiento de Fraccionado de Dulces" },
-  { keys: ["caa","codigo alimentario argentino","código alimentario argentino"], file: "codigo alimentario argentino.pdf", title:"Código Alimentario Argentino (CAA)" },
-  { keys: ["bpm","manual de bpm"], file: "manual de bpm.pdf", title:"Manual de Buenas Prácticas de Manufactura" },
-  { keys: ["5s","manual 5s","cinco s"], file: "manual 5s.pdf", title:"Manual 5S" },
-  { keys: ["plagas","mip","manejo integrado de plagas"], file: "manejo integrado de plagas.pdf", title:"Manejo Integrado de Plagas (MIP)" },
-  { keys: ["poes comedor","comedor"], file: "poes comedor.pdf", title:"POES del Comedor" }
+  { keys: ["sanitizante","sanitizantes","j-512","medicion de sanitizante","medición de sanitizante"] },
+  { keys: ["queso","quesos","fraccionado de queso","fraccionado de quesos"] },
+  { keys: ["dulce","dulces","fraccionado de dulce","fraccionado de dulces"] },
+  { keys: ["caa","codigo alimentario argentino","código alimentario argentino"] },
+  { keys: ["bpm","manual de bpm"] },
+  { keys: ["5s","manual 5s","cinco s"] },
+  { keys: ["plagas","mip","manejo integrado de plagas"] },
+  { keys: ["poes comedor","comedor"] }
 ];
 
 let cache = { embeddings: null, docsList: null };
 
+// ---------------- Utils ----------------
 const jsonExists = (p) => { try { return fs.existsSync(p); } catch { return false; } };
 const loadJSON = (p, fb=null) => { try { return JSON.parse(fs.readFileSync(p,"utf-8")); } catch { return fb; } };
 const dot = (a,b) => a.reduce((s,v,i)=>s+v*b[i],0);
 const norm = (a) => Math.sqrt(a.reduce((s,v)=>s+v*v,0));
 const cosineSim = (a,b) => dot(a,b)/(norm(a)*norm(b));
 const toLowerNoAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-const containsAny = (text, arr) => { const t=toLowerNoAccents(text); return arr.some(k=>t.includes(toLowerNoAccents(k))); };
+const looksInDomain = (q) => DOMAIN_HINTS.some(k => toLowerNoAccents(q).includes(toLowerNoAccents(k)));
+const wantsDocument = (q) => ["pdf","procedimiento","documento","registro","poes","manual","instructivo","planilla"]
+  .some(k => toLowerNoAccents(q).includes(k));
 
+// normaliza nombres de archivo para comparar (quita .pdf, acentos, guiones/underscores→espacio, compacta espacios)
+const normalizeName = (s) => toLowerNoAccents(
+  s.replace(/\.pdf$/i,"")
+   .replace(/[-_]+/g," ")
+   .replace(/\s+/g," ")
+   .trim()
+);
+
+// carga
 const ensureLoaded = () => {
   if (!cache.embeddings && jsonExists(EMBEDDINGS_PATH)) cache.embeddings = loadJSON(EMBEDDINGS_PATH, []);
   if (!cache.docsList) cache.docsList = safeListDocsDir();
@@ -75,43 +85,64 @@ const retrieve = async (q) => {
   return { chunks: scored.slice(0, MAX_CONTEXT_CHUNKS), maxScore: scored[0]?.score || 0 };
 };
 
-const looksInDomain = (q) => containsAny(q, DOMAIN_HINTS);
-const wantsDocument = (q) => containsAny(q, ["pdf","procedimiento","documento","registro","poes","manual","instructivo","planilla"]);
-
+// ----------- Matching flexible de PDFs -----------
 const findDirectDocMatches = (q, docsList) => {
-  const qn = toLowerNoAccents(q);
-  const hits = [];
+  const qn = normalizeName(q);
+  const docsNorm = docsList.map(d => ({
+    filename: d.filename,
+    title: d.title || humanize(d.filename),
+    norm: normalizeName(d.title || d.filename)
+  }));
 
-  for (const alias of DIRECT_DOC_ALIASES) {
-    if (alias.keys.some(k => qn.includes(toLowerNoAccents(k)))) {
-      const found = docsList.find(d =>
-        toLowerNoAccents(d.filename) === toLowerNoAccents(alias.file) ||
-        toLowerNoAccents(d.title||"") === toLowerNoAccents(alias.title)
-      );
-      if (found) hits.push({ filename: found.filename, title: found.title || alias.title });
+  // 1) si la consulta incluye el nombre (total o parcial)
+  let hits = docsNorm.filter(d => qn.includes(d.norm) || d.norm.includes(qn));
+
+  // 2) si coincide con alias temático (ej. "sanitizante") → buscar por palabra clave en el filename/título
+  if (hits.length === 0) {
+    for (const alias of DIRECT_DOC_ALIASES) {
+      if (alias.keys.some(k => qn.includes(normalizeName(k)))) {
+        const pool = docsNorm.filter(d =>
+          alias.keys.some(k => d.norm.includes(normalizeName(k)))
+        );
+        hits = hits.concat(pool);
+      }
     }
   }
 
-  if (hits.length===0) {
-    const flex = docsList.filter(d =>
-      qn.includes(toLowerNoAccents(d.title||"")) || qn.includes(toLowerNoAccents(d.filename))
-    ).slice(0,3);
-    for (const d of flex) hits.push({ filename:d.filename, title:d.title || d.filename });
+  // 3) si aún no hay, usar tokens de la pregunta (>3 letras) para fuzz
+  if (hits.length === 0) {
+    const tokens = qn.split(" ").filter(t => t.length >= 4);
+    const pool = docsNorm.filter(d => tokens.some(t => d.norm.includes(t)));
+    hits = hits.concat(pool);
   }
 
-  // únicos
-  const uniq=[], seen=new Set();
-  for (const h of hits) { const k=`${h.filename}|${h.title}`; if(!seen.has(k)){seen.add(k); uniq.push(h);} }
-  return uniq;
+  // únicos y top 3
+  const seen = new Set(); const uniq = [];
+  for (const h of hits) { const key = h.filename; if (!seen.has(key)) { seen.add(key); uniq.push({ filename:h.filename, title:h.title }); } }
+  return uniq.slice(0,3);
 };
 
+const suggestDocs = (q, docsList) => {
+  const qn = normalizeName(q);
+  const tokens = qn.split(" ").filter(t => t.length >= 4);
+  const docsNorm = docsList.map(d => ({ filename:d.filename, title:d.title || humanize(d.filename), norm: normalizeName(d.title || d.filename) }));
+  const pool = docsNorm
+    .map(d => ({ ...d, score: tokens.reduce((s,t)=> s + (d.norm.includes(t)?1:0), 0) }))
+    .filter(d => d.score > 0)
+    .sort((a,b)=> b.score - a.score)
+    .slice(0,5)
+    .map(d => d.title);
+  return pool;
+};
+
+// ----------- Prompting -----------
 const buildSystemPrompt = () => `
 Sos **Valeria**, especialista en seguridad alimentaria en Argentina (BPM, POES, CAA, HACCP y procedimientos internos de retail).
 Reglas:
 1) Respondé SOLO sobre seguridad alimentaria. Si está fuera de alcance, rechazá con cortesía.
 2) Tono profesional, pedagógico y claro, con modismos AR (freezer, carne vacuna). Usá **negritas** moderadas y emojis sobrios.
-3) Priorizá lo recuperado de la base vectorial. Si la evidencia es insuficiente pero la consulta es del dominio, podés dar una definición estándar y pasos prácticos.
-4) Si el usuario pide un documento existente, devolvé enlaces directos con formato "✅ Título" + URL. No ofrezcas archivos inexistentes.
+3) Priorizá lo recuperado de la base vectorial. Si la evidencia es escasa pero el tema es del dominio (p.ej. definiciones BPM/POES/HACCP), podés dar explicación estándar con pasos prácticos.
+4) Si el usuario pide un documento y no existe, decí explícitamente que no lo encontraste y no ofrezcas nada alternativo salvo sugerencias de búsqueda dentro de /docs.
 `;
 
 const buildUserPrompt = (q, retrieved) => {
@@ -135,14 +166,11 @@ const buildDirectLinksResponse = (matches) => {
   return `Acá tenés lo pedido:\n\n${lines}`;
 };
 
+// ------------- Handler -------------
 export async function handler(event) {
   try {
-    if (event.httpMethod === "OPTIONS") {
-      return { statusCode:204, headers: corsHeaders() };
-    }
-    if (event.httpMethod !== "POST") {
-      return { statusCode:405, body:"Method Not Allowed", headers: corsHeaders() };
-    }
+    if (event.httpMethod === "OPTIONS") return { statusCode:204, headers: corsHeaders() };
+    if (event.httpMethod !== "POST") return { statusCode:405, body:"Method Not Allowed", headers: corsHeaders() };
     if (!OPENAI_API_KEY) return { statusCode:500, body:"Falta OPENAI_API_KEY en Netlify.", headers: corsHeaders() };
 
     const { message } = JSON.parse(event.body || "{}");
@@ -150,33 +178,39 @@ export async function handler(event) {
     if (!userQuery) return { statusCode:400, body:"Falta 'message'.", headers: corsHeaders() };
 
     ensureLoaded();
+    const docsList = cache.docsList || [];
 
-    // 1) Entrega directa de documentos
-    const direct = wantsDocument(userQuery) ? findDirectDocMatches(userQuery, cache.docsList) : [];
-    if (direct.length > 0) return ok(buildText(buildDirectLinksResponse(direct)));
+    // A) Intento de entrega directa (si hay intención documental)
+    const docIntent = wantsDocument(userQuery);
+    if (docIntent) {
+      const matches = findDirectDocMatches(userQuery, docsList);
+      if (matches.length > 0) {
+        return ok(buildText(buildDirectLinksResponse(matches)));
+      } else {
+        const sug = suggestDocs(userQuery, docsList);
+        const msg = sug.length
+          ? `No encontré un PDF en /docs que coincida con lo que pediste. Sugerencias de búsqueda: ${sug.map(s=>`“${s}”`).join(", ")}.`
+          : `No encontré un PDF en /docs con esas palabras. Decime el nombre exacto del archivo y lo busco.`;
+        return ok(buildText(msg));
+      }
+    }
 
-    // 2) Recuperación semántica
+    // B) Razonamiento con RAG
     const retrieved = await retrieve(userQuery);
-
-    // 3) Política de dominio y umbrales
     const inDomain = looksInDomain(userQuery);
     const lowScore = retrieved.maxScore < MIN_SIMILARITY_ANY;
 
-    // Si es del dominio (BPM/POES/HACCP/etc.), respondemos aunque el score sea bajo (definiciones, marco conceptual).
-    // Si NO es del dominio y además el score es bajo, rechazamos.
     if (!inDomain && lowScore) {
-      const msg = "Solo respondo temas de **seguridad alimentaria** (BPM, POES, CAA, HACCP, sanitización, temperaturas, cadena de frío, etc.). Reformulá tu consulta dentro de ese alcance. 🙏";
+      const msg = "⚠️ Solo puedo ayudarte con **seguridad alimentaria** (BPM, POES, CAA, HACCP, sanitización, temperaturas, cadena de frío, etc.). Reformulá tu consulta dentro de ese alcance.";
       return ok(buildText(msg));
     }
 
-    const sys = buildSystemPrompt();
-    const usr = buildUserPrompt(userQuery, retrieved);
-    const answer = await openAIChat([{ role:"system", content: sys }, { role:"user", content: usr }]);
+    const answer = await openAIChat([
+      { role:"system", content: buildSystemPrompt() },
+      { role:"user", content: buildUserPrompt(userQuery, retrieved) }
+    ]);
 
-    const sanitized = answer
-      .replace(/¿Querés el PDF\??/gi, "")
-      .replace(/Quieres el PDF\??/gi, "");
-
+    const sanitized = answer.replace(/¿Querés el PDF\??/gi, "").replace(/Quieres el PDF\??/gi, "");
     return ok(buildText(sanitized));
 
   } catch (err) {
@@ -199,6 +233,6 @@ function safeListDocsDir() {
 }
 function humanize(filename) {
   const base = filename.replace(/\.pdf$/i,"");
-  const spaced = base.replace(/[-_]+/g," ");
+  const spaced = base.replace(/[-_]+/g, " ");
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
