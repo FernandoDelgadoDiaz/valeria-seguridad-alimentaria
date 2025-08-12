@@ -1,6 +1,5 @@
 // scripts/build-embeddings.mjs
-// Genera data/embeddings.json a partir de todos los PDF en /docs
-// Requiere: OPENAI_API_KEY en entorno, Node 18+, pdf-parse
+// Genera data/embeddings.json desde todos los PDF en /docs (usa OPENAI_API_KEY)
 
 import fs from "fs";
 import path from "path";
@@ -18,8 +17,8 @@ const OUT_DIR = path.join(ROOT, "data");
 const OUT_PATH = path.join(OUT_DIR, "embeddings.json");
 const MODEL = process.env.OPENAI_EMBEDDINGS_MODEL || "text-embedding-3-large";
 
-// Chunking
-const CHUNK_SIZE = 1400;   // ~1k tokens aprox.
+// Chunking simple
+const CHUNK_SIZE = 1400;
 const CHUNK_OVERLAP = 200;
 
 const toLowerNoAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -46,31 +45,26 @@ const chunkText = (raw) => {
 };
 
 const main = async () => {
-  if (!fs.existsSync(DOCS_DIR)) {
-    console.error("No existe la carpeta /docs.");
-    process.exit(1);
-  }
+  if (!fs.existsSync(DOCS_DIR)) { console.error("No existe /docs."); process.exit(1); }
   if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
 
   const files = fs.readdirSync(DOCS_DIR).filter(f => f.toLowerCase().endsWith(".pdf"));
-  if (files.length === 0) {
-    console.error("No hay PDFs en /docs.");
-    process.exit(1);
-  }
+  if (files.length === 0) { console.error("No hay PDFs en /docs."); process.exit(1); }
 
   const output = [];
   for (const file of files) {
     const filePath = path.join(DOCS_DIR, file);
-    const data = await pdf(fs.readFileSync(filePath)).catch(e => {
-      console.error(`PDF parse error en ${file}:`, e.message);
-      return { text: "" };
-    });
-    const text = (data.text || "").trim();
-    if (!text) {
-      console.warn(`PDF sin texto (o imagen) → ${file} (se saltea)`);
+    let text = "";
+    try {
+      const data = await pdf(fs.readFileSync(filePath));
+      text = (data.text || "").trim();
+    } catch (e) {
+      console.warn(`PDF sin texto/legible → ${file} (se saltea)`);
       continue;
     }
-    const title = file.replace(/\.pdf$/i,"");
+    if (!text) { console.warn(`Sin texto → ${file} (se saltea)`); continue; }
+
+    const title = file.replace(/\.pdf$/i, "");
     const chunks = chunkText(text);
     let n = 0;
     for (const chunk of chunks) {
@@ -89,10 +83,7 @@ const main = async () => {
   }
 
   fs.writeFileSync(OUT_PATH, JSON.stringify(output, null, 2), "utf-8");
-  console.log(`Listo: ${OUT_PATH} con ${output.length} chunks.`);
+  console.log(`\nListo: ${OUT_PATH} con ${output.length} chunks.`);
 };
 
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+main().catch(err => { console.error(err); process.exit(1); });
