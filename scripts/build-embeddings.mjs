@@ -1,106 +1,98 @@
 // scripts/build-embeddings.mjs
-import fs from "fs";
-import fsp from "fs/promises";
-import path from "path";
-import fg from "fast-glob";
-import OpenAI from "openai";
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const pdfParse = require("pdf-parse"); // build estable
+// Genera data/embeddings.json a partir de todos los PDF en /docs
+// Requiere: OPENAI_API_KEY en entorno, Node 18+, pdf-parse
 
-const EMB_MODEL = process.env.EMB_MODEL || "text-embedding-3-small";
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import fs from "fs";
+import path from "path";
+import pdf from "pdf-parse";
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+if (!OPENAI_API_KEY) {
+  console.error("Falta OPENAI_API_KEY en el entorno.");
+  process.exit(1);
+}
 
 const ROOT = process.cwd();
-const DOCS = path.join(ROOT, "docs");
-const DATA = path.join(ROOT, "data");
+const DOCS_DIR = path.join(ROOT, "docs");
+const OUT_DIR = path.join(ROOT, "data");
+const OUT_PATH = path.join(OUT_DIR, "embeddings.json");
+const MODEL = process.env.OPENAI_EMBEDDINGS_MODEL || "text-embedding-3-large";
 
-function norm(s){
-  return (s||"")
-    .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .replace(/[_\-]+/g," ")
-    .replace(/\s+/g," ")
-    .trim();
-}
-function chunkText(t, max=1200, overlap=200){
-  const out=[]; let i=0;
-  while(i<t.length){
-    let j=Math.min(t.length, i+max), cut=j;
-    for(const sep of [". ","\n"," "]){ const k=t.lastIndexOf(sep, j); if(k>i+200){ cut=k+sep.length; break; } }
-    const piece=t.slice(i,cut).trim();
-    if(piece) out.push(piece);
-    i=Math.max(cut-overlap, cut);
+// Chunking
+const CHUNK_SIZE = 1400;   // ~1k tokens aprox.
+const CHUNK_OVERLAP = 200;
+
+const toLowerNoAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+
+const embed = async (text) => {
+  const res = await fetch("https://api.openai.com/v1/embeddings", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: MODEL, input: text })
+  });
+  if (!res.ok) throw new Error(`Embeddings API ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return data.data[0].embedding;
+};
+
+const chunkText = (raw) => {
+  const text = raw.replace(/\s+/g, " ").trim();
+  const chunks = [];
+  for (let i = 0; i < text.length; i += (CHUNK_SIZE - CHUNK_OVERLAP)) {
+    const slice = text.slice(i, i + CHUNK_SIZE);
+    if (slice.length > 200) chunks.push(slice);
   }
-  return out;
-}
+  return chunks;
+};
 
-async function main(){
-  if(!fs.existsSync(DOCS)) throw new Error("No existe /docs.");
-  await fsp.mkdir(DATA, { recursive:true });
+const main = async () => {
+  if (!fs.existsSync(DOCS_DIR)) {
+    console.error("No existe la carpeta /docs.");
+    process.exit(1);
+  }
+  if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
 
-  const chunksPath = path.join(DATA, "chunks.jsonl");
-  const embsPath   = path.join(DATA, "embeddings.jsonl");
-  const filesIdx   = path.join(DATA, "files_index.json");
-  await fsp.writeFile(chunksPath, "");
-  await fsp.writeFile(embsPath,   "");
+  const files = fs.readdirSync(DOCS_DIR).filter(f => f.toLowerCase().endsWith(".pdf"));
+  if (files.length === 0) {
+    console.error("No hay PDFs en /docs.");
+    process.exit(1);
+  }
 
-  const pdfs = await fg("**/*.pdf", { cwd:DOCS });
-  console.log(`Encontrados ${pdfs.length} PDF(s) en /docs`);
-
-  const ALL = [];
-  const FILES = [];
-
-  for(const rel of pdfs){
-    const abs  = path.join(DOCS, rel);
-    const file = path.basename(rel);
-    const buf  = await fsp.readFile(abs);
-
-    let text = "";
-    try {
-      const res = await pdfParse(buf);
-      text = (res.text||"").replace(/\r/g," ").replace(/\s+/g," ").trim();
-    } catch {
-      text = "";
-    }
-
-    // índice por nombre (para “dame pdf de …”)
-    const base = file.replace(/\.pdf$/i,"");
-    const normName = norm(base);
-    const tokens = Array.from(new Set(normName.split(" ").filter(Boolean)));
-    FILES.push({ file, path:`docs/${rel}`, norm:normName, tokens });
-
-    if(text.length < 30){ // escaneado o vacío → no chunkear, igual queda en FILES
-      console.log(`(sin texto utilizable) ${file}`);
+  const output = [];
+  for (const file of files) {
+    const filePath = path.join(DOCS_DIR, file);
+    const data = await pdf(fs.readFileSync(filePath)).catch(e => {
+      console.error(`PDF parse error en ${file}:`, e.message);
+      return { text: "" };
+    });
+    const text = (data.text || "").trim();
+    if (!text) {
+      console.warn(`PDF sin texto (o imagen) → ${file} (se saltea)`);
       continue;
     }
-
-    const parts = chunkText(text);
-    parts.forEach((t, idx)=>{
-      const rec = { doc:file, chunk:idx, text:t, path:`docs/${rel}` };
-      ALL.push(rec);
-      fs.appendFileSync(chunksPath, JSON.stringify(rec)+"\n");
-    });
+    const title = file.replace(/\.pdf$/i,"");
+    const chunks = chunkText(text);
+    let n = 0;
+    for (const chunk of chunks) {
+      n++;
+      const emb = await embed(chunk);
+      output.push({
+        id: `${toLowerNoAccents(title)}_${n.toString().padStart(3,"0")}`,
+        title,
+        source: file,
+        chunk,
+        embedding: emb
+      });
+      process.stdout.write(`\r${file} → ${n}/${chunks.length} chunks`);
+    }
+    process.stdout.write("\n");
   }
 
-  console.log(`Generando embeddings para ${ALL.length} fragmentos…`);
-  const BATCH = 64;
-  for(let i=0;i<ALL.length;i+=BATCH){
-    const batch = ALL.slice(i, i+BATCH);
-    const resp = await client.embeddings.create({
-      model: EMB_MODEL,
-      input: batch.map(r=>r.text)
-    });
-    resp.data.forEach((e,k)=>{
-      const r = batch[k];
-      const row = { doc:r.doc, chunk:r.chunk, path:r.path, embedding:e.embedding };
-      fs.appendFileSync(embsPath, JSON.stringify(row)+"\n");
-    });
-    console.log(`Embeddings ${Math.min(i+BATCH,ALL.length)}/${ALL.length}`);
-  }
+  fs.writeFileSync(OUT_PATH, JSON.stringify(output, null, 2), "utf-8");
+  console.log(`Listo: ${OUT_PATH} con ${output.length} chunks.`);
+};
 
-  await fsp.writeFile(filesIdx, JSON.stringify(FILES, null, 2));
-  console.log("Listo:", chunksPath, embsPath, filesIdx);
-}
-
-main().catch(err=>{ console.error(err); process.exit(1); });
+main().catch(err => {
+  console.error(err);
+  process.exit(1);
+});
