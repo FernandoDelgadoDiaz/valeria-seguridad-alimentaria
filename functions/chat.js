@@ -1,36 +1,39 @@
 // /netlify/functions/chat.js
-// Valeria · RAG + PDFs · manejo robusto de definiciones (BPM, POES, HACCP, NO CONFORMIDAD)
-// Versión: v2025-08-12d
+// Valeria · RAG + PDFs · rutas robustas (LAMBDA_TASK_ROOT) + definiciones (BPM/POES/HACCP/NO CONFORMIDAD/PLAGA)
+// Versión: v2025-08-12e
 
 import fs from "fs";
 import path from "path";
 
-const VERSION = "v2025-08-12d";
+const VERSION = "v2025-08-12e";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 const OPENAI_EMBEDDINGS_MODEL = process.env.OPENAI_EMBEDDINGS_MODEL || "text-embedding-3-large";
 
-const DATA_DIR = path.resolve("./data");
-const DOCS_DIR = path.resolve("./docs");
+// === Rutas robustas: los assets se copian al zip de la Function con included_files ===
+const ROOT = process.env.LAMBDA_TASK_ROOT || path.resolve(".");
+const DATA_DIR = path.join(ROOT, "data");
+const DOCS_DIR = path.join(ROOT, "docs");
 const EMBEDDINGS_PATH = path.join(DATA_DIR, "embeddings.json");
+
 const MAX_CONTEXT_CHUNKS = 6;
 const MIN_SIMILARITY_ANY = 0.65;
 
-// -------------------------------- Hints / Intents --------------------------------
+// --- Dominio ---
 const DOMAIN_HINTS = [
-  // Core
-  "seguridad alimentaria","inocuidad","bpm","buenas practicas de manufactura","buenas prácticas de manufactura",
+  "seguridad alimentaria","inocuidad",
+  "bpm","buenas practicas de manufactura","buenas prácticas de manufactura",
   "poes","poe","haccp","appcc","pcc","ppro","sop",
   "sanitizante","sanitizacion","sanitización","limpieza","desinfeccion","desinfección","higiene",
   "alergenos","alérgenos","trazabilidad","etiquetado",
   "cadena de frio","cadena de frío","freezer","refrigeracion","refrigeración","coccion","cocción","temperatura",
-  // Documentos / normas
   "caa","codigo alimentario argentino","código alimentario argentino","manual de bpm","manual 5s","5s",
-  "mip","manejo integrado de plagas","poes comedor","procedimiento","registro","planilla","instructivo",
-  // Calidad / desvíos
-  "no conformidad","no conformidades","nc","desvio","desvío","desviacion","desviación","acciones correctivas",
-  "accion correctiva","accion preventiva","acciones preventivas","capa","5 porques","5 porqués","ishikawa","espina de pescado",
+  "mip","manejo integrado de plagas","plagas","plaga",
+  "poes comedor","procedimiento","registro","planilla","instructivo",
+  "no conformidad","no conformidades","nc","desvio","desvío","desviacion","desviación",
+  "acciones correctivas","accion correctiva","acciones preventivas","accion preventiva",
+  "capa","5 porques","5 porqués","ishikawa","espina de pescado"
 ];
 
 const DIRECT_DOC_ALIASES = [
@@ -40,14 +43,13 @@ const DIRECT_DOC_ALIASES = [
   { keys: ["caa","codigo alimentario argentino","código alimentario argentino"] },
   { keys: ["bpm","manual de bpm"] },
   { keys: ["5s","manual 5s","cinco s"] },
-  { keys: ["plagas","mip","manejo integrado de plagas"] },
+  { keys: ["plagas","plaga","mip","manejo integrado de plagas"] },
   { keys: ["poes comedor","comedor"] }
 ];
 
-// -------------------------------- Cache --------------------------------
 let cache = { embeddings: null, docsList: null };
 
-// -------------------------------- Utils --------------------------------
+// --- Utils ---
 const jsonExists = (p) => { try { return fs.existsSync(p); } catch { return false; } };
 const loadJSON  = (p, fb=null) => { try { return JSON.parse(fs.readFileSync(p,"utf-8")); } catch { return fb; } };
 const dot  = (a,b) => a.reduce((s,v,i)=>s+v*b[i],0);
@@ -59,6 +61,18 @@ const normalizeName = (s) => toLowerNoAccents(
   s.replace(/\.pdf$/i,"").replace(/[-_]+/g," ").replace(/\s+/g," ").trim()
 );
 
+const isDefinitionQuery = (t0) => {
+  const t = toLowerNoAccents(t0);
+  const askDef = t.startsWith("que es ") || t.startsWith("qué es ") || t.includes("definicion de") || t.includes("definición de");
+  if (!askDef) return false;
+  const DEF_TERMS = [
+    "bpm","poes","haccp","appcc","pcc","ppro","sanitizante","alergenos","alérgenos",
+    "no conformidad","no conformidades","accion correctiva","acciones correctivas","accion preventiva","acciones preventivas",
+    "capa","ishikawa","espina de pescado","5 porques","5 porqués","plaga","plagas","mip"
+  ];
+  return DEF_TERMS.some(k => t.includes(toLowerNoAccents(k)));
+};
+
 const looksInDomain = (q) => {
   const t = toLowerNoAccents(q);
   return DOMAIN_HINTS.some(k => t.includes(toLowerNoAccents(k))) || isDefinitionQuery(t);
@@ -66,30 +80,16 @@ const looksInDomain = (q) => {
 
 const wantsDocument = (q) => {
   const t = toLowerNoAccents(q);
-  // Si es una consulta de "qué es ..." NO lo tratamos como documento aunque contenga palabras clave
-  if (isDefinitionQuery(t)) return false;
+  if (isDefinitionQuery(t)) return false; // no confundir definiciones con pedidos de documentos
   return ["pdf","procedimiento","documento","registro","poes","manual","instructivo","planilla"]
     .some(k => t.includes(k));
 };
 
-// Definiciones del dominio (ej. “qué es bpm”, “definición de no conformidad”)
-const DEF_TERMS = [
-  "bpm","poes","haccp","appcc","pcc","ppro","sanitizante","alergenos","alérgenos",
-  "no conformidad","no conformidades","accion correctiva","acciones correctivas","accion preventiva","acciones preventivas",
-  "cap a","capa","ishikawa","espina de pescado","5 porques","5 porqués"
-];
-const isDefinitionQuery = (t) => {
-  const q = toLowerNoAccents(t);
-  const isDef = q.startsWith("que es ") || q.startsWith("qué es ") || q.includes("definicion de") || q.includes("definición de");
-  if (!isDef) return false;
-  return DEF_TERMS.some(k => q.includes(toLowerNoAccents(k)));
-};
-
-// -------------------------------- Loaders --------------------------------
 const ensureLoaded = () => {
   if (!cache.embeddings && jsonExists(EMBEDDINGS_PATH)) cache.embeddings = loadJSON(EMBEDDINGS_PATH, []);
   if (!cache.docsList) cache.docsList = safeListDocsDir();
 };
+
 const embedQuery = async (q) => {
   const res = await fetch("https://api.openai.com/v1/embeddings", {
     method:"POST",
@@ -100,6 +100,7 @@ const embedQuery = async (q) => {
   const data = await res.json();
   return data.data[0].embedding;
 };
+
 const retrieve = async (q) => {
   ensureLoaded();
   if (!cache.embeddings || cache.embeddings.length===0) return { chunks:[], maxScore:0 };
@@ -108,7 +109,7 @@ const retrieve = async (q) => {
   return { chunks: scored.slice(0, MAX_CONTEXT_CHUNKS), maxScore: scored[0]?.score || 0 };
 };
 
-// -------------------------------- PDF matching --------------------------------
+// --- PDFs ---
 const findDirectDocMatches = (q, docsList) => {
   const qn = normalizeName(q);
   const docsNorm = docsList.map(d => ({
@@ -122,9 +123,7 @@ const findDirectDocMatches = (q, docsList) => {
   if (hits.length === 0) {
     for (const alias of DIRECT_DOC_ALIASES) {
       if (alias.keys.some(k => qn.includes(normalizeName(k)))) {
-        hits = hits.concat(
-          docsNorm.filter(d => alias.keys.some(k => d.norm.includes(normalizeName(k))))
-        );
+        hits = hits.concat(docsNorm.filter(d => alias.keys.some(k => d.norm.includes(normalizeName(k)))));
       }
     }
   }
@@ -151,19 +150,20 @@ const suggestDocs = (q, docsList) => {
     .map(d => d.title);
 };
 
-// -------------------------------- Prompting --------------------------------
+// --- Prompting ---
 const buildSystemPrompt = () => `
 Sos **Valeria**, especialista en seguridad alimentaria en Argentina (BPM, POES, CAA, HACCP y procedimientos internos de retail).
 Reglas:
 1) Respondé SOLO sobre seguridad alimentaria. Si está fuera de alcance, rechazá con cortesía.
 2) Tono profesional, pedagógico y claro, con modismos AR (freezer, carne vacuna). Usá **negritas** moderadas y emojis sobrios.
-3) Priorizá lo recuperado de la base vectorial. Si la evidencia es escasa pero el tema es del dominio (definiciones BPM/POES/HACCP/NO CONFORMIDAD), brindá una explicación estándar y pasos prácticos.
-4) Si el usuario pide un documento y no existe, decí explícitamente que no lo encontraste y no ofrezcas archivos inexistentes (podés sugerir títulos similares de /docs).
+3) Priorizá lo recuperado de la base vectorial. Si la evidencia es escasa pero el tema es del dominio (definiciones BPM/POES/HACCP/NO CONFORMIDAD/PLAGA), brindá una explicación estándar y pasos prácticos.
+4) Si el usuario pide un documento y no existe, indicá explícitamente que no lo encontraste; podés sugerir títulos similares que sí estén en /docs. No inventes enlaces.
 `;
 const buildUserPrompt = (q, retrieved) => {
   const ctx = retrieved.chunks.map((c,i)=>`● [${c.title || c.source || "fragmento"}] → ${c.chunk.trim()}`).join("\n");
   return `Consulta: "${q}"\n\nContexto recuperado (usá solo lo pertinente):\n${ctx || "(sin contexto recuperado)"}`;
 };
+
 const openAIChat = async (messages) => {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method:"POST",
@@ -174,15 +174,15 @@ const openAIChat = async (messages) => {
   const data = await res.json();
   return data.choices?.[0]?.message?.content?.trim() || "";
 };
+
 const buildDirectLinksResponse = (matches) => {
   const lines = matches.map(m => `✅ ${m.title || m.filename}\n${`/docs/${encodeURI(m.filename)}`}`).join("\n\n");
   return `Acá tenés lo pedido:\n\n${lines}`;
 };
 
-// -------------------------------- Handler --------------------------------
+// --- Handler ---
 export async function handler(event) {
   try {
-    // Ping de versión / estado
     if (event.httpMethod === "GET") {
       const qp = event.queryStringParameters || {};
       if (qp.ping === "1") {
@@ -191,11 +191,9 @@ export async function handler(event) {
       }
       return respond(405, "Method Not Allowed");
     }
-
     if (event.httpMethod === "OPTIONS") return respond(204, "");
 
     if (event.httpMethod !== "POST") return respond(405, "Method Not Allowed");
-
     if (!OPENAI_API_KEY) return respond(500, "Falta OPENAI_API_KEY en Netlify.");
 
     const { message } = JSON.parse(event.body || "{}");
@@ -205,7 +203,7 @@ export async function handler(event) {
     ensureLoaded();
     const docsList = cache.docsList || [];
 
-    // A) Entrega directa de documentos (solo si hay intención documental)
+    // A) Entrega directa de PDFs
     if (wantsDocument(userQuery)) {
       const matches = findDirectDocMatches(userQuery, docsList);
       if (matches.length > 0) return respond(200, buildText(buildDirectLinksResponse(matches)));
@@ -217,7 +215,7 @@ export async function handler(event) {
       return respond(200, buildText(msg));
     }
 
-    // B) Razonamiento con RAG
+    // B) Razonamiento con RAG (o definición si hay pocas evidencias)
     const retrieved = await retrieve(userQuery);
     const inDomain = looksInDomain(userQuery);
     const lowScore = retrieved.maxScore < MIN_SIMILARITY_ANY;
@@ -241,7 +239,7 @@ export async function handler(event) {
   }
 }
 
-// -------------------------------- Response helpers --------------------------------
+// --- helpers ---
 const baseHeaders = () => ({
   "Access-Control-Allow-Origin":"*",
   "Access-Control-Allow-Headers":"Content-Type, Authorization",
@@ -251,9 +249,8 @@ const baseHeaders = () => ({
 const buildText = (text) => ({ type:"text", content:text });
 
 function respond(statusCode, body) {
-  const payload = typeof body === "string" ? body : JSON.stringify(body);
-  const headers = { ...baseHeaders(), "Content-Type":"application/json" };
-  return { statusCode, body: typeof body === "string" ? JSON.stringify({ type:"text", content: body }) : payload, headers };
+  const payload = typeof body === "string" ? JSON.stringify({ type:"text", content: body }) : JSON.stringify(body);
+  return { statusCode, body: payload, headers: { ...baseHeaders(), "Content-Type":"application/json" } };
 }
 
 function safeListDocsDir() {
