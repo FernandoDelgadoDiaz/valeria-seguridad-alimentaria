@@ -1,10 +1,14 @@
 [build]
   publish = "."
+  command = "npm install && npm run build:emb"   # genera data/embeddings.json en el deploy
+
+[build.environment]
+  NODE_VERSION = "18"
 
 [functions]
-  directory = "functions"          # <- tu carpeta real de Functions
+  directory = "functions"        # tu carpeta real
   node_bundler = "esbuild"
   included_files = [
-    "docs/**",                     # <- empaqueta PDFs dentro del zip de la Function
-    "data/**"                      # <- empaqueta embeddings.json
+    "docs/**",                   # empaqueta PDFs
+    "data/**"                    # empaqueta embeddings.json generado
   ]
