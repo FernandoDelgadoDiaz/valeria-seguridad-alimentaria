@@ -1,17 +1,17 @@
 // functions/chat.js
-// Valeria · RAG + PDFs · rutas robustas (LAMBDA_TASK_ROOT) + definiciones
-// Versión: v2025-08-12e-F
+// Valeria · RAG + PDFs · definiciones forzadas y doc-intent más estricto
+// Versión: v2025-08-12e-G
 
 import fs from "fs";
 import path from "path";
 
-const VERSION = "v2025-08-12e-F";
+const VERSION = "v2025-08-12e-G";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 const OPENAI_EMBEDDINGS_MODEL = process.env.OPENAI_EMBEDDINGS_MODEL || "text-embedding-3-large";
 
-// Rutas: cuando Netlify empaqueta la Function, todo vive bajo LAMBDA_TASK_ROOT
+// Rutas empaquetadas por Netlify
 const ROOT = process.env.LAMBDA_TASK_ROOT || path.resolve(".");
 const DATA_DIR = path.join(ROOT, "data");
 const DOCS_DIR = path.join(ROOT, "docs");
@@ -20,7 +20,7 @@ const EMBEDDINGS_PATH = path.join(DATA_DIR, "embeddings.json");
 const MAX_CONTEXT_CHUNKS = 6;
 const MIN_SIMILARITY_ANY = 0.65;
 
-// --- Dominio ---
+// ---------------- Dominio / Intents ----------------
 const DOMAIN_HINTS = [
   "seguridad alimentaria","inocuidad",
   "bpm","buenas practicas de manufactura","buenas prácticas de manufactura",
@@ -47,9 +47,10 @@ const DIRECT_DOC_ALIASES = [
   { keys: ["poes comedor","comedor"] }
 ];
 
+// ---------------- Cache ----------------
 let cache = { embeddings: null, docsList: null };
 
-// --- Utils ---
+// ---------------- Utils ----------------
 const jsonExists = (p) => { try { return fs.existsSync(p); } catch { return false; } };
 const loadJSON  = (p, fb=null) => { try { return JSON.parse(fs.readFileSync(p,"utf-8")); } catch { return fb; } };
 const dot  = (a,b) => a.reduce((s,v,i)=>s+v*b[i],0);
@@ -58,27 +59,33 @@ const cosineSim = (a,b) => dot(a,b)/(norm(a)*norm(b));
 const toLowerNoAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const normalizeName = (s) => toLowerNoAccents(s.replace(/\.pdf$/i,"").replace(/[-_]+/g," ").replace(/\s+/g," ").trim());
 
-const isDefinitionQuery = (t0) => {
-  const t = toLowerNoAccents(t0);
-  const askDef = t.startsWith("que es ") || t.startsWith("qué es ") || t.includes("definicion de") || t.includes("definición de");
-  if (!askDef) return false;
-  const DEF_TERMS = [
-    "bpm","poes","haccp","appcc","pcc","ppro","sanitizante","alergenos","alérgenos",
-    "no conformidad","no conformidades","accion correctiva","acciones correctivas","accion preventiva","acciones preventivas",
-    "capa","ishikawa","espina de pescado","5 porques","5 porqués","plaga","plagas","mip"
-  ];
+const DEF_TERMS = [
+  "bpm","poes","haccp","appcc","pcc","ppro","sanitizante","alergenos","alérgenos",
+  "no conformidad","no conformidades","accion correctiva","acciones correctivas","accion preventiva","acciones preventivas",
+  "capa","ishikawa","espina de pescado","5 porques","5 porqués","plaga","plagas","mip"
+];
+
+const isDefinitionQuery = (raw) => {
+  const t = toLowerNoAccents(raw);
+  const asks = t.startsWith("que es ") || t.startsWith("qué es ") || t.includes("definicion de") || t.includes("definición de");
+  if (!asks) return false;
+  // tolerante: si incluye cualquiera de estos términos, lo tratamos como definición
   return DEF_TERMS.some(k => t.includes(toLowerNoAccents(k)));
 };
+
 const looksInDomain = (q) => {
   const t = toLowerNoAccents(q);
   return DOMAIN_HINTS.some(k => t.includes(toLowerNoAccents(k))) || isDefinitionQuery(t);
 };
+
+// doc-intent **estricto**: requiere palabras que indiquen archivo
 const wantsDocument = (q) => {
   const t = toLowerNoAccents(q);
   if (isDefinitionQuery(t)) return false;
-  return ["pdf","procedimiento","documento","registro","poes","manual","instructivo","planilla"].some(k => t.includes(k));
+  return /(pdf|archivo|descarg|abrir|ver doc|procedimiento|formulario|registro|planilla)\b/.test(t);
 };
 
+// ---------------- Carga / RAG ----------------
 const ensureLoaded = () => {
   if (!cache.embeddings && jsonExists(EMBEDDINGS_PATH)) cache.embeddings = loadJSON(EMBEDDINGS_PATH, []);
   if (!cache.docsList) cache.docsList = safeListDocsDir();
@@ -103,7 +110,7 @@ const retrieve = async (q) => {
   return { chunks: scored.slice(0, MAX_CONTEXT_CHUNKS), maxScore: scored[0]?.score || 0 };
 };
 
-// --- PDFs ---
+// ---------------- PDFs ----------------
 const findDirectDocMatches = (q, docsList) => {
   const qn = normalizeName(q);
   const docsNorm = docsList.map(d => ({ filename:d.filename, title:d.title || humanize(d.filename), norm: normalizeName(d.title || d.filename) }));
@@ -123,27 +130,34 @@ const findDirectDocMatches = (q, docsList) => {
   for (const h of hits) { if (!seen.has(h.filename)) { seen.add(h.filename); uniq.push({ filename:h.filename, title:h.title }); } }
   return uniq.slice(0,3);
 };
+
 const suggestDocs = (q, docsList) => {
   const qn = normalizeName(q);
   const tokens = qn.split(" ").filter(t => t.length >= 4);
   const docsNorm = docsList.map(d => ({ filename:d.filename, title:d.title || humanize(d.filename), norm: normalizeName(d.title || d.filename) }));
-  return docsNorm.map(d => ({ ...d, score: tokens.reduce((s,t)=> s+(d.norm.includes(t)?1:0),0)}))
-    .filter(d => d.score>0).sort((a,b)=>b.score-a.score).slice(0,5).map(d => d.title);
+  return docsNorm
+    .map(d => ({ ...d, score: tokens.reduce((s,t)=> s + (d.norm.includes(t)?1:0), 0) }))
+    .filter(d => d.score > 0)
+    .sort((a,b)=> b.score - a.score)
+    .slice(0,5)
+    .map(d => d.title);
 };
 
-// --- Prompting ---
+// ---------------- Prompting ----------------
 const buildSystemPrompt = () => `
 Sos **Valeria**, especialista en seguridad alimentaria en Argentina (BPM, POES, CAA, HACCP y procedimientos internos de retail).
 Reglas:
 1) Respondé SOLO sobre seguridad alimentaria. Si está fuera de alcance, rechazá con cortesía.
 2) Tono profesional, pedagógico y claro, con modismos AR (freezer, carne vacuna). Usá **negritas** moderadas y emojis sobrios.
-3) Priorizá lo recuperado de la base vectorial. Si la evidencia es escasa pero el tema es del dominio (definiciones BPM/POES/HACCP/NO CONFORMIDAD/PLAGA), brindá una explicación estándar y pasos prácticos.
-4) Si el usuario pide un documento y no existe, indicá explícitamente que no lo encontraste; podés sugerir títulos similares que sí estén en /docs. No inventes enlaces.
+3) Priorizá lo recuperado de la base vectorial. Si la evidencia es escasa pero el tema es del dominio (definiciones BPM/POES/HACCP/NO CONFORMIDAD/PLAGA), brindá explicación estándar y pasos prácticos.
+4) Si el usuario pide un documento y no existe, indicá explícitamente que no lo encontraste; podés sugerir títulos similares de /docs. No inventes enlaces.
 `;
+
 const buildUserPrompt = (q, retrieved) => {
-  const ctx = retrieved.chunks.map((c,i)=>`● [${c.title || c.source || "fragmento"}] → ${c.chunk.trim()}`).join("\n");
+  const ctx = retrieved.chunks.map((c)=>`● [${c.title || c.source || "fragmento"}] → ${c.chunk.trim()}`).join("\n");
   return `Consulta: "${q}"\n\nContexto recuperado (usá solo lo pertinente):\n${ctx || "(sin contexto recuperado)"}`;
 };
+
 const openAIChat = async (messages) => {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method:"POST",
@@ -154,14 +168,16 @@ const openAIChat = async (messages) => {
   const data = await res.json();
   return data.choices?.[0]?.message?.content?.trim() || "";
 };
+
 const buildDirectLinksResponse = (matches) => {
   const lines = matches.map(m => `✅ ${m.title || m.filename}\n${`/docs/${encodeURI(m.filename)}`}`).join("\n\n");
   return `Acá tenés lo pedido:\n\n${lines}`;
 };
 
-// --- Handler ---
+// ---------------- Handler ----------------
 export async function handler(event) {
   try {
+    // Ping de estado
     if (event.httpMethod === "GET") {
       const qp = event.queryStringParameters || {};
       if (qp.ping === "1") {
@@ -182,10 +198,21 @@ export async function handler(event) {
     ensureLoaded();
     const docsList = cache.docsList || [];
 
-    // A) PDFs
+    // A) **Definiciones** SIEMPRE pasan (bypass total de doc-intent y umbrales)
+    if (isDefinitionQuery(userQuery)) {
+      const retrieved = await retrieve(userQuery);
+      const answer = await openAIChat([
+        { role:"system", content: buildSystemPrompt() },
+        { role:"user", content: buildUserPrompt(userQuery, retrieved) }
+      ]);
+      return respond(200, buildText(answer));
+    }
+
+    // B) Entrega directa de PDFs (doc-intent estricto)
     if (wantsDocument(userQuery)) {
       const matches = findDirectDocMatches(userQuery, docsList);
       if (matches.length > 0) return respond(200, buildText(buildDirectLinksResponse(matches)));
+
       const sug = suggestDocs(userQuery, docsList);
       const msg = sug.length
         ? `No encontré un PDF en /docs que coincida con lo que pediste. Sugerencias: ${sug.map(s=>`“${s}”`).join(", ")}.`
@@ -193,10 +220,11 @@ export async function handler(event) {
       return respond(200, buildText(msg));
     }
 
-    // B) RAG / definición
+    // C) Razonamiento con RAG
     const retrieved = await retrieve(userQuery);
     const inDomain = looksInDomain(userQuery);
     const lowScore = retrieved.maxScore < MIN_SIMILARITY_ANY;
+
     if (!inDomain && lowScore) {
       const msg = "⚠️ Solo puedo ayudarte con **seguridad alimentaria** (BPM, POES, CAA, HACCP, sanitización, temperaturas, cadena de frío, etc.). Reformulá tu consulta dentro de ese alcance.";
       return respond(200, buildText(msg));
@@ -206,15 +234,16 @@ export async function handler(event) {
       { role:"system", content: buildSystemPrompt() },
       { role:"user", content: buildUserPrompt(userQuery, retrieved) }
     ]);
-    const sanitized = answer.replace(/¿Querés el PDF\??/gi, "").replace(/Quieres el PDF\??/gi, "");
-    return respond(200, buildText(sanitized));
+
+    return respond(200, buildText(answer));
+
   } catch (err) {
     console.error(err);
     return respond(500, `Error interno: ${err.message}`);
   }
 }
 
-// --- helpers ---
+// ---------------- Helpers ----------------
 const baseHeaders = () => ({
   "Access-Control-Allow-Origin":"*",
   "Access-Control-Allow-Headers":"Content-Type, Authorization",
@@ -222,10 +251,12 @@ const baseHeaders = () => ({
   "X-Valeria-Version": VERSION
 });
 const buildText = (text) => ({ type:"text", content:text });
+
 function respond(statusCode, body) {
   const payload = typeof body === "string" ? JSON.stringify({ type:"text", content: body }) : JSON.stringify(body);
   return { statusCode, body: payload, headers: { ...baseHeaders(), "Content-Type":"application/json" } };
 }
+
 function safeListDocsDir() {
   try {
     if (!fs.existsSync(DOCS_DIR)) return [];
