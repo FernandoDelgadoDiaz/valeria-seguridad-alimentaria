@@ -1,17 +1,17 @@
-// /netlify/functions/chat.js
-// Valeria · RAG + PDFs · rutas robustas (LAMBDA_TASK_ROOT) + definiciones (BPM/POES/HACCP/NO CONFORMIDAD/PLAGA)
-// Versión: v2025-08-12e
+// functions/chat.js
+// Valeria · RAG + PDFs · rutas robustas (LAMBDA_TASK_ROOT) + definiciones
+// Versión: v2025-08-12e-F
 
 import fs from "fs";
 import path from "path";
 
-const VERSION = "v2025-08-12e";
+const VERSION = "v2025-08-12e-F";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 const OPENAI_EMBEDDINGS_MODEL = process.env.OPENAI_EMBEDDINGS_MODEL || "text-embedding-3-large";
 
-// === Rutas robustas: los assets se copian al zip de la Function con included_files ===
+// Rutas: cuando Netlify empaqueta la Function, todo vive bajo LAMBDA_TASK_ROOT
 const ROOT = process.env.LAMBDA_TASK_ROOT || path.resolve(".");
 const DATA_DIR = path.join(ROOT, "data");
 const DOCS_DIR = path.join(ROOT, "docs");
@@ -56,10 +56,7 @@ const dot  = (a,b) => a.reduce((s,v,i)=>s+v*b[i],0);
 const norm = (a) => Math.sqrt(a.reduce((s,v)=>s+v*v,0));
 const cosineSim = (a,b) => dot(a,b)/(norm(a)*norm(b));
 const toLowerNoAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-
-const normalizeName = (s) => toLowerNoAccents(
-  s.replace(/\.pdf$/i,"").replace(/[-_]+/g," ").replace(/\s+/g," ").trim()
-);
+const normalizeName = (s) => toLowerNoAccents(s.replace(/\.pdf$/i,"").replace(/[-_]+/g," ").replace(/\s+/g," ").trim());
 
 const isDefinitionQuery = (t0) => {
   const t = toLowerNoAccents(t0);
@@ -72,17 +69,14 @@ const isDefinitionQuery = (t0) => {
   ];
   return DEF_TERMS.some(k => t.includes(toLowerNoAccents(k)));
 };
-
 const looksInDomain = (q) => {
   const t = toLowerNoAccents(q);
   return DOMAIN_HINTS.some(k => t.includes(toLowerNoAccents(k))) || isDefinitionQuery(t);
 };
-
 const wantsDocument = (q) => {
   const t = toLowerNoAccents(q);
-  if (isDefinitionQuery(t)) return false; // no confundir definiciones con pedidos de documentos
-  return ["pdf","procedimiento","documento","registro","poes","manual","instructivo","planilla"]
-    .some(k => t.includes(k));
+  if (isDefinitionQuery(t)) return false;
+  return ["pdf","procedimiento","documento","registro","poes","manual","instructivo","planilla"].some(k => t.includes(k));
 };
 
 const ensureLoaded = () => {
@@ -112,14 +106,8 @@ const retrieve = async (q) => {
 // --- PDFs ---
 const findDirectDocMatches = (q, docsList) => {
   const qn = normalizeName(q);
-  const docsNorm = docsList.map(d => ({
-    filename: d.filename,
-    title: d.title || humanize(d.filename),
-    norm: normalizeName(d.title || d.filename)
-  }));
-
+  const docsNorm = docsList.map(d => ({ filename:d.filename, title:d.title || humanize(d.filename), norm: normalizeName(d.title || d.filename) }));
   let hits = docsNorm.filter(d => qn.includes(d.norm) || d.norm.includes(qn));
-
   if (hits.length === 0) {
     for (const alias of DIRECT_DOC_ALIASES) {
       if (alias.keys.some(k => qn.includes(normalizeName(k)))) {
@@ -127,27 +115,20 @@ const findDirectDocMatches = (q, docsList) => {
       }
     }
   }
-
   if (hits.length === 0) {
     const tokens = qn.split(" ").filter(t => t.length >= 4);
     hits = hits.concat(docsNorm.filter(d => tokens.some(t => d.norm.includes(t))));
   }
-
   const seen = new Set(), uniq = [];
   for (const h of hits) { if (!seen.has(h.filename)) { seen.add(h.filename); uniq.push({ filename:h.filename, title:h.title }); } }
   return uniq.slice(0,3);
 };
-
 const suggestDocs = (q, docsList) => {
   const qn = normalizeName(q);
   const tokens = qn.split(" ").filter(t => t.length >= 4);
   const docsNorm = docsList.map(d => ({ filename:d.filename, title:d.title || humanize(d.filename), norm: normalizeName(d.title || d.filename) }));
-  return docsNorm
-    .map(d => ({ ...d, score: tokens.reduce((s,t)=> s + (d.norm.includes(t)?1:0), 0) }))
-    .filter(d => d.score > 0)
-    .sort((a,b)=> b.score - a.score)
-    .slice(0,5)
-    .map(d => d.title);
+  return docsNorm.map(d => ({ ...d, score: tokens.reduce((s,t)=> s+(d.norm.includes(t)?1:0),0)}))
+    .filter(d => d.score>0).sort((a,b)=>b.score-a.score).slice(0,5).map(d => d.title);
 };
 
 // --- Prompting ---
@@ -163,7 +144,6 @@ const buildUserPrompt = (q, retrieved) => {
   const ctx = retrieved.chunks.map((c,i)=>`● [${c.title || c.source || "fragmento"}] → ${c.chunk.trim()}`).join("\n");
   return `Consulta: "${q}"\n\nContexto recuperado (usá solo lo pertinente):\n${ctx || "(sin contexto recuperado)"}`;
 };
-
 const openAIChat = async (messages) => {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method:"POST",
@@ -174,7 +154,6 @@ const openAIChat = async (messages) => {
   const data = await res.json();
   return data.choices?.[0]?.message?.content?.trim() || "";
 };
-
 const buildDirectLinksResponse = (matches) => {
   const lines = matches.map(m => `✅ ${m.title || m.filename}\n${`/docs/${encodeURI(m.filename)}`}`).join("\n\n");
   return `Acá tenés lo pedido:\n\n${lines}`;
@@ -203,11 +182,10 @@ export async function handler(event) {
     ensureLoaded();
     const docsList = cache.docsList || [];
 
-    // A) Entrega directa de PDFs
+    // A) PDFs
     if (wantsDocument(userQuery)) {
       const matches = findDirectDocMatches(userQuery, docsList);
       if (matches.length > 0) return respond(200, buildText(buildDirectLinksResponse(matches)));
-
       const sug = suggestDocs(userQuery, docsList);
       const msg = sug.length
         ? `No encontré un PDF en /docs que coincida con lo que pediste. Sugerencias: ${sug.map(s=>`“${s}”`).join(", ")}.`
@@ -215,11 +193,10 @@ export async function handler(event) {
       return respond(200, buildText(msg));
     }
 
-    // B) Razonamiento con RAG (o definición si hay pocas evidencias)
+    // B) RAG / definición
     const retrieved = await retrieve(userQuery);
     const inDomain = looksInDomain(userQuery);
     const lowScore = retrieved.maxScore < MIN_SIMILARITY_ANY;
-
     if (!inDomain && lowScore) {
       const msg = "⚠️ Solo puedo ayudarte con **seguridad alimentaria** (BPM, POES, CAA, HACCP, sanitización, temperaturas, cadena de frío, etc.). Reformulá tu consulta dentro de ese alcance.";
       return respond(200, buildText(msg));
@@ -229,10 +206,8 @@ export async function handler(event) {
       { role:"system", content: buildSystemPrompt() },
       { role:"user", content: buildUserPrompt(userQuery, retrieved) }
     ]);
-
     const sanitized = answer.replace(/¿Querés el PDF\??/gi, "").replace(/Quieres el PDF\??/gi, "");
     return respond(200, buildText(sanitized));
-
   } catch (err) {
     console.error(err);
     return respond(500, `Error interno: ${err.message}`);
@@ -247,12 +222,10 @@ const baseHeaders = () => ({
   "X-Valeria-Version": VERSION
 });
 const buildText = (text) => ({ type:"text", content:text });
-
 function respond(statusCode, body) {
   const payload = typeof body === "string" ? JSON.stringify({ type:"text", content: body }) : JSON.stringify(body);
   return { statusCode, body: payload, headers: { ...baseHeaders(), "Content-Type":"application/json" } };
 }
-
 function safeListDocsDir() {
   try {
     if (!fs.existsSync(DOCS_DIR)) return [];
