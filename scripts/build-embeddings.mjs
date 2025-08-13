@@ -1,131 +1,104 @@
 // scripts/build-embeddings.mjs
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import OpenAI from "openai";
-// Usamos el build "legacy" (compatible Node 20) y SIN worker
-import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+// Usamos el build legacy compatible con Node 20 y SIN worker.
+import pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
+pdfjsLib.GlobalWorkerOptions.workerSrc = undefined; // evitar error de worker
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DOCS_DIR = path.resolve(__dirname, "..", "docs");
-const OUT_DIR  = path.resolve(__dirname, "..", "data");
-const OUT_FILE = path.join(OUT_DIR, "embeddings.json");
+const DATA_DIR = path.resolve(__dirname, "..", "data");
+const OUT_FILE = path.join(DATA_DIR, "embeddings.json");
 
-// --- Config de chunking y modelo ---
-const EMBEDDING_MODEL = "text-embedding-3-small"; // 1536 dims, económico
-const CHUNK_SIZE = 1200;   // ~1.2k chars por chunk
-const CHUNK_OVERLAP = 200; // solape para continuidad
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-if (!process.env.OPENAI_API_KEY) {
-  console.error("Falta OPENAI_API_KEY en Netlify > Site settings > Environment.");
-  process.exit(1);
-}
-
-// -------- Utilidades --------
-function toUint8Array(buffer) {
-  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
-}
-
-function chunkText(txt, size = CHUNK_SIZE, overlap = CHUNK_OVERLAP) {
-  const clean = txt.replace(/\s+\n/g, "\n").replace(/\n{2,}/g, "\n\n");
-  const parts = [];
-  let i = 0;
-  while (i < clean.length) {
-    const end = Math.min(clean.length, i + size);
-    parts.push(clean.slice(i, end));
-    i = end - overlap;
-    if (i < 0) i = 0;
+function chunkText(text, maxLen = 1200, overlap = 200) {
+  const chunks = [];
+  const clean = text.replace(/\s+/g, " ").trim();
+  for (let i = 0; i < clean.length; i += (maxLen - overlap)) {
+    chunks.push(clean.slice(i, i + maxLen));
   }
-  return parts.map((t) => t.trim()).filter(Boolean);
+  return chunks;
 }
 
-async function extractPdfText(filePath) {
-  const buf = fs.readFileSync(filePath);
-  const data = toUint8Array(buf);
-
-  // Nada de worker; 100% modo Node
-  const loadingTask = pdfjs.getDocument({
-    data,
-    disableWorker: true,
-    useWorkerFetch: false,
-    isEvalSupported: false,
-    isOffscreenCanvasSupported: false,
-    disableFontFace: true,
-    verbosity: 0,
-  });
-
+async function extractPdfText(pdfPath) {
+  const u8 = new Uint8Array(await fs.readFile(pdfPath)); // **Uint8Array**, no Buffer
+  const loadingTask = pdfjsLib.getDocument({ data: u8 });
   const pdf = await loadingTask.promise;
+
   let out = "";
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
-    const tc = await page.getTextContent();
-    const line = tc.items.map((i) => i.str).join(" ");
-    out += (out ? "\n" : "") + line;
+    const content = await page.getTextContent();
+    out += content.items.map((i) => i.str).join(" ") + "\n";
+    page.cleanup?.();
   }
+  pdf.cleanup?.();
   return out;
 }
 
-async function embedBatch(texts) {
-  const res = await client.embeddings.create({
-    model: EMBEDDING_MODEL,
-    input: texts,
-  });
-  return res.data.map((d) => d.embedding);
+async function ensureDirs() {
+  await fs.mkdir(DATA_DIR, { recursive: true });
 }
 
 async function main() {
-  const pdfs = fs.readdirSync(DOCS_DIR).filter((f) => f.toLowerCase().endsWith(".pdf"));
-  if (pdfs.length === 0) {
-    console.error("No hay PDFs en /docs");
-    process.exit(1);
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY no está disponible en el build.");
   }
-  fs.mkdirSync(OUT_DIR, { recursive: true });
 
-  const chunks = [];
-  let docIdx = 0;
+  await ensureDirs();
+  const files = (await fs.readdir(DOCS_DIR))
+    .filter((f) => f.toLowerCase().endsWith(".pdf"))
+    .sort();
 
-  for (const pdfName of pdfs) {
-    docIdx++;
-    const full = path.join(DOCS_DIR, pdfName);
-    console.log(`[${docIdx}/${pdfs.length}] ${pdfName} → extrayendo texto…`);
+  const embeddings = [];
+  let totalChunks = 0;
+
+  for (const file of files) {
+    const full = path.join(DOCS_DIR, file);
     const text = await extractPdfText(full);
     const parts = chunkText(text);
-    parts.forEach((t, i) => {
-      const id = `${pdfName}#c${String(i + 1).padStart(4, "0")}`;
-      chunks.push({ id, source: pdfName, text: t });
-    });
+    totalChunks += parts.length;
+
+    // Batches de hasta 100 entradas por request
+    for (let i = 0; i < parts.length; i += 100) {
+      const batch = parts.slice(i, i + 100);
+      const resp = await openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: batch,
+      });
+
+      resp.data.forEach((d, j) => {
+        embeddings.push({
+          source: file,
+          idx: i + j,
+          embedding: d.embedding, // <-- clave que leerá chat.js
+        });
+      });
+
+      // respiro mínimo para rate limits
+      await new Promise((r) => setTimeout(r, 120));
+    }
+    console.log(`OK: ${file} → ${parts.length} chunks`);
   }
 
-  console.log(`Total chunks a embedir: ${chunks.length}`);
-
-  // Embeddings por lotes (rápido y estable)
-  const BATCH = 64;
-  for (let i = 0; i < chunks.length; i += BATCH) {
-    const slice = chunks.slice(i, i + BATCH);
-    const vecs = await embedBatch(slice.map((c) => c.text));
-    slice.forEach((c, j) => (c.embedding = vecs[j]));
-    console.log(`Embeddings ${i + slice.length}/${chunks.length}`);
-  }
-
-  const outJson = {
-    meta: {
-      version: "v1",
-      createdAt: new Date().toISOString(),
-      docsCount: pdfs.length,
-      chunksCount: chunks.length,
-      embeddingModel: EMBEDDING_MODEL,
-      chunkSize: CHUNK_SIZE,
-      chunkOverlap: CHUNK_OVERLAP,
-    },
-    chunks,
+  const payload = {
+    ok: true,
+    version: "v2025-08-13-fix2",
+    docs: files.length,
+    chunks: totalChunks,
+    embeddingsCount: embeddings.length,
+    embeddings,
   };
 
-  fs.writeFileSync(OUT_FILE, JSON.stringify(outJson));
-  const stat = fs.statSync(OUT_FILE);
-  console.log(`OK → ${OUT_FILE} (${stat.size} bytes)`);
+  await fs.writeFile(OUT_FILE, JSON.stringify(payload));
+  console.log(`Listo: ${embeddings.length} vectores → ${OUT_FILE}`);
 }
 
 main().catch((e) => {
