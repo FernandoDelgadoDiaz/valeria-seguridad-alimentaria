@@ -1,114 +1,123 @@
 // scripts/build-embeddings.mjs
-// v2025-08-13-fix1 — extractor robusto + filtros anti-chunks vacíos
-
-import fs from "fs";
-import path from "path";
-import pdfParse from "pdf-parse";
+import fs from "node:fs";
+import fsp from "node:fs/promises";
+import path from "node:path";
+import pdfjsLib from "pdfjs-dist/legacy/build/pdf.js";
 import OpenAI from "openai";
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const ROOT = process.cwd();
 const DOCS_DIR = path.join(ROOT, "docs");
-const DATA_DIR = path.join(ROOT, "data");
-const OUT_FILE = path.join(DATA_DIR, "embeddings.json");
+const OUT_DIR = path.join(ROOT, "data");
+const OUT_FILE = path.join(OUT_DIR, "embeddings.json");
 
-// ------------ utils ------------
-function clean(s = "") {
-  return s.replace(/\s+/g, " ").replace(/[ \t]+/g, " ").trim();
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const MODEL = process.env.EMBED_MODEL || "text-embedding-3-small";
+
+function clean(txt) {
+  return (txt || "")
+    .replace(/\u0000/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function chunkText(s, max = 1200, overlap = 200) {
-  const text = clean(s);
+async function extractPdfText(filePath) {
+  const buf = fs.readFileSync(filePath);
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  let out = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    out +=
+      " " +
+      content.items
+        .map((it) => (typeof it.str === "string" ? it.str : ""))
+        .join(" ");
+  }
+  return clean(out);
+}
+
+function chunk(text, size = 1100, overlap = 120) {
   const chunks = [];
   let i = 0;
   while (i < text.length) {
-    const end = Math.min(text.length, i + max);
-    let slice = text.slice(i, end);
-    // intenta cortar en el último punto para no romper frases
-    const lastDot = slice.lastIndexOf(".");
-    if (lastDot > 800) slice = slice.slice(0, lastDot + 1);
-    if (slice.replace(/\s/g, "").length >= 200) chunks.push(slice.trim());
-    i += Math.max(1, max - overlap);
+    const part = clean(text.slice(i, i + size));
+    if (part.length >= 30) chunks.push(part); // filtro anti-vacíos
+    i += Math.max(1, size - overlap);
   }
   return chunks;
 }
 
-async function embedBatch(texts, model = "text-embedding-3-small") {
-  const res = await openai.embeddings.create({ model, input: texts });
-  return res.data.map((d) => d.embedding);
+async function* walkPdfs(dir) {
+  const entries = await fsp.readdir(dir, { withFileTypes: true });
+  for (const e of entries) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) yield* walkPdfs(p);
+    else if (e.isFile() && /\.pdf$/i.test(e.name)) yield p;
+  }
 }
 
-// ------------ main ------------
-async function main() {
-  if (!fs.existsSync(DOCS_DIR)) {
-    console.error("No existe docs/:", DOCS_DIR);
-    process.exit(1);
+async function embed(text) {
+  const res = await client.embeddings.create({
+    model: MODEL,
+    input: text
+  });
+  return res.data[0].embedding;
+}
+
+(async () => {
+  console.log("🧱 Construyendo embeddings…");
+  await fsp.mkdir(OUT_DIR, { recursive: true });
+
+  const vectors = [];
+  let docsCount = 0;
+
+  const pdfPaths = [];
+  for await (const p of walkPdfs(DOCS_DIR)) pdfPaths.push(p);
+
+  if (pdfPaths.length === 0) {
+    console.log("⚠️  No se encontraron PDFs en", DOCS_DIR);
   }
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-  const files = fs.readdirSync(DOCS_DIR)
-    .filter((f) => f.toLowerCase().endsWith(".pdf"))
-    .sort();
+  for (let idx = 0; idx < pdfPaths.length; idx++) {
+    const pdfPath = pdfPaths[idx];
+    const title = path.basename(pdfPath);
+    docsCount++;
+    console.log(
+      `${new Date().toLocaleTimeString()}: ${title} → extrayendo texto… (${idx + 1}/${pdfPaths.length})`
+    );
 
-  const allChunks = [];
-  let kept = 0;
-  let total = 0;
-
-  for (const f of files) {
-    const full = path.join(DOCS_DIR, f);
-    const buff = fs.readFileSync(full);
-    const pdf = await pdfParse(buff).catch(() => ({ text: "" }));
-    const text = clean(pdf.text || "");
-
-    if (text.length < 300) {
-      console.log(`${f} → sin texto útil (¿escaneado sin OCR?). Omitido.`);
+    const text = await extractPdfText(pdfPath);
+    const parts = chunk(text);
+    if (parts.length === 0) {
+      console.log(`   → ⚠️  ${title}: sin texto utilizable (¿escaneado?).`);
       continue;
     }
 
-    const chunks = chunkText(text, 1200, 250);
-    total += chunks.length;
-
-    // Filtro duro de utilidad
-    const useful = chunks.filter((c) => c.replace(/\s/g, "").length >= 200);
-    kept += useful.length;
-
-    // Embeddings en lotes
-    const BATCH = 64;
-    for (let i = 0; i < useful.length; i += BATCH) {
-      const slice = useful.slice(i, i + BATCH);
-      const embs = await embedBatch(slice);
-      for (let j = 0; j < slice.length; j++) {
-        const textChunk = slice[j];
-        allChunks.push({
-          text: textChunk,
-          preview: textChunk.slice(0, 320),
-          source: f,
-          title: path.basename(f, ".pdf"),
-          embedding: embs[j],
-        });
+    for (let i = 0; i < parts.length; i++) {
+      const t = parts[i];
+      const vec = await embed(t);
+      vectors.push({
+        id: `${title}#${i + 1}`,
+        source: title,
+        text: t,
+        embedding: vec
+      });
+      if ((i + 1) % 5 === 0) {
+        console.log(`   → ${title}: ${i + 1}/${parts.length} chunks`);
       }
-      console.log(`${f} → ${Math.min(i + BATCH, useful.length)}/${useful.length} chunks`);
     }
   }
 
-  const out = {
-    meta: {
-      createdAt: new Date().toISOString(),
-      model: "text-embedding-3-small",
-      files: files.length,
-      chunksTotal: total,
-      chunksKept: kept,
-    },
-    chunks: allChunks,
+  const payload = {
+    version: `v${new Date().toISOString().slice(0, 10)}-fix2`,
+    docs: docsCount,
+    embeddings: vectors.length,
+    items: vectors
   };
 
-  fs.writeFileSync(OUT_FILE, JSON.stringify(out));
-  const size = fs.statSync(OUT_FILE).size;
-  console.log(`Listo: ${OUT_FILE} (${size} bytes) con ${out.chunks.length} chunks.`);
-}
-
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+  await fsp.writeFile(OUT_FILE, JSON.stringify(payload));
+  const stats = fs.statSync(OUT_FILE);
+  console.log(
+    `✅ Listo: ${OUT_FILE} (${stats.size} bytes) con ${vectors.length} chunks de ${docsCount} PDF(s).`
+  );
+})();
