@@ -1,14 +1,12 @@
 // functions/chat.js
 import fs from "fs";
-import path from "path";
 import OpenAI from "openai";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Rutas a los artefactos empaquetados en la Lambda
 const DOCS_DIR = "/var/task/docs";
 const DATA_FILE = "/var/task/data/embeddings.json";
-const VERSION = "v2025-08-13-fix2";
+const VERSION = "v2025-08-13-fix3";
 
 const json = (obj, status = 200) => ({
   statusCode: status,
@@ -16,12 +14,8 @@ const json = (obj, status = 200) => ({
   body: JSON.stringify(obj),
 });
 
-// ---------- utilidades ----------
 const normalize = (s = "") =>
-  s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, ""); // s/acentos
+  s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 const dot = (a, b) => {
   const n = Math.min(a?.length || 0, b?.length || 0);
@@ -31,10 +25,8 @@ const dot = (a, b) => {
 };
 const norm = (a) => Math.sqrt(dot(a, a));
 const cosSim = (a, b) => {
-  const na = norm(a);
-  const nb = norm(b);
-  if (!na || !nb) return 0;
-  return dot(a, b) / (na * nb);
+  const na = norm(a), nb = norm(b);
+  return !na || !nb ? 0 : dot(a, b) / (na * nb);
 };
 
 async function embed(text) {
@@ -45,82 +37,230 @@ async function embed(text) {
   return data[0].embedding;
 }
 
-// ---------- carga y normalización de datos ----------
-let CACHE = null;
-
-function pickChunks(raw) {
-  // Acepta varias formas: chunks / items / entries / data
-  let arr =
-    raw?.chunks ||
-    raw?.items ||
-    raw?.entries ||
-    raw?.data ||
-    Array.isArray(raw) ? raw : [];
-
-  // Si vino envuelto en { vectors: [...] } o similar, intenta abrir
-  if (!Array.isArray(arr) && typeof raw === "object") {
-    for (const k of Object.keys(raw)) {
-      if (Array.isArray(raw[k])) {
-        arr = raw[k];
-        break;
-      }
-    }
+// ---------- lectura segura del archivo ----------
+function safeReadText(p) {
+  try { return fs.readFileSync(p, "utf8"); } catch { return ""; }
+}
+function tryJSON(text) {
+  try { return JSON.parse(text); } catch { return null; }
+}
+function looksNumberArray(x) {
+  return Array.isArray(x) && x.length > 8 && x.every((v) => typeof v === "number");
+}
+function coerceNumberArray(x) {
+  if (looksNumberArray(x)) return x;
+  if (Array.isArray(x) && x.length > 8) {
+    const nums = x.map((v) => Number(v)).filter((v) => Number.isFinite(v));
+    if (nums.length === x.length && nums.length > 8) return nums;
   }
-
-  // Mapear a formato canónico
-  const mapped = (arr || []).map((c, i) => ({
-    id: c.id ?? c.i ?? i,
-    source: c.source ?? c.src ?? c.file ?? "",
-    title: c.title ?? "",
-    text: c.text ?? c.content ?? c.body ?? "",
-    vec: c.vec ?? c.embedding ?? c.emb ?? c.v ?? [],
-  }));
-
-  return mapped.filter((c) => c.text && Array.isArray(c.vec) && c.vec.length);
+  if (typeof x === "string" && x.includes(",")) {
+    const nums = x.split(",").map((v) => Number(v.trim())).filter((v) => Number.isFinite(v));
+    if (nums.length > 8) return nums;
+  }
+  return null;
 }
 
-async function loadData() {
-  if (CACHE) return CACHE;
+// Explora recursivamente y devuelve arrays de objetos candidatos
+function* deepArrays(node, seen = new Set()) {
+  if (!node || typeof node !== "object") return;
+  if (seen.has(node)) return;
+  seen.add(node);
+
+  if (Array.isArray(node) && node.length && typeof node[0] === "object") {
+    yield node;
+  }
+  for (const k of Object.keys(node)) {
+    const v = node[k];
+    if (Array.isArray(v) || (v && typeof v === "object")) {
+      yield* deepArrays(v, seen);
+    }
+  }
+}
+
+// Mapea cualquier forma al formato canónico {id, title, source, text, vec}
+function mapArrayToChunks(arr) {
+  const out = [];
+  for (let i = 0; i < arr.length; i++) {
+    const o = arr[i];
+    if (!o || typeof o !== "object") continue;
+
+    // claves candidatas
+    const textKey = ["text","content","body","chunk","pageText","raw","t"].find(k => typeof o[k] === "string");
+    const titleKey = ["title","heading","h"].find(k => typeof o[k] === "string");
+    const sourceKey = ["source","src","file","path","doc","s"].find(k => typeof o[k] === "string");
+
+    // vector directo
+    let vec = null;
+    for (const vk of ["vec","embedding","emb","v","e"]) {
+      if (vk in o) { vec = coerceNumberArray(o[vk]); if (vec) break; }
+    }
+    // vector anidado (p.ej. o.meta.embedding)
+    if (!vec) {
+      for (const k of Object.keys(o)) {
+        const v = o[k];
+        if (v && typeof v === "object") {
+          for (const vk of ["vec","embedding","emb","v","e"]) {
+            if (vk in v) { vec = coerceNumberArray(v[vk]); if (vec) break; }
+          }
+          if (vec) break;
+        }
+      }
+    }
+
+    const text = textKey ? o[textKey] : "";
+    if (text && vec) {
+      out.push({
+        id: o.id ?? o.i ?? i,
+        title: titleKey ? o[titleKey] : "",
+        source: sourceKey ? o[sourceKey] : "",
+        text,
+        vec,
+      });
+    }
+  }
+  return out;
+}
+
+// Arrays paralelos: { embeddings:[[...]], texts:[...], sources:[...] }
+function mapParallel(obj) {
+  const embs = obj.embeddings || obj.vectors || obj.vecs || null;
+  const texts = obj.texts || obj.contents || obj.bodies || null;
+  if (Array.isArray(embs) && Array.isArray(texts) && embs.length === texts.length && embs.length) {
+    const out = [];
+    for (let i = 0; i < embs.length; i++) {
+      const v = coerceNumberArray(embs[i]);
+      const t = texts[i];
+      if (v && typeof t === "string") {
+        out.push({
+          id: i,
+          title: (obj.titles && obj.titles[i]) || "",
+          source: (obj.sources && obj.sources[i]) || "",
+          text: t,
+          vec: v,
+        });
+      }
+    }
+    return out;
+  }
+  return [];
+}
+
+function parseNDJSON(text) {
+  const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const objs = [];
+  for (const ln of lines) {
+    try { objs.push(JSON.parse(ln)); } catch {}
+  }
+  return objs.length ? objs : null;
+}
+
+function pickChunksFromAny(raw) {
+  // 1) Array directamente
+  if (Array.isArray(raw)) {
+    const a1 = mapArrayToChunks(raw);
+    if (a1.length) return a1;
+  }
+  // 2) Objeto con arrays paralelos
+  const par = mapParallel(raw || {});
+  if (par.length) return par;
+
+  // 3) Objeto con {chunks|items|entries|data} que sea array u objeto-de-objetos
+  let arr = raw?.chunks || raw?.items || raw?.entries || raw?.data || null;
+  if (arr && !Array.isArray(arr) && typeof arr === "object") arr = Object.values(arr);
+  if (Array.isArray(arr)) {
+    const a2 = mapArrayToChunks(arr);
+    if (a2.length) return a2;
+  }
+
+  // 4) Buscar recursivamente arrays
+  if (raw && typeof raw === "object") {
+    for (const arr2 of deepArrays(raw)) {
+      const a3 = mapArrayToChunks(arr2);
+      if (a3.length) return a3;
+    }
+  }
+  return [];
+}
+
+let CACHE = null;
+
+async function loadData(peekOnly = false) {
+  if (CACHE && !peekOnly) return CACHE;
 
   const exists = fs.existsSync(DATA_FILE);
   const stats = exists ? fs.statSync(DATA_FILE) : null;
+
   let chunks = [];
   let dims = 0;
+  let peek = { parsed: false };
 
   if (exists) {
-    try {
-      const raw = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-      chunks = pickChunks(raw);
-      if (chunks.length && Array.isArray(chunks[0].vec))
-        dims = chunks[0].vec.length;
-    } catch (e) {
-      // si el JSON está corrupto, dejamos chunks=[]
-      console.error("Error leyendo embeddings.json:", e);
+    const text = safeReadText(DATA_FILE);
+
+    // Intento JSON estándar
+    let parsed = tryJSON(text);
+
+    // Si falló, intento NDJSON (una línea por objeto)
+    if (!parsed) {
+      const nd = parseNDJSON(text);
+      if (nd) parsed = nd;
+    }
+
+    if (parsed != null) {
+      peek.parsed = true;
+      // Arrays paralelos al tope
+      const parallel = Array.isArray(parsed) ? [] : mapParallel(parsed);
+      if (parallel.length) {
+        chunks = parallel;
+        peek.mode = "parallel";
+      } else {
+        chunks = pickChunksFromAny(parsed);
+        peek.mode = Array.isArray(parsed) ? "array" : "object";
+      }
+
+      // Si aún nada y era NDJSON como array de objetos
+      if (!chunks.length && Array.isArray(parsed)) {
+        chunks = mapArrayToChunks(parsed);
+        peek.mode = peek.mode || "ndjson-array";
+      }
+    }
+
+    if (chunks.length) {
+      dims = Array.isArray(chunks[0].vec) ? chunks[0].vec.length : 0;
+      for (const c of chunks) c._norm = normalize(c.text);
+      peek.first = {
+        keys: Object.keys(chunks[0]).slice(0, 8),
+        vecLen: dims,
+        title: chunks[0].title,
+        source: chunks[0].source,
+        textSample: chunks[0].text.slice(0, 120),
+      };
+    } else {
+      peek.error = "No se hallaron vectores/texos en el archivo.";
+      // pista rápida: primeras 2000 letras del archivo
+      peek.head = text.slice(0, 2000);
     }
   }
 
-  // Precalcular texto normalizado para búsquedas fallback
-  for (const c of chunks) c._norm = normalize(c.text);
-
-  CACHE = {
+  const payload = {
     version: VERSION,
     docsCount: fs.existsSync(DOCS_DIR)
-      ? fs.readdirSync(DOCS_DIR).filter((f) => f.toLowerCase().endsWith(".pdf"))
-          .length
+      ? fs.readdirSync(DOCS_DIR).filter(f => f.toLowerCase().endsWith(".pdf")).length
       : 0,
     dataFileExists: !!exists,
     dataFileSize: stats?.size || 0,
     chunks,
     dims,
+    peek,
   };
-  return CACHE;
+
+  if (!peekOnly) CACHE = payload;
+  return payload;
 }
 
-// ---------- búsqueda ----------
 function topK(chunks, qVec, k = 5) {
   const scored = [];
   for (const c of chunks) {
-    if (!c.vec || !c.vec.length) continue;
     const s = cosSim(qVec, c.vec);
     if (s > 0) scored.push({ score: s, title: c.title, source: c.source });
   }
@@ -128,27 +268,40 @@ function topK(chunks, qVec, k = 5) {
   return scored.slice(0, k);
 }
 
-// ---------- handler ----------
 export async function handler(event) {
   const rawUrl = event.rawUrl || "";
   const method = event.httpMethod || "GET";
   const url = new URL(rawUrl);
 
-  // Ruteo “suave” leyendo la URL original antes del redirect
   const isPing = rawUrl.includes("/api/ping");
   const isDiag = rawUrl.includes("/api/diag");
 
-  // GET /api/ping  → salud simple
   if (isPing) {
     return json({ ok: true, version: VERSION });
   }
 
-  // GET /api/diag  → estado / búsqueda de prueba
   if (isDiag) {
     const q = url.searchParams.get("q") || "";
     const k = Math.max(1, Math.min(20, Number(url.searchParams.get("k")) || 5));
+    const peek = url.searchParams.get("peek");
 
-    const data = await loadData();
+    const data = await loadData(!!peek);
+
+    // peek de estructura
+    if (peek) {
+      const d = await loadData(true);
+      return json({
+        ok: true,
+        version: d.version,
+        docs: d.docsCount,
+        dataFileExists: d.dataFileExists,
+        dataFileSize: d.dataFileSize,
+        embeddings: d.chunks?.length || 0,
+        dims: d.dims || 0,
+        peek: d.peek,
+        hint: "Quitá &peek=1 para ver coincidencias con ?q=texto&k=5",
+      });
+    }
 
     if (!q) {
       return json({
@@ -159,12 +312,10 @@ export async function handler(event) {
         dataFileSize: data.dataFileSize,
         embeddings: data.chunks.length,
         dims: data.dims,
-        hint:
-          'Agregá ?q=texto&k=5 para probar coincidencias. Ej: /api/diag?q=BPM&k=5',
+        hint: 'Agregá ?q=texto&k=5 para probar coincidencias. Ej: /api/diag?q=BPM&k=5',
       });
     }
 
-    // con query → probar ANN
     try {
       const qVec = await embed(q);
       const tops = topK(data.chunks, qVec, k);
@@ -184,7 +335,6 @@ export async function handler(event) {
     }
   }
 
-  // POST /api/chat  → conversación
   if (method === "POST") {
     try {
       const body = JSON.parse(event.body || "{}");
@@ -192,18 +342,18 @@ export async function handler(event) {
       const k = Math.max(1, Math.min(10, Number(body.k) || 5));
 
       const data = await loadData();
-      const q = userQuery || (body.messages || []).map((m) => m?.content).join(" ").slice(0, 2000) || "";
+      const q = userQuery ||
+        (body.messages || []).map((m) => m?.content).join(" ").slice(0, 2000) ||
+        "";
 
       const qVec = await embed(q);
       const tops = topK(data.chunks, qVec, k);
 
-      // Respuesta mínima: devolvemos fuentes relevantes
       return json({
         ok: true,
-        answer:
-          tops.length
-            ? "Encontré referencias útiles en tus documentos."
-            : "No encontré coincidencias claras en los documentos.",
+        answer: tops.length
+          ? "Encontré referencias útiles en tus documentos."
+          : "No encontré coincidencias claras en los documentos.",
         refs: tops,
       });
     } catch (e) {
@@ -211,6 +361,5 @@ export async function handler(event) {
     }
   }
 
-  // Cualquier otro método → 405
   return json({ ok: false, error: "Método no permitido. Usá POST." }, 405);
 }
