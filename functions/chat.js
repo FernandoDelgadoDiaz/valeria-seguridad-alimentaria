@@ -1,11 +1,11 @@
 // functions/chat.js
-// Valeria · RAG + PDFs · definiciones robustas + endpoint de debug (?q=...)
-// Versión: v2025-08-12e-I
+// Valeria · RAG + PDFs · definiciones con fallback + expansión de siglas + debug
+// Versión: v2025-08-12e-J
 
 import fs from "fs";
 import path from "path";
 
-const VERSION = "v2025-08-12e-I";
+const VERSION = "v2025-08-12e-J";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
@@ -19,17 +19,26 @@ const EMBEDDINGS_PATH = path.join(DATA_DIR, "embeddings.json");
 const MAX_CONTEXT_CHUNKS = 6;
 const MIN_SIMILARITY_ANY = 0.65;
 
+// ---------- util ----------
+const jsonExists = (p) => { try { return fs.existsSync(p); } catch { return false; } };
+const loadJSON  = (p, fb=null) => { try { return JSON.parse(fs.readFileSync(p,"utf-8")); } catch { return fb; } };
+const dot  = (a,b) => a.reduce((s,v,i)=>s+v*b[i],0);
+const norm = (a) => Math.sqrt(a.reduce((s,v)=>s+v*v,0));
+const cosineSim = (a,b) => dot(a,b)/(norm(a)*norm(b));
+const toLowerNoAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+const normalizeName = (s) => toLowerNoAccents(s.replace(/\.pdf$/i,"").replace(/[-_]+/g," ").replace(/\s+/g," ").trim());
+
+// ---------- dominio ----------
 const DOMAIN_HINTS = [
   "seguridad alimentaria","inocuidad",
   "bpm","buenas practicas de manufactura","buenas prácticas de manufactura",
   "poes","poe","haccp","appcc","pcc","ppro","sop",
   "sanitizante","sanitizacion","sanitización","limpieza","desinfeccion","desinfección","higiene",
   "alergenos","alérgenos","trazabilidad","etiquetado",
-  "cadena de frio","cadena de frío","freezer","refrigeracion","refrigeración","coccion","cocción",
-  "temperatura","zona de peligro","pasteurizacion","pasteurización",
-  "caa","codigo alimentario argentino","código alimentario argentino","manual de bpm","manual 5s","5s",
+  "cadena de frio","cadena de frío","refrigeracion","refrigeración","freezer","coccion","cocción","temperatura",
+  "caa","codigo alimentario argentino","código alimentario argentino",
   "mip","manejo integrado de plagas","plagas","plaga",
-  "poes comedor","procedimiento","registro","planilla","instructivo",
+  "procedimiento","registro","planilla","instructivo",
   "no conformidad","no conformidades","nc","desvio","desvío","desviacion","desviación",
   "acciones correctivas","accion correctiva","acciones preventivas","accion preventiva",
   "capa","5 porques","5 porqués","ishikawa","espina de pescado"
@@ -46,27 +55,57 @@ const DIRECT_DOC_ALIASES = [
   { keys: ["poes comedor","comedor"] }
 ];
 
+// ---------- cache ----------
 let cache = { embeddings: null, docsList: null };
 
-const jsonExists = (p) => { try { return fs.existsSync(p); } catch { return false; } };
-const loadJSON  = (p, fb=null) => { try { return JSON.parse(fs.readFileSync(p,"utf-8")); } catch { return fb; } };
-const dot  = (a,b) => a.reduce((s,v,i)=>s+v*b[i],0);
-const norm = (a) => Math.sqrt(a.reduce((s,v)=>s+v*v,0));
-const cosineSim = (a,b) => dot(a,b)/(norm(a)*norm(b));
-const toLowerNoAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-const normalizeName = (s) => toLowerNoAccents(s.replace(/\.pdf$/i,"").replace(/[-_]+/g," ").replace(/\s+/g," ").trim());
+// ---------- detecciones ----------
+const isDefinitionPhrase = (raw) =>
+  /(^(que|qué)\s+es\b)|(\bdefinici[oó]n\s+de\b)|(\bque\s+significa\b)/.test(toLowerNoAccents(raw).trim());
 
-const isDefinitionPhrase = (raw) => /(^(que|qué)\s+es\b)|(\bdefinici[oó]n\s+de\b)|(\bque\s+significa\b)/.test(toLowerNoAccents(raw).trim());
 const hasDomainTerm = (raw) => {
   const t = toLowerNoAccents(raw);
   return DOMAIN_HINTS.some(k => t.includes(toLowerNoAccents(k)));
 };
+
+// Solo dispara PDF cuando realmente lo piden
 const wantsDocument = (q) => {
   const t = toLowerNoAccents(q);
   if (isDefinitionPhrase(t)) return false;
-  return /(pdf|archivo|descarg|abrir|ver doc|procedimiento|formulario|registro|planilla)\b/.test(t);
+  return /\b(pdf|archivo|descarg|abrir|mostrar|ver doc|procedimiento|formulario|registro|planilla)\b/.test(t);
 };
 
+// Expansión de siglas para mejorar recuperación
+const expandAcronyms = (q) => {
+  let t = " " + toLowerNoAccents(q) + " ";
+  t = t.replace(/\bcaa\b/g, " código alimentario argentino ");
+  t = t.replace(/\bbpm\b/g, " buenas practicas de manufactura ");
+  t = t.replace(/\bhaccp\b/g, " analisis de peligros y puntos criticos de control ");
+  t = t.replace(/\bpcc\b/g, " punto critico de control ");
+  t = t.replace(/\bppro\b/g, " programa prerrequisito operativo ");
+  return t.trim();
+};
+
+// ---------- playbook de definiciones (fallback local, sin LLM) ----------
+const DEF_PLAYBOOK = {
+  bpm: `**BPM (Buenas Prácticas de Manufactura)**: conjunto de reglas y procedimientos para garantizar la **inocuidad**. Pilares: **higiene personal**, infraestructura y equipos, **limpieza y sanitización (POES)**, **control de plagas (MIP)**, recepción y almacenamiento (**temperaturas**), **trazabilidad/etiquetado**, capacitación y **registros**. Es **prerrequisito de HACCP**.`,
+  temperatura: `**Temperatura**: variable crítica. “Zona de peligro” **5–60 °C** (crecen patógenos). Guías típicas: **refrigerados 0–5 °C**, **congelados ≤ −18 °C**, **cocción segura ≥ 72 °C** en el centro, **recalentado ≥ 74 °C**. Enfriado rápido: de **60→10 °C en 2 h** y de **10→5 °C en 4 h**.`,
+  "no conformidad": `**No conformidad**: incumplimiento de un requisito (CAA, BPM/POES, HACCP o procedimiento interno). Gestión: **registrar**, **contener**, evaluar riesgo, **corregir**, analizar **causa raíz** (5 Porqués/Ishikawa), definir **Acción Correctiva/Preventiva (CAPA)** y **verificar eficacia**.`,
+  plaga: `**Plaga**: organismo (insectos, roedores, etc.) que puede **contaminar** alimentos o áreas. Control mediante **MIP**: prevención (orden, sellado), **monitoreo**, exclusión (barreras), control **físico/químico/biológico** y **registros**.`,
+  sanitizante: `**Sanitizante**: agente/solución aplicada **después de limpiar** para reducir microorganismos a niveles seguros. Claves: **concentración**, **tiempo de contacto**, **temperatura** y **verificación** (p. ej., **tiras QAC**).`
+};
+
+// normaliza consulta → clave del playbook
+const defKeyFromQuery = (q) => {
+  const t = toLowerNoAccents(q);
+  if (t.includes("no conformidad")) return "no conformidad";
+  if (t.includes("bpm")) return "bpm";
+  if (t.includes("temperatura")) return "temperatura";
+  if (t.includes("plaga")) return "plaga";
+  if (t.includes("sanitizante")) return "sanitizante";
+  return null;
+};
+
+// ---------- RAG ----------
 const ensureLoaded = () => {
   if (!cache.embeddings && jsonExists(EMBEDDINGS_PATH)) cache.embeddings = loadJSON(EMBEDDINGS_PATH, []);
   if (!cache.docsList) cache.docsList = safeListDocsDir();
@@ -86,11 +125,12 @@ const embedQuery = async (q) => {
 const retrieve = async (q) => {
   ensureLoaded();
   if (!cache.embeddings || cache.embeddings.length===0) return { chunks:[], maxScore:0 };
-  const qEmb = await embedQuery(q);
+  const qEmb = await embedQuery(expandAcronyms(q));
   const scored = cache.embeddings.map(it => ({...it, score: cosineSim(qEmb, it.embedding)})).sort((a,b)=>b.score-a.score);
   return { chunks: scored.slice(0, MAX_CONTEXT_CHUNKS), maxScore: scored[0]?.score || 0 };
 };
 
+// ---------- PDFs ----------
 const findDirectDocMatches = (q, docsList) => {
   const qn = normalizeName(q);
   const docsNorm = docsList.map(d => ({ filename:d.filename, title:d.title || humanize(d.filename), norm: normalizeName(d.title || d.filename) }));
@@ -123,11 +163,12 @@ const suggestDocs = (q, docsList) => {
     .map(d => d.title);
 };
 
+// ---------- prompting ----------
 const buildSystemPrompt = () => `
 Sos **Valeria**, especialista en seguridad alimentaria en Argentina (BPM, POES, CAA, HACCP y procedimientos internos de retail).
 Reglas:
 1) Respondé SOLO sobre seguridad alimentaria. Si está fuera de alcance, rechazá con cortesía.
-2) Tono profesional, pedagógico y claro, con modismos AR (freezer, carne vacuna). Usá **negritas** moderadas y emojis sobrios.
+2) Tono profesional y claro, con modismos AR (freezer, cadena de frío). Usá **negritas** moderadas y emojis sobrios.
 3) Priorizá lo recuperado de la base vectorial. Si la evidencia es escasa pero el tema es del dominio (definiciones BPM/POES/HACCP/NO CONFORMIDAD/PLAGA/TEMPERATURA), brindá explicación estándar y pasos prácticos.
 4) Si el usuario pide un documento y no existe, decí que no lo encontraste; podés sugerir títulos de /docs. No inventes enlaces.
 `;
@@ -153,25 +194,20 @@ const buildDirectLinksResponse = (matches) => {
   return `Acá tenés lo pedido:\n\n${lines}`;
 };
 
+// ---------- handler ----------
 export async function handler(event) {
   try {
-    // --- GET: ping o debug ---
+    // GET: ping y debug RAG
     if (event.httpMethod === "GET") {
       const qp = event.queryStringParameters || {};
-      if (qp.ping === "1") {
-        ensureLoaded();
-        return respond(200, { ok:true, version: VERSION, docs: cache.docsList?.length || 0, embeddings: cache.embeddings?.length || 0 });
-      }
-      // DEBUG: /.netlify/functions/chat?q=texto
-      if (qp.q) {
+      if (qp.ping === "1") { ensureLoaded(); return respond(200, { ok:true, version: VERSION, docs: cache.docsList?.length || 0, embeddings: cache.embeddings?.length || 0 }); }
+      if (qp.q) { // debug
         ensureLoaded();
         const q = qp.q;
         const retrieved = await retrieve(q);
         const tops = (retrieved.chunks || []).map((c) => ({
-          title: c.title || c.source,
-          source: c.source,
-          score: Number(c.score?.toFixed(4)),
-          preview: (c.chunk || "").slice(0, 160)
+          title: c.title || c.source, source: c.source,
+          score: Number(c.score?.toFixed(4)), preview: (c.chunk || "").slice(0,160)
         }));
         return respond(200, { ok:true, version: VERSION, docs: cache.docsList?.length || 0, embeddings: cache.embeddings?.length || 0, query: q, maxScore: Number(retrieved.maxScore?.toFixed(4) || 0), tops });
       }
@@ -189,20 +225,29 @@ export async function handler(event) {
     ensureLoaded();
     const docsList = cache.docsList || [];
 
-    // A) Definiciones
+    // A) Definiciones → SIEMPRE responder (primero playbook; si no hay, LLM; y nunca doc-intent)
     if (isDefinitionPhrase(userQuery)) {
       if (!hasDomainTerm(userQuery)) {
         return respond(200, buildText("⚠️ Puedo definir conceptos de **seguridad alimentaria** (BPM, POES, CAA, plagas, temperaturas, HACCP, etc.). Pedime términos del rubro."));
       }
+      const key = defKeyFromQuery(userQuery);
+      if (key && DEF_PLAYBOOK[key]) {
+        return respond(200, buildText(DEF_PLAYBOOK[key]));
+      }
+      // fallback a LLM + RAG si no hay playbook
       const retrieved = await retrieve(userQuery);
-      const answer = await openAIChat([
-        { role:"system", content: buildSystemPrompt() },
-        { role:"user", content: buildUserPrompt(userQuery, retrieved) }
-      ]);
-      return respond(200, buildText(answer));
+      try {
+        const answer = await openAIChat([
+          { role:"system", content: buildSystemPrompt() },
+          { role:"user", content: buildUserPrompt(userQuery, retrieved) }
+        ]);
+        if (answer) return respond(200, buildText(answer));
+      } catch {}
+      // último recurso
+      return respond(200, buildText("Es un concepto del área de **seguridad alimentaria**. Si querés, decime el contexto (BPM/POES/HACCP/CAA) y te doy la definición específica."));
     }
 
-    // B) PDFs
+    // B) Entrega directa de PDFs
     if (wantsDocument(userQuery)) {
       const matches = findDirectDocMatches(userQuery, docsList);
       if (matches.length > 0) return respond(200, buildText(buildDirectLinksResponse(matches)));
@@ -213,7 +258,7 @@ export async function handler(event) {
       return respond(200, buildText(msg));
     }
 
-    // C) RAG
+    // C) Razonamiento con RAG
     const retrieved = await retrieve(userQuery);
     const inDomain = hasDomainTerm(userQuery);
     const lowScore = retrieved.maxScore < MIN_SIMILARITY_ANY;
@@ -235,7 +280,7 @@ export async function handler(event) {
   }
 }
 
-// --- helpers ---
+// ---------- helpers ----------
 const baseHeaders = () => ({
   "Access-Control-Allow-Origin":"*",
   "Access-Control-Allow-Headers":"Content-Type, Authorization",
