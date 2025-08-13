@@ -1,14 +1,19 @@
 [build]
-  publish = "."
-  command = "npm install && npm run build:emb"
+  # Si usás un script para generar embeddings, dejalo aquí.
+  command = "node scripts/build-embeddings.js"
+  publish = "dist"
 
-[build.environment]
-  NODE_VERSION = "18"
-
+# Es importante declarar el bundler y el directorio de funciones.
 [functions]
-  directory = "functions"
+  directory = "netlify/functions"
   node_bundler = "esbuild"
-  included_files = [
-    "docs/**",
-    "data/**"
-  ]
+
+# Incluir los assets SOLO para la función "chat"
+[functions."chat"]
+  included_files = ["data/**", "docs/**", "documentos/**"]
+
+# (Opcional) otras redirecciones de tu app
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
