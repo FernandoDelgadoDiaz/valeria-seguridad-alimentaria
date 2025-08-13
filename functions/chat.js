@@ -1,11 +1,11 @@
 // functions/chat.js
-// Valeria · RAG + PDFs · definiciones robustas (qué es/definición) + doc-intent estricto
-// Versión: v2025-08-12e-H
+// Valeria · RAG + PDFs · definiciones robustas + endpoint de debug (?q=...)
+// Versión: v2025-08-12e-I
 
 import fs from "fs";
 import path from "path";
 
-const VERSION = "v2025-08-12e-H";
+const VERSION = "v2025-08-12e-I";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
@@ -19,7 +19,6 @@ const EMBEDDINGS_PATH = path.join(DATA_DIR, "embeddings.json");
 const MAX_CONTEXT_CHUNKS = 6;
 const MIN_SIMILARITY_ANY = 0.65;
 
-// ---------------- Dominio ----------------
 const DOMAIN_HINTS = [
   "seguridad alimentaria","inocuidad",
   "bpm","buenas practicas de manufactura","buenas prácticas de manufactura",
@@ -47,10 +46,8 @@ const DIRECT_DOC_ALIASES = [
   { keys: ["poes comedor","comedor"] }
 ];
 
-// ---------------- Cache ----------------
 let cache = { embeddings: null, docsList: null };
 
-// ---------------- Utils ----------------
 const jsonExists = (p) => { try { return fs.existsSync(p); } catch { return false; } };
 const loadJSON  = (p, fb=null) => { try { return JSON.parse(fs.readFileSync(p,"utf-8")); } catch { return fb; } };
 const dot  = (a,b) => a.reduce((s,v,i)=>s+v*b[i],0);
@@ -59,17 +56,11 @@ const cosineSim = (a,b) => dot(a,b)/(norm(a)*norm(b));
 const toLowerNoAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const normalizeName = (s) => toLowerNoAccents(s.replace(/\.pdf$/i,"").replace(/[-_]+/g," ").replace(/\s+/g," ").trim());
 
-// --------- NUEVO: detección robusta de “qué es … / definición de …” ---------
-const isDefinitionPhrase = (raw) => {
-  const t = toLowerNoAccents(raw).trim();
-  return /(^(que|qué)\s+es\b)|(\bdefinici[oó]n\s+de\b)|(\bque\s+significa\b)/.test(t);
-};
+const isDefinitionPhrase = (raw) => /(^(que|qué)\s+es\b)|(\bdefinici[oó]n\s+de\b)|(\bque\s+significa\b)/.test(toLowerNoAccents(raw).trim());
 const hasDomainTerm = (raw) => {
   const t = toLowerNoAccents(raw);
   return DOMAIN_HINTS.some(k => t.includes(toLowerNoAccents(k)));
 };
-
-// Doc intent **estricto** (evita falsos positivos con “qué es…”)
 const wantsDocument = (q) => {
   const t = toLowerNoAccents(q);
   if (isDefinitionPhrase(t)) return false;
@@ -100,7 +91,6 @@ const retrieve = async (q) => {
   return { chunks: scored.slice(0, MAX_CONTEXT_CHUNKS), maxScore: scored[0]?.score || 0 };
 };
 
-// ---------------- PDFs ----------------
 const findDirectDocMatches = (q, docsList) => {
   const qn = normalizeName(q);
   const docsNorm = docsList.map(d => ({ filename:d.filename, title:d.title || humanize(d.filename), norm: normalizeName(d.title || d.filename) }));
@@ -133,7 +123,6 @@ const suggestDocs = (q, docsList) => {
     .map(d => d.title);
 };
 
-// ---------------- Prompting ----------------
 const buildSystemPrompt = () => `
 Sos **Valeria**, especialista en seguridad alimentaria en Argentina (BPM, POES, CAA, HACCP y procedimientos internos de retail).
 Reglas:
@@ -164,14 +153,31 @@ const buildDirectLinksResponse = (matches) => {
   return `Acá tenés lo pedido:\n\n${lines}`;
 };
 
-// ---------------- Handler ----------------
 export async function handler(event) {
   try {
+    // --- GET: ping o debug ---
     if (event.httpMethod === "GET") {
       const qp = event.queryStringParameters || {};
-      if (qp.ping === "1") { ensureLoaded(); return respond(200, { ok:true, version: VERSION, docs: cache.docsList?.length || 0, embeddings: cache.embeddings?.length || 0 }); }
+      if (qp.ping === "1") {
+        ensureLoaded();
+        return respond(200, { ok:true, version: VERSION, docs: cache.docsList?.length || 0, embeddings: cache.embeddings?.length || 0 });
+      }
+      // DEBUG: /.netlify/functions/chat?q=texto
+      if (qp.q) {
+        ensureLoaded();
+        const q = qp.q;
+        const retrieved = await retrieve(q);
+        const tops = (retrieved.chunks || []).map((c) => ({
+          title: c.title || c.source,
+          source: c.source,
+          score: Number(c.score?.toFixed(4)),
+          preview: (c.chunk || "").slice(0, 160)
+        }));
+        return respond(200, { ok:true, version: VERSION, docs: cache.docsList?.length || 0, embeddings: cache.embeddings?.length || 0, query: q, maxScore: Number(retrieved.maxScore?.toFixed(4) || 0), tops });
+      }
       return respond(405, "Method Not Allowed");
     }
+
     if (event.httpMethod === "OPTIONS") return respond(204, "");
     if (event.httpMethod !== "POST") return respond(405, "Method Not Allowed");
     if (!OPENAI_API_KEY) return respond(500, "Falta OPENAI_API_KEY en Netlify.");
@@ -183,11 +189,10 @@ export async function handler(event) {
     ensureLoaded();
     const docsList = cache.docsList || [];
 
-    // A) Definiciones: si detectamos la frase y hay término de dominio → SIEMPRE responde
+    // A) Definiciones
     if (isDefinitionPhrase(userQuery)) {
       if (!hasDomainTerm(userQuery)) {
-        const msg = "⚠️ Puedo definir conceptos de **seguridad alimentaria** (BPM, POES, CAA, plagas, temperaturas, HACCP, etc.). Reformulá con un término del rubro.";
-        return respond(200, buildText(msg));
+        return respond(200, buildText("⚠️ Puedo definir conceptos de **seguridad alimentaria** (BPM, POES, CAA, plagas, temperaturas, HACCP, etc.). Pedime términos del rubro."));
       }
       const retrieved = await retrieve(userQuery);
       const answer = await openAIChat([
@@ -197,11 +202,10 @@ export async function handler(event) {
       return respond(200, buildText(answer));
     }
 
-    // B) Entrega directa de PDFs
+    // B) PDFs
     if (wantsDocument(userQuery)) {
       const matches = findDirectDocMatches(userQuery, docsList);
       if (matches.length > 0) return respond(200, buildText(buildDirectLinksResponse(matches)));
-
       const sug = suggestDocs(userQuery, docsList);
       const msg = sug.length
         ? `No encontré un PDF en /docs que coincida con lo que pediste. Sugerencias: ${sug.map(s=>`“${s}”`).join(", ")}.`
@@ -209,14 +213,13 @@ export async function handler(event) {
       return respond(200, buildText(msg));
     }
 
-    // C) Razonamiento con RAG
+    // C) RAG
     const retrieved = await retrieve(userQuery);
-    const inDomain = hasDomainTerm(userQuery); // más directo
+    const inDomain = hasDomainTerm(userQuery);
     const lowScore = retrieved.maxScore < MIN_SIMILARITY_ANY;
 
     if (!inDomain && lowScore) {
-      const msg = "⚠️ Solo puedo ayudarte con **seguridad alimentaria** (BPM, POES, CAA, HACCP, sanitización, temperaturas, cadena de frío, etc.). Reformulá tu consulta dentro de ese alcance.";
-      return respond(200, buildText(msg));
+      return respond(200, buildText("⚠️ Solo puedo ayudarte con **seguridad alimentaria** (BPM, POES, CAA, HACCP, sanitización, temperaturas, cadena de frío, etc.). Reformulá tu consulta dentro de ese alcance."));
     }
 
     const answer = await openAIChat([
@@ -232,7 +235,7 @@ export async function handler(event) {
   }
 }
 
-// ---------------- Helpers ----------------
+// --- helpers ---
 const baseHeaders = () => ({
   "Access-Control-Allow-Origin":"*",
   "Access-Control-Allow-Headers":"Content-Type, Authorization",
