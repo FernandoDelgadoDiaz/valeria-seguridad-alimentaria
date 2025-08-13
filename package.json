@@ -1,12 +1,12 @@
 {
   "name": "valeria-seguridad-alimentaria",
-  "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "node scripts/build-embeddings.mjs"
+    "build:emb": "node scripts/build-embeddings.mjs"
   },
   "dependencies": {
-    "openai": "^4.59.1",
-    "pdfjs-dist": "^4.7.76"
+    "openai": "^4.58.1",
+    "pdfjs-dist": "^4.6.82"
   }
 }
