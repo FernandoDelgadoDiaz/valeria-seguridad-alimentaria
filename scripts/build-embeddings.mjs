@@ -1,101 +1,114 @@
 // scripts/build-embeddings.mjs
-// Genera data/embeddings.json desde /docs usando OpenAI (Node 18+)
+// v2025-08-13-fix1 — extractor robusto + filtros anti-chunks vacíos
 
 import fs from "fs";
 import path from "path";
-// FIX: usar la implementación directa, evita el modo CLI del paquete
-import pdf from "pdf-parse/lib/pdf-parse.js";
+import pdfParse from "pdf-parse";
+import OpenAI from "openai";
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-if (!OPENAI_API_KEY) {
-  console.error("Falta OPENAI_API_KEY en el entorno.");
-  process.exit(1);
-}
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const ROOT = process.cwd();
 const DOCS_DIR = path.join(ROOT, "docs");
-const OUT_DIR  = path.join(ROOT, "data");
-const OUT_PATH = path.join(OUT_DIR, "embeddings.json");
+const DATA_DIR = path.join(ROOT, "data");
+const OUT_FILE = path.join(DATA_DIR, "embeddings.json");
 
-const MODEL = process.env.OPENAI_EMBEDDINGS_MODEL || "text-embedding-3-large";
+// ------------ utils ------------
+function clean(s = "") {
+  return s.replace(/\s+/g, " ").replace(/[ \t]+/g, " ").trim();
+}
 
-// Chunking
-const CHUNK_SIZE = 1400;
-const CHUNK_OVERLAP = 200;
-
-// Utilidades
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const toLowerNoAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-
-const embed = async (text) => {
-  // backoff simple por si hay rate limit
-  for (let i=0;i<5;i++){
-    const res = await fetch("https://api.openai.com/v1/embeddings", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: MODEL, input: text })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return data.data[0].embedding;
-    }
-    const t = await res.text().catch(()=>String(res.status));
-    console.warn(`Embeddings API intento ${i+1}/5 → ${res.status}: ${t}`);
-    await sleep(500 * (i+1));
-  }
-  throw new Error("Embeddings API agotó reintentos");
-};
-
-const chunkText = (raw) => {
-  const text = raw.replace(/\s+/g, " ").trim();
+function chunkText(s, max = 1200, overlap = 200) {
+  const text = clean(s);
   const chunks = [];
-  for (let i = 0; i < text.length; i += (CHUNK_SIZE - CHUNK_OVERLAP)) {
-    const slice = text.slice(i, i + CHUNK_SIZE);
-    if (slice.length > 200) chunks.push(slice);
+  let i = 0;
+  while (i < text.length) {
+    const end = Math.min(text.length, i + max);
+    let slice = text.slice(i, end);
+    // intenta cortar en el último punto para no romper frases
+    const lastDot = slice.lastIndexOf(".");
+    if (lastDot > 800) slice = slice.slice(0, lastDot + 1);
+    if (slice.replace(/\s/g, "").length >= 200) chunks.push(slice.trim());
+    i += Math.max(1, max - overlap);
   }
   return chunks;
-};
+}
 
-const main = async () => {
-  if (!fs.existsSync(DOCS_DIR)) { console.error("No existe /docs."); process.exit(1); }
-  if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
+async function embedBatch(texts, model = "text-embedding-3-small") {
+  const res = await openai.embeddings.create({ model, input: texts });
+  return res.data.map((d) => d.embedding);
+}
 
-  const files = fs.readdirSync(DOCS_DIR).filter(f => f.toLowerCase().endsWith(".pdf"));
-  if (files.length === 0) { console.error("No hay PDFs en /docs."); process.exit(1); }
+// ------------ main ------------
+async function main() {
+  if (!fs.existsSync(DOCS_DIR)) {
+    console.error("No existe docs/:", DOCS_DIR);
+    process.exit(1);
+  }
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-  const output = [];
-  for (const file of files) {
-    const filePath = path.join(DOCS_DIR, file);
-    let text = "";
-    try {
-      const data = await pdf(fs.readFileSync(filePath));
-      text = (data.text || "").trim();
-    } catch (e) {
-      console.warn(`PDF no legible (o imagen escaneada) → ${file} (se saltea)`);
+  const files = fs.readdirSync(DOCS_DIR)
+    .filter((f) => f.toLowerCase().endsWith(".pdf"))
+    .sort();
+
+  const allChunks = [];
+  let kept = 0;
+  let total = 0;
+
+  for (const f of files) {
+    const full = path.join(DOCS_DIR, f);
+    const buff = fs.readFileSync(full);
+    const pdf = await pdfParse(buff).catch(() => ({ text: "" }));
+    const text = clean(pdf.text || "");
+
+    if (text.length < 300) {
+      console.log(`${f} → sin texto útil (¿escaneado sin OCR?). Omitido.`);
       continue;
     }
-    if (!text) { console.warn(`Sin texto → ${file} (se saltea)`); continue; }
 
-    const title = file.replace(/\.pdf$/i, "");
-    const chunks = chunkText(text);
-    let n = 0;
-    for (const chunk of chunks) {
-      n++;
-      const emb = await embed(chunk);
-      output.push({
-        id: `${toLowerNoAccents(title)}_${n.toString().padStart(3,"0")}`,
-        title,
-        source: file,
-        chunk,
-        embedding: emb
-      });
-      process.stdout.write(`\r${file} → ${n}/${chunks.length} chunks`);
+    const chunks = chunkText(text, 1200, 250);
+    total += chunks.length;
+
+    // Filtro duro de utilidad
+    const useful = chunks.filter((c) => c.replace(/\s/g, "").length >= 200);
+    kept += useful.length;
+
+    // Embeddings en lotes
+    const BATCH = 64;
+    for (let i = 0; i < useful.length; i += BATCH) {
+      const slice = useful.slice(i, i + BATCH);
+      const embs = await embedBatch(slice);
+      for (let j = 0; j < slice.length; j++) {
+        const textChunk = slice[j];
+        allChunks.push({
+          text: textChunk,
+          preview: textChunk.slice(0, 320),
+          source: f,
+          title: path.basename(f, ".pdf"),
+          embedding: embs[j],
+        });
+      }
+      console.log(`${f} → ${Math.min(i + BATCH, useful.length)}/${useful.length} chunks`);
     }
-    process.stdout.write("\n");
   }
 
-  fs.writeFileSync(OUT_PATH, JSON.stringify(output, null, 2), "utf-8");
-  console.log(`\nListo: ${OUT_PATH} con ${output.length} chunks.`);
-};
+  const out = {
+    meta: {
+      createdAt: new Date().toISOString(),
+      model: "text-embedding-3-small",
+      files: files.length,
+      chunksTotal: total,
+      chunksKept: kept,
+    },
+    chunks: allChunks,
+  };
 
-main().catch(err => { console.error(err); process.exit(1); });
+  fs.writeFileSync(OUT_FILE, JSON.stringify(out));
+  const size = fs.statSync(OUT_FILE).size;
+  console.log(`Listo: ${OUT_FILE} (${size} bytes) con ${out.chunks.length} chunks.`);
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
