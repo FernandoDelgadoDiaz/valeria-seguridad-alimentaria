@@ -1,18 +1,9 @@
 [build]
-  command = "node scripts/build-embeddings.mjs"
-  publish = "dist"
+command = "node scripts/build-embeddings.mjs"
+publish = "."
 
 [functions]
-  # IMPORTANTE: tu carpeta real es "functions"
-  directory = "functions"
-  node_bundler = "esbuild"
-
-# Incluir los archivos que necesita la función "chat"
-[functions."chat"]
-  included_files = ["data/**", "docs/**"]
-
-# (opcional) SPA
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+directory = "functions"
+node_bundler = "esbuild"
+# MUY IMPORTANTE: empaqueta los embeddings y los PDFs con la función
+included_files = ["data/**", "docs/**"]
