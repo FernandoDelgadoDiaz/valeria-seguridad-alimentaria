@@ -1,302 +1,262 @@
 // functions/chat.js
-// Valeria · Seguridad Alimentaria – Netlify Function (CommonJS)
-// Versión: v2025-08-13-fix1
+// Valeria · Netlify Functions (Node 20)
+// Rutas:
+//   GET  /api/ping                 -> ping rápido (tocable)
+//   GET  /api/diag[?q=texto&k=5]   -> estado / búsqueda (tocable)
+//   POST /api/diag                 -> idem GET pero con body JSON { q, k }
+//   POST /api/chat                 -> conversación RAG { messages:[...] } o { query:"..." }
 
-const fs = require("fs");
-const path = require("path");
-const OpenAI = require("openai");
+import fs from "fs";
+import path from "path";
+import OpenAI from "openai";
 
-// ---------- Config ----------
-const VERSION = "v2025-08-13-fix1";
-const DOCS_DIR = process.env.DOCS_DIR || path.join("/var/task", "docs");
-const DATA_FILE = process.env.DATA_FILE || path.join("/var/task", "data", "embeddings.json");
-const MODEL_GEN = process.env.MODEL_GEN || "gpt-4o-mini";
-const MODEL_EMB = process.env.MODEL_EMB || "text-embedding-3-large";
-const MAX_CHARS_CTX = 6000;      // contexto enviado al modelo
-const TOP_K = 8;                 // chunks a recuperar
+const VERSION = "v2025-08-13-getdiag";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization"
 };
+const json = (obj, status = 200) => ({
+  statusCode: status,
+  headers: { "Content-Type": "application/json; charset=utf-8", ...CORS_HEADERS },
+  body: JSON.stringify(obj),
+});
+const text = (msg, status = 200) => ({
+  statusCode: status,
+  headers: { "Content-Type": "text/plain; charset=utf-8", ...CORS_HEADERS },
+  body: msg,
+});
 
-// ---------- Estado en frío ----------
-let indexCache = null;
-let docsCache = null;
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Ubicaciones empaquetadas por Netlify (process.cwd() -> /var/task)
+const DOCS_DIR = path.join(process.cwd(), "docs");
+const DATA_FILE = path.join(process.cwd(), "data", "embeddings.json");
 
-// ---------- Utilidades ----------
-function uniq(arr) { return [...new Set(arr)]; }
+// ------- Utilidades -------
 
-function safeReadJSON(file) {
-  try {
-    const raw = fs.readFileSync(file, "utf8");
-    return JSON.parse(raw);
-  } catch (e) {
-    return null;
-  }
+function fileExists(p) {
+  try { fs.accessSync(p, fs.constants.R_OK); return true; } catch { return false; }
 }
-
-function loadIndex() {
-  if (indexCache) return indexCache;
-  const data = safeReadJSON(DATA_FILE);
-  if (!data || !Array.isArray(data)) return null;
-
-  // Estructura esperada por build-embeddings.mjs:
-  // [{ id, source, title, page, text, embedding: number[] }, ...]
-  indexCache = data;
-  // cache de lista de docs únicos
-  docsCache = uniq(indexCache.map(c => c.source));
-  return indexCache;
+function loadEmbeddings() {
+  if (!fileExists(DATA_FILE)) return { items: [], meta: { chunks: 0 } };
+  const raw = fs.readFileSync(DATA_FILE, "utf8");
+  if (!raw) return { items: [], meta: { chunks: 0 } };
+  const data = JSON.parse(raw);
+  // Soportar {items:[...]} o array directo
+  const items = Array.isArray(data) ? data : (data.items ?? []);
+  const meta  = Array.isArray(data) ? { chunks: items.length } : (data.meta ?? { chunks: items.length });
+  return { items, meta };
 }
 
 function dot(a, b) {
-  let s = 0;
-  for (let i = 0; i < a.length && i < b.length; i++) s += a[i] * b[i];
-  return s;
+  let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s;
 }
-function norm(a) { return Math.sqrt(a.reduce((s, x) => s + x * x, 0)); }
-function cosine(a, b) { const n = norm(a) * norm(b); return n ? dot(a, b) / n : 0; }
-
-function takeTopK(items, k) {
-  return items.sort((x, y) => y.score - x.score).slice(0, k);
+function norm(a) {
+  return Math.sqrt(a.reduce((s, v) => s + v * v, 0));
 }
-
-function buildPreview(txt, n = 220) {
-  if (!txt) return "";
-  return txt.replace(/\s+/g, " ").slice(0, n);
+function cosine(a, b) {
+  const na = norm(a), nb = norm(b);
+  if (!na || !nb) return 0;
+  return dot(a, b) / (na * nb);
 }
 
-// expansión liviana de consulta (sin LLM) para debug y recall
-function expandQuery(q) {
-  const t = (q || "").toLowerCase();
-  const extra = [];
-  if (/\bbpm\b|buenas practicas|buenas prácticas/.test(t)) {
-    extra.push("bpm", "buenas prácticas de manufactura", "manual bpm", "bpma");
-  }
-  if (/caa|codigo alimentario|código alimentario/.test(t)) {
-    extra.push("código alimentario argentino", "caa", "capítulo v rotulación", "capítulo ii establecimientos", "rotulación", "información nutricional");
-  }
-  if (/poes|procedimiento|saneamiento|sanit/.test(t)) {
-    extra.push("poes", "limpieza y desinfección", "sanitización");
-  }
-  if (/carnicer|pollo|aves|vacuna|porcina/.test(t)) {
-    extra.push("carnicería", "recepción de perecederos", "temperaturas", "descongelado");
-  }
-  return uniq([q, ...extra].filter(Boolean));
+function pickModel(pref = "gpt-4o-mini") {
+  // Permite override por env
+  return process.env.CHAT_MODEL || pref;
 }
 
-async function embed(text) {
-  const res = await client.embeddings.create({ model: MODEL_EMB, input: text });
-  return res.data[0].embedding;
+async function embedQuery(client, text) {
+  const model = process.env.EMBED_MODEL || "text-embedding-3-small";
+  const r = await client.embeddings.create({ model, input: text });
+  return r.data[0].embedding;
 }
 
-function buildSystemPrompt() {
-  return [
-    "Sos Valeria, especialista en Seguridad Alimentaria para una operación retail argentina.",
-    "Tu alcance: BPM/BPMA, CAA (normativa aplicable), POES/MIP y documentos internos de la empresa.",
-    "Respuestas: prácticas, en español, con pasos, temperaturas, tolerancias y controles.",
-    "No inventes normativa. Si el material recuperado es insuficiente, decí que no encontraste un documento directo y sugerí dónde buscar dentro de los PDFs cargados.",
-    "Si corresponde, cerrá con un breve 'Fuentes' listando archivo y página si está.",
-    "Si te preguntan algo fuera de alcance, indicá el límite (solo seguridad alimentaria / BPM / CAA / procedimientos internos)."
-  ].join(" ");
-}
+function baseStats() {
+  const docsCount =
+    fileExists(DOCS_DIR)
+      ? fs.readdirSync(DOCS_DIR).filter(n => n.toLowerCase().endsWith(".pdf")).length
+      : 0;
 
-function formatSources(hits) {
-  const pairs = hits.map(h => `${h.source}${h.page ? ` p.${h.page}` : ""}`);
-  return uniq(pairs).slice(0, 6).join(" · ");
-}
+  const dataFileExists = fileExists(DATA_FILE);
+  const dataFileSize = dataFileExists ? fs.statSync(DATA_FILE).size : 0;
 
-async function retrieve(query) {
-  const idx = loadIndex();
-  if (!idx) return { hits: [], context: "" };
-
-  const qvec = await embed(query);
-  const scored = idx.map(ch => ({
-    ...ch,
-    score: cosine(qvec, ch.embedding || [])
-  }));
-
-  const top = takeTopK(scored, TOP_K);
-  let ctx = "";
-  for (const h of top) {
-    if (ctx.length >= MAX_CHARS_CTX) break;
-    ctx += `\n### ${h.title || h.source}${h.page ? ` (p.${h.page})` : ""}\n${h.text}\n`;
-  }
-  return { hits: top, context: ctx.trim() };
-}
-
-function json(statusCode, body) {
+  const { items, meta } = loadEmbeddings();
   return {
-    statusCode,
-    headers: { "Content-Type": "application/json; charset=utf-8", ...CORS_HEADERS },
-    body: JSON.stringify(body)
+    ok: true,
+    version: VERSION,
+    docsDir: "/var/task/docs",
+    dataFile: "/var/task/data/embeddings.json",
+    docs: docsCount,
+    embeddings: items.length,
+    chunks: meta?.chunks ?? items.length,
+    dataFileExists,
+    dataFileSize,
   };
 }
 
-// ---------- Handlers de utilería (debug) ----------
-function handlePing() {
-  const idx = loadIndex();
-  return json(200, {
-    ok: true,
-    version: VERSION,
-    docs: docsCache ? docsCache.length : 0,
-    embeddings: idx ? idx.length : 0,
-    docsDir: DOCS_DIR,
-    dataFile: DATA_FILE
+// ------- Handlers -------
+
+async function handlePing() {
+  return json(baseStats());
+}
+
+async function handleDiagGet(url, body) {
+  const params = url.searchParams;
+  const q = (body?.q ?? params.get("q") ?? "").trim();
+  const k = Math.max(1, Math.min(10, parseInt(body?.k ?? params.get("k") ?? "5", 10)));
+
+  const stats = baseStats();
+  if (!q) {
+    // Sólo estado
+    return json({ ...stats, query: "", tops: [] });
+  }
+
+  const { items } = loadEmbeddings();
+  if (!items.length) {
+    return json({ ...stats, query: q, tops: [], maxScore: 0 });
+  }
+
+  // Si hay API key, embebemos y rankeamos
+  const key = process.env.OPENAI_API_KEY ?? "";
+  if (!key) {
+    return json({
+      ...stats,
+      query: q,
+      error: "Falta OPENAI_API_KEY para calcular similitud en /diag",
+      tops: [],
+      maxScore: 0,
+    }, 200);
+  }
+
+  const client = new OpenAI({ apiKey: key });
+  const qvec = await embedQuery(client, q);
+
+  // items: esperamos { id, title, source, vector, preview?, score? }
+  const scored = items.map(it => {
+    const v = it.vector || it.embedding || it.vec || [];
+    const score = v.length ? cosine(qvec, v) : 0;
+    return {
+      title: it.title || it.file || it.source || "chunk",
+      source: it.source || it.file || it.path || "",
+      preview: (it.preview || it.text || "").slice(0, 200),
+      score,
+    };
+  }).sort((a, b) => b.score - a.score);
+
+  const tops = scored.slice(0, k);
+  const maxScore = tops.length ? tops[0].score : 0;
+
+  return json({
+    ...stats,
+    query: q,
+    maxScore: Number(maxScore.toFixed(4)),
+    tops: tops.map(t => ({ ...t, score: Number(t.score.toFixed(4)) })),
   });
 }
 
-function handleDiag() {
-  let exists = false, size = 0, docsCount = 0;
-  try {
-    const st = fs.statSync(DATA_FILE);
-    exists = st.isFile();
-    size = st.size;
-  } catch (_) {}
-  try {
-    docsCount = fs.readdirSync(DOCS_DIR).filter(f => f.toLowerCase().endsWith(".pdf")).length;
-  } catch (_) {}
-  const idx = loadIndex();
-  return json(200, {
-    ok: true,
-    version: VERSION,
-    dataFileExists: exists,
-    dataFileSize: size,
-    incrustaciones: idx ? idx.length : 0,
-    docsDir: DOCS_DIR,
-    docsCount
+async function handleChatPost(url, body) {
+  const key = process.env.OPENAI_API_KEY ?? "";
+  if (!key) return json({ ok: false, error: "Falta OPENAI_API_KEY" }, 500);
+
+  const client = new OpenAI({ apiKey: key });
+
+  const userQuery =
+    body?.query ??
+    body?.q ??
+    (Array.isArray(body?.messages)
+      ? (body.messages.find(m => m.role === "user")?.content ?? "")
+      : "");
+
+  const { items } = loadEmbeddings();
+  let contextBlocks = [];
+
+  if (userQuery && items.length) {
+    const qvec = await embedQuery(client, userQuery);
+    const ranked = items.map(it => {
+      const v = it.vector || it.embedding || it.vec || [];
+      const score = v.length ? cosine(qvec, v) : 0;
+      return { it, score };
+    }).sort((a, b) => b.score - a.score).slice(0, 6);
+
+    contextBlocks = ranked.map(({ it }) => `Título: ${it.title || it.source}\nFragmento: ${(it.text || it.preview || "").slice(0, 750)}`);
+  }
+
+  const system =
+    "Sos Valeria, asistente de Seguridad Alimentaria. Respondé breve, claro y con pasos accionables. " +
+    "Limitá tus respuestas a normativa argentina (CAA), BPM/BPMA y procedimientos internos. " +
+    "Si no estás segura, pedí precisión o sugerí documentos del repositorio.";
+
+  const prompt =
+    (contextBlocks.length
+      ? `Usá SOLO la información de estas fuentes para responder:\n\n${contextBlocks.join("\n---\n")}\n\n`
+      : "No se encontraron fuentes relevantes; respondé de forma general y SUAVE sobre el tema sin inventar normativa.\n\n") +
+    `Pregunta: ${userQuery}`;
+
+  const model = pickModel();
+  const completion = await client.chat.completions.create({
+    model,
+    temperature: 0.2,
+    messages: [
+      { role: "system", content: system },
+      ...(Array.isArray(body?.messages) ? body.messages.filter(m => m.role !== "system") : [{ role: "user", content: userQuery }]),
+      { role: "user", content: prompt },
+    ],
   });
+
+  const answer = completion.choices?.[0]?.message?.content?.trim() || "No pude generar respuesta.";
+  return json({ ok: true, model, answer });
 }
 
-async function handleRerank(qs) {
-  const q = (qs.query || qs.q || "").toString();
-  const expanded = expandQuery(q);
+// ------- Router -------
 
-  const idx = loadIndex();
-  if (!idx || !q) {
-    return json(200, {
+export async function handler(event) {
+  try {
+    if (event.httpMethod === "OPTIONS") return json({}, 204);
+
+    // Reconstruimos URL para rutear
+    const host = event.headers["x-forwarded-host"] || event.headers.host || "localhost";
+    const proto = (event.headers["x-forwarded-proto"] || "https");
+    const rawUrl = event.rawUrl || `${proto}://${host}${event.path}${event.rawQuery ? "?" + event.rawQuery : ""}`;
+    const url = new URL(rawUrl);
+    const p = url.pathname;
+
+    // Normalizamos (soporta /api/* y /.netlify/functions/chat/*)
+    const is = (name) =>
+      p.endsWith(`/api/${name}`) ||
+      p.endsWith(`/.netlify/functions/chat/${name}`) ||
+      p.endsWith(`${name}`) && p.includes("/api/");
+
+    // PING: GET tocable
+    if (event.httpMethod === "GET" && (is("ping") || p.endsWith("/api") || p.endsWith("/api/")))
+      return handlePing();
+
+    // DIAG: GET o POST
+    if ((event.httpMethod === "GET" && is("diag")) || (event.httpMethod === "POST" && is("diag"))) {
+      const body = event.httpMethod === "POST" && event.body ? JSON.parse(event.body) : null;
+      return handleDiagGet(url, body);
+    }
+
+    // CHAT: sólo POST
+    if (is("chat")) {
+      if (event.httpMethod !== "POST")
+        return json({ ok: false, error: "Método no permitido. Usá POST." }, 405);
+
+      const body = event.body ? JSON.parse(event.body) : {};
+      return handleChatPost(url, body);
+    }
+
+    // Si cae aquí, mostramos un índice simple
+    return json({
       ok: true,
       version: VERSION,
-      docs: docsCache ? docsCache.length : 0,
-      embeddings: idx ? idx.length : 0,
-      query: q,
-      expanded: expanded.join(" | "),
-      maxScore: 0,
-      tops: []
-    });
-  }
-
-  const qvec = await embed(q);
-  const scored = idx.map(ch => ({
-    title: ch.title || path.basename(ch.source, ".pdf"),
-    source: ch.source,
-    page: ch.page,
-    preview: buildPreview(ch.text, 260),
-    score: cosine(qvec, ch.embedding || [])
-  }));
-
-  const tops = takeTopK(scored, 10).map(t => ({
-    title: t.title,
-    source: t.source,
-    score: +t.score.toFixed(4),
-    preview: t.preview
-  }));
-
-  const maxScore = tops.length ? tops[0].score : 0;
-  return json(200, {
-    ok: true,
-    version: VERSION,
-    docs: docsCache.length,
-    embeddings: idx.length,
-    query: q,
-    expanded: expanded.join(" | "),
-    maxScore,
-    tops
-  });
-}
-
-// ---------- Handler principal ----------
-exports.handler = async (event) => {
-  try {
-    if (event.httpMethod === "OPTIONS") {
-      return { statusCode: 200, headers: CORS_HEADERS, body: "" };
-    }
-
-    // Debug endpoints por querystring
-    const qs = event.queryStringParameters || {};
-    if (qs.ping) return handlePing();
-    if (qs.diag) return handleDiag();
-    if (qs.rerank) return await handleRerank(qs);
-
-    // Parseo de input (POST JSON con { message, history? })
-    if (event.httpMethod !== "POST") {
-      return json(405, { ok: false, error: "Método no permitido. Usá POST." });
-    }
-    const body = JSON.parse(event.body || "{}");
-    const userMsg = (body.message || "").toString().trim();
-    const history = Array.isArray(body.history) ? body.history : [];
-
-    if (!userMsg) {
-      return json(400, { ok: false, error: "Falta 'message'." });
-    }
-    if (!process.env.OPENAI_API_KEY) {
-      return json(500, { ok: false, error: "OPENAI_API_KEY no configurada." });
-    }
-
-    // Recuperación
-    const { hits, context } = await retrieve(userMsg);
-
-    // Si no hay contexto útil, damos respuesta de alcance
-    if (!context) {
-      return json(200, {
-        ok: true,
-        answer:
-          "No encontré un documento directo para esa consulta. Probá con: \"POES carnicería\", \"Recepción de perecederos\", \"Fraccionamiento de quesos\".",
-        meta: {
-          version: VERSION,
-          sources: [],
-          recovered: 0
-        }
-      });
-    }
-
-    // Construcción del prompt
-    const systemPrompt = buildSystemPrompt();
-    const sourcesStr = formatSources(hits);
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      ...(history || []).slice(-6),
-      {
-        role: "system",
-        content:
-          "Contexto recuperado de los documentos internos (usar como evidencia, citar brevemente al final en 'Fuentes'):\n" +
-          context
+      routes: {
+        "GET /api/ping": "Estado rápido (tocable desde el navegador).",
+        "GET /api/diag": "Estado; agregar ?q=texto&k=5 para ver coincidencias.",
+        "POST /api/diag": "Body JSON { q, k }",
+        "POST /api/chat": "Body JSON { query } o { messages:[...] }",
       },
-      { role: "user", content: userMsg }
-    ];
-
-    const completion = await client.chat.completions.create({
-      model: MODEL_GEN,
-      messages,
-      temperature: 0.2,
-      max_tokens: 500
-    });
-
-    const answer = completion.choices?.[0]?.message?.content?.trim() || "";
-
-    return json(200, {
-      ok: true,
-      answer: answer + (sourcesStr ? `\n\nFuentes: ${sourcesStr}` : ""),
-      meta: {
-        version: VERSION,
-        recovered: hits.length,
-        topScore: hits.length ? +hits[0].score.toFixed(4) : 0,
-        sources: uniq(hits.map(h => h.source)).slice(0, 6)
-      }
     });
   } catch (err) {
-    return json(500, { ok: false, error: err.message || String(err), version: VERSION });
+    console.error(err);
+    return json({ ok: false, error: String(err?.message || err) }, 500);
   }
-};
+}
