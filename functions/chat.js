@@ -1,16 +1,12 @@
-// netlify/functions/chat.js
-// CommonJS para mayor compatibilidad en Netlify Functions (Node 18/20)
-
+// functions/chat.js
 const fs = require("fs");
 const path = require("path");
 
-// ---------- Helpers de paths ----------
-// Busca un archivo relativo al root del bundle de la función.
 function resolveDataPath(rel) {
   const roots = [
-    process.env.LAMBDA_TASK_ROOT,                // root del bundle en producción
-    path.dirname(require.main.filename),         // carpeta del handler
-    process.cwd(),                               // fallback
+    process.env.LAMBDA_TASK_ROOT,
+    path.dirname(require.main.filename),
+    process.cwd(),
   ].filter(Boolean);
 
   for (const root of roots) {
@@ -23,17 +19,14 @@ function resolveDataPath(rel) {
 function loadJSONSafe(absPath) {
   try {
     if (!absPath || !fs.existsSync(absPath)) return null;
-    const raw = fs.readFileSync(absPath, "utf8");
-    return JSON.parse(raw);
-  } catch (e) {
+    return JSON.parse(fs.readFileSync(absPath, "utf8"));
+  } catch {
     return null;
   }
 }
 
-// Cargamos embeddings y (opcional) índice de documentos.
 const DATA_FILE = resolveDataPath("data/embeddings.json");
-const DOCS_DIR_A = resolveDataPath("docs");
-const DOCS_DIR_B = resolveDataPath("documentos");
+const DOCS_DIR = resolveDataPath("docs");
 
 let STORE = null;
 function getStore() {
@@ -50,8 +43,6 @@ function countPDFs(dir) {
   }
 }
 
-// ---------- Endpoints de diagnóstico ----------
-
 function json(body, statusCode = 200) {
   return {
     statusCode,
@@ -60,19 +51,12 @@ function json(body, statusCode = 200) {
   };
 }
 
-// Búsqueda muy simple por texto (fallback para debug)
 function simpleSearch(store, query, limit = 5) {
   if (!query) return [];
   const q = String(query).toLowerCase();
-
-  // El formato de tu embeddings.json puede variar.
-  // Soportamos dos variantes comunes:
-  //  - { chunks: [{ text, title, source, ... }], ... }
-  //  - [{ text, title, source, ... }, ...]
   const chunks = Array.isArray(store?.chunks) ? store.chunks
-                : Array.isArray(store) ? store
-                : [];
-
+               : Array.isArray(store) ? store
+               : [];
   const hits = [];
   for (const ch of chunks) {
     const text = (ch.text || ch.content || "").toLowerCase();
@@ -81,7 +65,7 @@ function simpleSearch(store, query, limit = 5) {
       hits.push({
         title: ch.title || ch.source || "fragmento",
         source: ch.source || ch.file || "desconocido",
-        score: 1, // al ser keyword match, dejamos score simbólico
+        score: 1,
         preview: text.slice(0, 220),
       });
       if (hits.length >= limit) break;
@@ -90,30 +74,23 @@ function simpleSearch(store, query, limit = 5) {
   return hits;
 }
 
-// ---------- Handler principal ----------
 exports.handler = async (event) => {
   const qs = event.queryStringParameters || {};
   const store = getStore();
 
-  // /chat?ping=1 → para ver conteos
   if (qs.ping) {
-    const pdfs = countPDFs(DOCS_DIR_A) + countPDFs(DOCS_DIR_B);
-    const embCount =
-      (Array.isArray(store?.embeddings) && store.embeddings.length) ||
-      (Array.isArray(store?.chunks) && store.chunks.length) ||
-      (Array.isArray(store) && store.length) ||
-      0;
-
     return json({
       ok: true,
       version: "v2025-08-13-fix1",
-      docs: pdfs,
-      embeddings: embCount,
+      docs: countPDFs(DOCS_DIR),
+      embeddings:
+        (Array.isArray(store?.embeddings) && store.embeddings.length) ||
+        (Array.isArray(store?.chunks) && store.chunks.length) ||
+        (Array.isArray(store) && store.length) || 0,
       dataFileSeen: Boolean(DATA_FILE),
     });
   }
 
-  // /chat?diag=1 → info de rutas dentro del bundle (muy útil si ping da 0)
   if (qs.diag) {
     return json({
       ok: true,
@@ -125,52 +102,31 @@ exports.handler = async (event) => {
       },
       paths: {
         dataFile: DATA_FILE,
-        docsDirA: DOCS_DIR_A,
-        docsDirB: DOCS_DIR_B,
         dataFileExists: Boolean(DATA_FILE && fs.existsSync(DATA_FILE)),
-        docsCount: countPDFs(DOCS_DIR_A) + countPDFs(DOCS_DIR_B),
+        docsDir: DOCS_DIR,
+        docsCount: countPDFs(DOCS_DIR),
       },
     });
   }
 
-  // /chat?debug=1&q=...
   if (qs.debug) {
     const q = (qs.q || "").toString();
-    const pdfs = countPDFs(DOCS_DIR_A) + countPDFs(DOCS_DIR_B);
-    const embCount =
-      (Array.isArray(store?.embeddings) && store.embeddings.length) ||
-      (Array.isArray(store?.chunks) && store.chunks.length) ||
-      (Array.isArray(store) && store.length) ||
-      0;
-
     const tops = simpleSearch(store, q, 5);
-    const expanded = [
-      q,
-      "caa",
-      "capítulo v rotulación",
-      "capítulo ii establecimientos",
-      "información nutricional",
-      "bpm",
-      "manual bpm",
-      "poes",
-      "mip",
-    ];
-
     return json({
       ok: true,
       version: "v2025-08-13-fix1",
-      docs: pdfs,
-      embeddings: embCount,
+      docs: countPDFs(DOCS_DIR),
+      embeddings:
+        (Array.isArray(store?.embeddings) && store.embeddings.length) ||
+        (Array.isArray(store?.chunks) && store.chunks.length) ||
+        (Array.isArray(store) && store.length) || 0,
       query: q,
-      expanded,
+      expanded: [q, "bpm", "caa", "capítulo v rotulación", "capítulo ii establecimientos", "información nutricional", "poes", "mip"],
       maxScore: tops.length ? tops[0].score : 0,
       tops,
     });
   }
 
-  // ---------- Aquí va tu lógica normal de chat ----------
-  // (Mantuvimos este archivo enfocado en diagnóstico y carga de data.
-  //  Pegá debajo la parte de conversación/LLM que ya tenías.)
-
+  // --- Aquí iría tu lógica de conversación normal (LLM/RAG) ---
   return json({ ok: true, message: "Endpoint /chat activo" });
 };
