@@ -1,4 +1,4 @@
-// functions/chat.js
+// functions/chat.js  (v2025-08-13-fix4)
 import fs from "fs";
 import OpenAI from "openai";
 
@@ -6,7 +6,7 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const DOCS_DIR = "/var/task/docs";
 const DATA_FILE = "/var/task/data/embeddings.json";
-const VERSION = "v2025-08-13-fix3";
+const VERSION = "v2025-08-13-fix4";
 
 const json = (obj, status = 200) => ({
   statusCode: status,
@@ -37,71 +37,58 @@ async function embed(text) {
   return data[0].embedding;
 }
 
-// ---------- lectura segura del archivo ----------
-function safeReadText(p) {
-  try { return fs.readFileSync(p, "utf8"); } catch { return ""; }
-}
-function tryJSON(text) {
-  try { return JSON.parse(text); } catch { return null; }
-}
+function safeReadText(p) { try { return fs.readFileSync(p, "utf8"); } catch { return ""; } }
+function tryJSON(t) { try { return JSON.parse(t); } catch { return null; } }
+
 function looksNumberArray(x) {
   return Array.isArray(x) && x.length > 8 && x.every((v) => typeof v === "number");
 }
 function coerceNumberArray(x) {
   if (looksNumberArray(x)) return x;
   if (Array.isArray(x) && x.length > 8) {
-    const nums = x.map((v) => Number(v)).filter((v) => Number.isFinite(v));
-    if (nums.length === x.length && nums.length > 8) return nums;
+    const n = x.map(Number);
+    if (n.every((v) => Number.isFinite(v))) return n;
   }
   if (typeof x === "string" && x.includes(",")) {
-    const nums = x.split(",").map((v) => Number(v.trim())).filter((v) => Number.isFinite(v));
-    if (nums.length > 8) return nums;
+    const n = x.split(",").map((v) => Number(v.trim()));
+    if (n.every((v) => Number.isFinite(v)) && n.length > 8) return n;
   }
   return null;
 }
 
-// Explora recursivamente y devuelve arrays de objetos candidatos
+const TEXT_KEYS   = ["text","content","body","chunk","pageText","raw","t","texto","frase","contenido"];
+const TITLE_KEYS  = ["title","heading","h","titulo","título"];
+const SOURCE_KEYS = ["source","src","file","path","doc","s","fuente","archivo","ruta"];
+const VEC_KEYS    = ["vec","embedding","emb","v","e","vector","incrustacion","incrustación"];
+
 function* deepArrays(node, seen = new Set()) {
   if (!node || typeof node !== "object") return;
   if (seen.has(node)) return;
   seen.add(node);
-
-  if (Array.isArray(node) && node.length && typeof node[0] === "object") {
-    yield node;
-  }
+  if (Array.isArray(node) && node.length && typeof node[0] === "object") yield node;
   for (const k of Object.keys(node)) {
     const v = node[k];
-    if (Array.isArray(v) || (v && typeof v === "object")) {
-      yield* deepArrays(v, seen);
-    }
+    if (Array.isArray(v) || (v && typeof v === "object")) yield* deepArrays(v, seen);
   }
 }
 
-// Mapea cualquier forma al formato canónico {id, title, source, text, vec}
 function mapArrayToChunks(arr) {
   const out = [];
   for (let i = 0; i < arr.length; i++) {
     const o = arr[i];
     if (!o || typeof o !== "object") continue;
 
-    // claves candidatas
-    const textKey = ["text","content","body","chunk","pageText","raw","t"].find(k => typeof o[k] === "string");
-    const titleKey = ["title","heading","h"].find(k => typeof o[k] === "string");
-    const sourceKey = ["source","src","file","path","doc","s"].find(k => typeof o[k] === "string");
+    const textKey   = TEXT_KEYS.find(k => typeof o[k] === "string");
+    const titleKey  = TITLE_KEYS.find(k => typeof o[k] === "string");
+    const sourceKey = SOURCE_KEYS.find(k => typeof o[k] === "string");
 
-    // vector directo
     let vec = null;
-    for (const vk of ["vec","embedding","emb","v","e"]) {
-      if (vk in o) { vec = coerceNumberArray(o[vk]); if (vec) break; }
-    }
-    // vector anidado (p.ej. o.meta.embedding)
+    for (const vk of VEC_KEYS) { if (vk in o) { vec = coerceNumberArray(o[vk]); if (vec) break; } }
     if (!vec) {
       for (const k of Object.keys(o)) {
         const v = o[k];
         if (v && typeof v === "object") {
-          for (const vk of ["vec","embedding","emb","v","e"]) {
-            if (vk in v) { vec = coerceNumberArray(v[vk]); if (vec) break; }
-          }
+          for (const vk of VEC_KEYS) { if (vk in v) { vec = coerceNumberArray(v[vk]); if (vec) break; } }
           if (vec) break;
         }
       }
@@ -121,20 +108,22 @@ function mapArrayToChunks(arr) {
   return out;
 }
 
-// Arrays paralelos: { embeddings:[[...]], texts:[...], sources:[...] }
 function mapParallel(obj) {
-  const embs = obj.embeddings || obj.vectors || obj.vecs || null;
-  const texts = obj.texts || obj.contents || obj.bodies || null;
-  if (Array.isArray(embs) && Array.isArray(texts) && embs.length === texts.length && embs.length) {
+  const emb = obj.embeddings || obj.vectors || obj.vecs || obj.incrustaciones;
+  const texts = obj.texts || obj.contents || obj.bodies || obj.textos || obj.frases;
+  const titles = obj.titles || obj.titulos || obj["títulos"];
+  const sources = obj.sources || obj.fuentes || obj.archivos || obj.rutas;
+
+  if (Array.isArray(emb) && Array.isArray(texts) && emb.length === texts.length && emb.length) {
     const out = [];
-    for (let i = 0; i < embs.length; i++) {
-      const v = coerceNumberArray(embs[i]);
+    for (let i = 0; i < emb.length; i++) {
+      const v = coerceNumberArray(emb[i]);
       const t = texts[i];
       if (v && typeof t === "string") {
         out.push({
           id: i,
-          title: (obj.titles && obj.titles[i]) || "",
-          source: (obj.sources && obj.sources[i]) || "",
+          title: titles?.[i] || "",
+          source: sources?.[i] || "",
           text: t,
           vec: v,
         });
@@ -148,31 +137,27 @@ function mapParallel(obj) {
 function parseNDJSON(text) {
   const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   const objs = [];
-  for (const ln of lines) {
-    try { objs.push(JSON.parse(ln)); } catch {}
-  }
+  for (const ln of lines) { try { objs.push(JSON.parse(ln)); } catch {} }
   return objs.length ? objs : null;
 }
 
 function pickChunksFromAny(raw) {
-  // 1) Array directamente
   if (Array.isArray(raw)) {
     const a1 = mapArrayToChunks(raw);
     if (a1.length) return a1;
   }
-  // 2) Objeto con arrays paralelos
   const par = mapParallel(raw || {});
   if (par.length) return par;
 
-  // 3) Objeto con {chunks|items|entries|data} que sea array u objeto-de-objetos
-  let arr = raw?.chunks || raw?.items || raw?.entries || raw?.data || null;
+  let arr =
+    raw?.chunks || raw?.items || raw?.entries || raw?.data ||
+    raw?.fragments || raw?.fragmentos || raw?.incrustaciones;
+
   if (arr && !Array.isArray(arr) && typeof arr === "object") arr = Object.values(arr);
   if (Array.isArray(arr)) {
     const a2 = mapArrayToChunks(arr);
     if (a2.length) return a2;
   }
-
-  // 4) Buscar recursivamente arrays
   if (raw && typeof raw === "object") {
     for (const arr2 of deepArrays(raw)) {
       const a3 = mapArrayToChunks(arr2);
@@ -196,19 +181,11 @@ async function loadData(peekOnly = false) {
 
   if (exists) {
     const text = safeReadText(DATA_FILE);
-
-    // Intento JSON estándar
     let parsed = tryJSON(text);
-
-    // Si falló, intento NDJSON (una línea por objeto)
-    if (!parsed) {
-      const nd = parseNDJSON(text);
-      if (nd) parsed = nd;
-    }
+    if (!parsed) parsed = parseNDJSON(text);
 
     if (parsed != null) {
       peek.parsed = true;
-      // Arrays paralelos al tope
       const parallel = Array.isArray(parsed) ? [] : mapParallel(parsed);
       if (parallel.length) {
         chunks = parallel;
@@ -217,8 +194,6 @@ async function loadData(peekOnly = false) {
         chunks = pickChunksFromAny(parsed);
         peek.mode = Array.isArray(parsed) ? "array" : "object";
       }
-
-      // Si aún nada y era NDJSON como array de objetos
       if (!chunks.length && Array.isArray(parsed)) {
         chunks = mapArrayToChunks(parsed);
         peek.mode = peek.mode || "ndjson-array";
@@ -236,8 +211,7 @@ async function loadData(peekOnly = false) {
         textSample: chunks[0].text.slice(0, 120),
       };
     } else {
-      peek.error = "No se hallaron vectores/texos en el archivo.";
-      // pista rápida: primeras 2000 letras del archivo
+      peek.error = "No se hallaron vectores/textos en el archivo.";
       peek.head = text.slice(0, 2000);
     }
   }
@@ -276,9 +250,7 @@ export async function handler(event) {
   const isPing = rawUrl.includes("/api/ping");
   const isDiag = rawUrl.includes("/api/diag");
 
-  if (isPing) {
-    return json({ ok: true, version: VERSION });
-  }
+  if (isPing) return json({ ok: true, version: VERSION });
 
   if (isDiag) {
     const q = url.searchParams.get("q") || "";
@@ -287,7 +259,6 @@ export async function handler(event) {
 
     const data = await loadData(!!peek);
 
-    // peek de estructura
     if (peek) {
       const d = await loadData(true);
       return json({
@@ -312,7 +283,7 @@ export async function handler(event) {
         dataFileSize: data.dataFileSize,
         embeddings: data.chunks.length,
         dims: data.dims,
-        hint: 'Agregá ?q=texto&k=5 para probar coincidencias. Ej: /api/diag?q=BPM&k=5',
+        hint: "Agregue ?q=texto&k=5 para probar coincidencias. Ejemplo: /api/diag?q=BPM&k=5",
       });
     }
 
@@ -326,9 +297,9 @@ export async function handler(event) {
         docs: data.docsCount,
         dataFileExists: data.dataFileExists,
         dataFileSize: data.dataFileSize,
-        query: q,
-        tops,
-        maxScore,
+        consulta: q,
+        máximos: tops,
+        "puntuación máxima": maxScore,
       });
     } catch (e) {
       return json({ ok: false, error: String(e?.message || e) }, 500);
@@ -343,8 +314,7 @@ export async function handler(event) {
 
       const data = await loadData();
       const q = userQuery ||
-        (body.messages || []).map((m) => m?.content).join(" ").slice(0, 2000) ||
-        "";
+        (body.messages || []).map((m) => m?.content).join(" ").slice(0, 2000) || "";
 
       const qVec = await embed(q);
       const tops = topK(data.chunks, qVec, k);
