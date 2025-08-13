@@ -1,148 +1,134 @@
 // scripts/build-embeddings.mjs
-// Construye data/embeddings.json a partir de los PDFs en /docs usando OpenAI Embeddings.
-// Compatible con Netlify (Node 20) y pdfjs-dist LEGACY en entorno Node.
-
-import fs from "node:fs";
-import path from "node:path";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import OpenAI from "openai";
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"; // <- LEGACY para Node
+// Usamos el build "legacy" (compatible Node 20) y SIN worker
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
 
-// ---------- Config ----------
-const DOCS_DIR = process.env.DOCS_DIR || "docs";
-const OUT_DIR  = "data";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const DOCS_DIR = path.resolve(__dirname, "..", "docs");
+const OUT_DIR  = path.resolve(__dirname, "..", "data");
 const OUT_FILE = path.join(OUT_DIR, "embeddings.json");
-const MODEL    = process.env.EMBEDDING_MODEL || "text-embedding-3-small";
-const MAX_CHARS_PER_CHUNK = 1200;
-const CHUNK_OVERLAP = 200;
+
+// --- Config de chunking y modelo ---
+const EMBEDDING_MODEL = "text-embedding-3-small"; // 1536 dims, económico
+const CHUNK_SIZE = 1200;   // ~1.2k chars por chunk
+const CHUNK_OVERLAP = 200; // solape para continuidad
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-// ---------- Utils ----------
-function ensureDir(dir) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+if (!process.env.OPENAI_API_KEY) {
+  console.error("Falta OPENAI_API_KEY en Netlify > Site settings > Environment.");
+  process.exit(1);
 }
 
-function* walk(dir) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) yield* walk(full);
-    else yield full;
-  }
+// -------- Utilidades --------
+function toUint8Array(buffer) {
+  return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 }
 
-function chunkText(text, max = MAX_CHARS_PER_CHUNK, overlap = CHUNK_OVERLAP) {
-  const chunks = [];
+function chunkText(txt, size = CHUNK_SIZE, overlap = CHUNK_OVERLAP) {
+  const clean = txt.replace(/\s+\n/g, "\n").replace(/\n{2,}/g, "\n\n");
+  const parts = [];
   let i = 0;
-  while (i < text.length) {
-    const end = Math.min(text.length, i + max);
-    chunks.push(text.slice(i, end));
-    if (end === text.length) break;
+  while (i < clean.length) {
+    const end = Math.min(clean.length, i + size);
+    parts.push(clean.slice(i, end));
     i = end - overlap;
     if (i < 0) i = 0;
   }
-  return chunks;
+  return parts.map((t) => t.trim()).filter(Boolean);
 }
 
 async function extractPdfText(filePath) {
-  // *** FIX CLAVE ***
-  // pdfjs-dist (legacy) en Node requiere Uint8Array, NO Buffer
-  const uint8 = new Uint8Array(fs.readFileSync(filePath));
+  const buf = fs.readFileSync(filePath);
+  const data = toUint8Array(buf);
 
-  // En Node no seteamos workerSrc; el LEGACY ya funciona sin worker.
-  const pdf = await getDocument({ data: uint8 }).promise;
+  // Nada de worker; 100% modo Node
+  const loadingTask = pdfjs.getDocument({
+    data,
+    disableWorker: true,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    isOffscreenCanvasSupported: false,
+    disableFontFace: true,
+    verbosity: 0,
+  });
 
-  let fullText = "";
+  const pdf = await loadingTask.promise;
+  let out = "";
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
-    const content = await page.getTextContent();
-    const pageText = content.items.map((it) => it.str || "").join(" ");
-    fullText += (pageText + "\n");
+    const tc = await page.getTextContent();
+    const line = tc.items.map((i) => i.str).join(" ");
+    out += (out ? "\n" : "") + line;
   }
-  // Si el PDF es escaneado (muy poco texto), devolvemos vacío para saltearlo
-  return fullText.trim();
+  return out;
 }
 
 async function embedBatch(texts) {
   const res = await client.embeddings.create({
-    model: MODEL,
+    model: EMBEDDING_MODEL,
     input: texts,
   });
-  return res.data.map((x) => x.embedding);
+  return res.data.map((d) => d.embedding);
 }
 
-// ---------- Main ----------
-(async () => {
-  if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_API_KEY.trim()) {
-    console.error("Falta OPENAI_API_KEY en ‘Environment variables’ de Netlify → Build & deploy.");
+async function main() {
+  const pdfs = fs.readdirSync(DOCS_DIR).filter((f) => f.toLowerCase().endsWith(".pdf"));
+  if (pdfs.length === 0) {
+    console.error("No hay PDFs en /docs");
     process.exit(1);
   }
+  fs.mkdirSync(OUT_DIR, { recursive: true });
 
-  ensureDir(OUT_DIR);
+  const chunks = [];
+  let docIdx = 0;
 
-  const pdfFiles = [...walk(DOCS_DIR)].filter((f) => f.toLowerCase().endsWith(".pdf"));
-  if (pdfFiles.length === 0) {
-    console.warn(`[build-embeddings] No encontré PDFs en ${DOCS_DIR}. Nada para indexar.`);
+  for (const pdfName of pdfs) {
+    docIdx++;
+    const full = path.join(DOCS_DIR, pdfName);
+    console.log(`[${docIdx}/${pdfs.length}] ${pdfName} → extrayendo texto…`);
+    const text = await extractPdfText(full);
+    const parts = chunkText(text);
+    parts.forEach((t, i) => {
+      const id = `${pdfName}#c${String(i + 1).padStart(4, "0")}`;
+      chunks.push({ id, source: pdfName, text: t });
+    });
   }
 
-  const allRecords = [];
-  const docsList = [];
-  let totalChunks = 0;
+  console.log(`Total chunks a embedir: ${chunks.length}`);
 
-  console.log(`[build-embeddings] Encontré ${pdfFiles.length} PDF(s). Extrayendo texto…`);
-
-  for (const filePath of pdfFiles) {
-    const rel = path.relative(DOCS_DIR, filePath);
-    const title = path.basename(filePath);
-    docsList.push(title);
-
-    process.stdout.write(`[build-embeddings] • ${title} → `);
-
-    let text = "";
-    try {
-      text = await extractPdfText(filePath);
-    } catch (err) {
-      console.warn(`error al leer: ${err?.message || err}`);
-      continue;
-    }
-
-    if (!text || text.replace(/\s+/g, "").length < 100) {
-      console.warn(`poco texto (¿escaneado?). Salteado.`);
-      continue;
-    }
-
-    const chunks = chunkText(text);
-    totalChunks += chunks.length;
-
-    // Embeddings por tandas para evitar límites (100 por tanda suele ir bien)
-    const BATCH = 100;
-    for (let i = 0; i < chunks.length; i += BATCH) {
-      const batch = chunks.slice(i, i + BATCH);
-      const vecs = await embedBatch(batch);
-      for (let j = 0; j < batch.length; j++) {
-        allRecords.push({
-          title,
-          source: title,
-          text: batch[j],
-          // guardamos el vector como arreglo de floats
-          embedding: vecs[j],
-        });
-      }
-    }
-
-    console.log(`${chunks.length} chunks`);
+  // Embeddings por lotes (rápido y estable)
+  const BATCH = 64;
+  for (let i = 0; i < chunks.length; i += BATCH) {
+    const slice = chunks.slice(i, i + BATCH);
+    const vecs = await embedBatch(slice.map((c) => c.text));
+    slice.forEach((c, j) => (c.embedding = vecs[j]));
+    console.log(`Embeddings ${i + slice.length}/${chunks.length}`);
   }
 
-  const payload = {
-    version: `v${new Date().toISOString().slice(0, 10)}-build`,
-    createdAt: new Date().toISOString(),
-    docs: docsList.length,
-    embeddings: allRecords.length,
-    records: allRecords,
+  const outJson = {
+    meta: {
+      version: "v1",
+      createdAt: new Date().toISOString(),
+      docsCount: pdfs.length,
+      chunksCount: chunks.length,
+      embeddingModel: EMBEDDING_MODEL,
+      chunkSize: CHUNK_SIZE,
+      chunkOverlap: CHUNK_OVERLAP,
+    },
+    chunks,
   };
 
-  fs.writeFileSync(OUT_FILE, JSON.stringify(payload));
-  console.log(`[build-embeddings] Listo: ${OUT_FILE} con ${allRecords.length} chunks de ${docsList.length} doc(s).`);
-})().catch((e) => {
+  fs.writeFileSync(OUT_FILE, JSON.stringify(outJson));
+  const stat = fs.statSync(OUT_FILE);
+  console.log(`OK → ${OUT_FILE} (${stat.size} bytes)`);
+}
+
+main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
