@@ -1,16 +1,24 @@
 // scripts/build-embeddings.mjs
-// Genera data/embeddings.json desde /docs con pdfjs-dist + OpenAI
+// Extrae texto de /docs con pdfjs-dist (LEGACY), filtra vacíos y genera data/embeddings.json
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import OpenAI from "openai";
 
-// --- pdfjs-dist: import robusto (según versión instalada) ---
-let pdfjsLib = null;
+// --- Import robusto del LEGACY build (compatible Node 20) ---
+let pdfjsLib;
 try {
-  pdfjsLib = await import("pdfjs-dist/build/pdf.mjs");
+  // ESM legacy (si está disponible en tu versión)
+  pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
 } catch {
-  pdfjsLib = await import("pdfjs-dist");
+  // Fallback a CommonJS legacy
+  const { createRequire } = await import("node:module");
+  const require = createRequire(import.meta.url);
+  pdfjsLib = require("pdfjs-dist/legacy/build/pdf.js");
+}
+// Evita worker en Node
+if (pdfjsLib.GlobalWorkerOptions) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = null;
 }
 
 const ROOT = process.cwd();
@@ -21,11 +29,8 @@ const OUT_FILE = path.join(OUT_DIR, "embeddings.json");
 const EMB_MODEL = process.env.EMBED_MODEL || "text-embedding-3-small";
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// ---------- util ----------
-const clean = (s="") =>
-  s.replace(/\u0000/g, " ")
-   .replace(/\s+/g, " ")
-   .trim();
+// ---------- utils ----------
+const clean = (s="") => s.replace(/\u0000/g," ").replace(/\s+/g," ").trim();
 
 async function extractPdfText(absPath) {
   const data = fs.readFileSync(absPath);
@@ -99,15 +104,8 @@ async function embedOne(text) {
     for (let i = 0; i < parts.length; i++) {
       const t = parts[i];
       const vec = await embedOne(t);
-      out.push({
-        source: name,
-        title,
-        text: t,
-        embedding: vec
-      });
-      if ((i + 1) % 10 === 0) {
-        console.log(`   → ${i + 1}/${parts.length} chunks`);
-      }
+      out.push({ source: name, title, text: t, embedding: vec });
+      if ((i + 1) % 10 === 0) console.log(`   → ${i + 1}/${parts.length} chunks`);
     }
   }
 
