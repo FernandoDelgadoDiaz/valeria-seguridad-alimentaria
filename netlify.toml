@@ -1,11 +1,26 @@
+# netlify.toml — simple y estable
 [build]
-  command = "npm install --no-audit --no-fund && node scripts/build-embeddings.mjs"
   publish = "."
-
-[functions]
-  directory = "functions"
-  node_bundler = "esbuild"
-  included_files = ["data/**", "docs/**"]
+  command = "echo 'skip build'"
 
 [build.environment]
   NODE_VERSION = "20"
+
+[functions]
+  node_bundler   = "esbuild"
+  included_files = ["docs/**", "data/**"]
+
+# Redirige /api/* a la función "chat"
+[[redirects]]
+  from = "/api/*"
+  to   = "/.netlify/functions/chat/:splat"
+  status = 200
+  force  = true
+
+# (Opcional) Encabezados para CORS
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin  = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
