@@ -1,25 +1,13 @@
 {
   "name": "valeria-seguridad-alimentaria",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "private": true,
-  "description": "Valeria · Asistente de seguridad alimentaria con RAG en PDFs (Netlify Functions)",
-  "engines": {
-    "node": ">=18.19 <21"
-  },
+  "type": "module",
   "scripts": {
-    "build:emb": "node ./scripts/build-embeddings.mjs",
-    "rebuild": "rm -f ./data/embeddings.json && npm run build:emb",
-    "build": "npm run build:emb",
-    "start": "netlify dev",
-    "test:ping": "curl -sS 'http://localhost:8888/.netlify/functions/chat?ping=1' || true",
-    "test:diag": "curl -sS 'http://localhost:8888/.netlify/functions/chat?diag=1' || true"
+    "build": "node scripts/build-embeddings.mjs"
   },
   "dependencies": {
-    "openai": "^4.56.0",
-    "pdf-parse": "^1.1.1"
-  },
-  "devDependencies": {
-    "netlify-cli": "^17.34.2"
-  },
-  "license": "UNLICENSED"
+    "openai": "^4.59.1",
+    "pdfjs-dist": "^4.7.76"
+  }
 }
