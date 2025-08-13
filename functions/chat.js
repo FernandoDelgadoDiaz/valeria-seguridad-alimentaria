@@ -1,326 +1,285 @@
 // functions/chat.js
-// Valeria · RAG con multi-query + re-ranking (razonamiento interno)
-// Soporta /documentos y /docs
-import fs from "fs";
-import path from "path";
+// ─────────────────────────────────────────────────────────────
+// Valeria · RAG para Seguridad Alimentaria (Argentina)
+// - GET  /.netlify/functions/chat?ping=1                → ping
+// - GET  /.netlify/functions/chat?debug=1&q=...         → ver top-k del RAG
+// - POST /.netlify/functions/chat   { message }         → respuesta usando RAG
+//
+// Estructura esperada: data/embeddings.json = array de chunks
+//  { text | content, source, title, embedding: number[] }
+//
+// Node 18 en Netlify. Sin dependencias externas.
 
-const VERSION = "v2025-08-12k-mq-rerank";
+const fs = require("fs");
+const path = require("path");
+
+// ── Config general ───────────────────────────────────────────
+const VERSION = (() => {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `v${d.getFullYear()}-${mm}-${dd}-rag`;
+})();
+
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
-const OPENAI_EMBEDDINGS_MODEL = process.env.OPENAI_EMBEDDINGS_MODEL || "text-embedding-3-large";
+const CHAT_MODEL = process.env.CHAT_MODEL || "gpt-4o-mini";
+const EMB_MODEL = process.env.EMB_MODEL || "text-embedding-3-small";
 
-const ROOT = process.env.LAMBDA_TASK_ROOT || path.resolve(".");
-const DATA_DIR = path.join(ROOT, "data");
-const EMBEDDINGS_PATH = path.join(DATA_DIR, "embeddings.json");
-const DIR_CANDIDATES = ["documentos", "docs"];
+// RAG: umbrales y límites (ajustables por ENV si querés)
+const RAG_MIN_SCORE = Number(process.env.RAG_MIN_SCORE || 0.28);
+const RAG_MIN_CHUNKS = Number(process.env.RAG_MIN_CHUNKS || 3);
+const RAG_TOP_K = Number(process.env.RAG_TOP_K || 8);
+const MAX_CONTEXT_CHUNKS = Number(process.env.MAX_CONTEXT_CHUNKS || 6);
 
-const MAX_CANDIDATE_CHUNKS = 20;
-const MAX_CONTEXT_CHUNKS = 8;
-const MIN_SIMILARITY_ANY = 0.62;
-
-// ---------------- utils ----------------
-const toLowerNoAccents = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-const normalizeName = (s) => toLowerNoAccents(s.replace(/\.pdf$/i,"").replace(/[-_]+/g," ").replace(/\s+/g," ").trim());
-const dot  = (a,b) => a.reduce((s,v,i)=>s+v*b[i],0);
-const norm = (a) => Math.sqrt(a.reduce((s,v)=>s+v*v,0));
-const cosineSim = (a,b) => dot(a,b)/(norm(a)*norm(b));
-const loadJSON  = (p, fb=null) => { try { return JSON.parse(fs.readFileSync(p,"utf-8")); } catch { return fb; } };
-
-// ---------------- identidad/dominio ----------------
-const DOMAIN_HINTS = ["seguridad alimentaria","inocuidad","bpm","poes","haccp","caa","plaga","mip","sanit","limpieza","temperatura","cadena de frio","etiquet","rotul","pcc","ppro","registro","procedimiento","no conformidad"];
-const isDefinition = (q) => /(^(que|qué)\s+es\b)|(\bdefinici[oó]n\s+de\b)/.test(toLowerNoAccents(q));
-const wantsDoc = (q) => !isDefinition(q) && /\b(pdf|archivo|descarg|abrir|mostrar|ver doc|procedimiento|formulario|registro|planilla)\b/.test(toLowerNoAccents(q));
-
-const DEF = {
-  bpm: `**BPM**: prácticas para asegurar la **inocuidad**. Claves: higiene personal, POES (limpieza + **sanitización**), **MIP**, control de **temperaturas**, infraestructura/equipos, **etiquetado/trazabilidad** y **registros**. Base de **HACCP**.`,
-  temperatura: `**Temperatura**: zona de peligro **5–60 °C**. Guías: **0–5 °C** (refrigerados), **≤ −18 °C** (congelados), **≥ 72 °C** (cocción). Enfriado rápido: **60→10 °C en 2 h** y **10→5 °C en 4 h**.`,
-  "no conformidad": `**No conformidad**: incumplimiento de un requisito (CAA, BPM/POES, HACCP o interno). Gestión: registrar, contener, evaluar riesgo, **corrección**, causa raíz y **acciones correctivas/preventivas**; verificar eficacia.`,
-  plaga: `**Plaga**: organismo que puede contaminar. Control **MIP**: prevención, monitoreo, exclusión y medidas físico/químico/biológicas con **registros**.`,
-  sanitizante: `**Sanitizante**: agente aplicado **después de limpiar**. Respetar concentración, tiempo de contacto, temperatura y verificar (p. ej., **tiras QAC**).`
-};
-const defKey = (q) => {
-  const t = toLowerNoAccents(q);
-  if (t.includes("no conformidad")) return "no conformidad";
-  if (t.includes("temperatura")) return "temperatura";
-  if (t.includes("sanitizante")) return "sanitizante";
-  if (t.includes("plaga")) return "plaga";
-  if (t.includes("bpm")) return "bpm";
-  return null;
+// CORS básico para el front
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-// ---------------- carga ----------------
-let CACHE = { embeddings: null, docs: null };
+// ── Utilidades ───────────────────────────────────────────────
+let VDB = null;
+function loadVDB() {
+  if (VDB) return VDB;
+  // data/embeddings.json está una carpeta arriba de /functions
+  const file = path.join(__dirname, "..", "data", "embeddings.json");
+  const raw = fs.readFileSync(file, "utf8");
+  const arr = JSON.parse(raw);
 
-function listDocDirs() {
-  return DIR_CANDIDATES
-    .map(d => ({ name: d, abs: path.join(ROOT, d) }))
-    .filter(d => fs.existsSync(d.abs));
-}
-function humanize(filename){
-  const base = filename.replace(/\.pdf$/i,"").replace(/[-_]+/g, " ");
-  return base.charAt(0).toUpperCase() + base.slice(1);
-}
-function listDocs() {
-  const dirs = listDocDirs();
-  const items = [];
-  for (const d of dirs) {
-    const files = fs.readdirSync(d.abs).filter(f => f.toLowerCase().endsWith(".pdf"));
-    for (const f of files) {
-      items.push({
-        filename: f,
-        title: humanize(f),
-        dir: d.name,
-        url: `/${d.name}/${encodeURI(f)}`
-      });
-    }
-  }
-  return items;
-}
-function ensureLoaded() {
-  if (!CACHE.docs) CACHE.docs = listDocs();
-  if (!CACHE.embeddings) CACHE.embeddings = loadJSON(EMBEDDINGS_PATH, []);
+  // Normalizamos campos mínimos
+  VDB = arr
+    .filter((c) => Array.isArray(c.embedding) && (c.text || c.content))
+    .map((c) => ({
+      text: c.text || c.content || "",
+      source: c.source || c.doc || c.file || "desconocido",
+      title: c.title || c.source || c.doc || "fragmento",
+      embedding: c.embedding,
+    }));
+
+  return VDB;
 }
 
-// ---------------- embeddings & retrieve ----------------
-async function embedQuery(q) {
+function uniqueDocsCount(chunks) {
+  return new Set(chunks.map((c) => c.source)).size;
+}
+
+function dot(a, b) {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
+  return s;
+}
+function norm(a) {
+  return Math.sqrt(dot(a, a));
+}
+function cosine(a, b) {
+  const na = norm(a);
+  const nb = norm(b);
+  return na && nb ? dot(a, b) / (na * nb) : 0;
+}
+
+async function embed(text) {
+  if (!OPENAI_API_KEY) throw new Error("Falta OPENAI_API_KEY");
   const res = await fetch("https://api.openai.com/v1/embeddings", {
     method: "POST",
-    headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type":"application/json" },
-    body: JSON.stringify({ model: OPENAI_EMBEDDINGS_MODEL, input: expand(q) })
+    headers: {
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ model: EMB_MODEL, input: text }),
   });
-  if (!res.ok) throw new Error(`Embeddings API: ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Embeddings error ${res.status}: ${t}`);
+  }
   const data = await res.json();
   return data.data[0].embedding;
 }
-const expand = (q) => " " + toLowerNoAccents(q) + " "
-  .replace(/\bcaa\b/g," codigo alimentario argentino ")
-  .replace(/\bbpm\b/g," buenas practicas de manufactura ")
-  .replace(/\bhaccp\b/g," analisis de peligros y puntos criticos de control ")
-  .replace(/\bpcc\b/g," punto critico de control ")
-  .replace(/\bppro\b/g," programa prerrequisito operativo ")
-  .trim();
 
-function scoreAll(queryEmb, store){
-  return store.map(it => ({...it, score: cosineSim(queryEmb, it.embedding)}))
-              .sort((a,b)=>b.score-a.score);
+// Expande consultas muy cortas con contexto del dominio
+function expandUserQuery(q) {
+  q = (q || "").trim();
+  const contexto =
+    "retail de alimentos en Argentina: BPM, CAA, POES, MIP, limpieza y sanitización, rotulado, temperaturas, carnicería, fiambrería, panadería y lácteos";
+  if (q.length < 24) return `${q}. Contexto: ${contexto}`;
+  return `${q}. Contexto: ${contexto}`;
 }
 
-async function retrieveSingle(q) {
-  ensureLoaded();
-  const store = CACHE.embeddings || [];
-  if (store.length === 0) return { chunks:[], maxScore:0 };
-  const qEmb = await embedQuery(q);
-  const scored = scoreAll(qEmb, store);
-  const slice = scored.slice(0, MAX_CANDIDATE_CHUNKS);
-  return { candidates: slice, maxScore: scored[0]?.score || 0 };
-}
-
-// ---------- Multi-query + merge ----------
-async function genAltQueries(q){
-  const prompt = [
-    { role:"system", content:"Sos especialista en seguridad alimentaria. Generá 3 variantes concisas de la consulta del usuario para recuperar información (sin pasos). Devolvé un JSON con {queries:[...]}" },
-    { role:"user", content:`Consulta original: "${q}". Usá sinónimos de: rotulación/etiquetado, fraccionamiento/troceado/rebanado, sanitizante/desinfectante/QAC, CAA/código alimentario argentino, BPM/buenas prácticas de manufactura, MIP/plagas.`}
-  ];
-  try{
-    const r = await fetch("https://api.openai.com/v1/chat/completions",{
-      method:"POST",
-      headers:{ "Authorization":`Bearer ${OPENAI_API_KEY}`, "Content-Type":"application/json" },
-      body: JSON.stringify({ model: OPENAI_MODEL, temperature: 0.2, messages: prompt, response_format:{ type:"json_object" } })
-    });
-    const j = await r.json();
-    const arr = JSON.parse(j.choices?.[0]?.message?.content || "{}").queries || [];
-    const uniq = Array.from(new Set([q, ...arr])).slice(0,4);
-    return uniq;
-  }catch{
-    return [q];
-  }
-}
-
-function keyOfHit(h){ return `${h.source}::${String(h.chunk).slice(0,80)}`; }
-
-async function retrieveMulti(q){
-  const alts = await genAltQueries(q);
-  let pool = [];
-  let best = 0;
-  for (const q2 of alts){
-    const { candidates, maxScore } = await retrieveSingle(q2);
-    best = Math.max(best, maxScore);
-    pool = pool.concat(candidates||[]);
-  }
-  // de-dup
-  const map = new Map();
-  for (const c of pool){
-    const k = keyOfHit(c);
-    if (!map.has(k) || map.get(k).score < c.score) map.set(k, c);
-  }
-  const merged = Array.from(map.values()).sort((a,b)=>b.score-a.score).slice(0, MAX_CANDIDATE_CHUNKS);
-  return { candidates: merged, maxScore: best };
-}
-
-// ---------- Re-ranking con LLM ----------
-async function rerankWithLLM(q, candidates){
-  if ((candidates||[]).length === 0) return [];
-  const items = candidates.map((c, i)=>({
-    i, source: c.source, title: c.title || c.source, snippet: String(c.chunk||"").slice(0,400)
+async function search(queryEmbedding, k = RAG_TOP_K) {
+  const base = loadVDB();
+  const scored = base.map((c) => ({
+    title: c.title,
+    source: c.source,
+    text: c.text,
+    score: cosine(queryEmbedding, c.embedding),
   }));
-  const sys = "Devolvé SOLO JSON {keep:[indices]} con los índices (0..N-1) de los pasajes más relevantes para responder con precisión y seguridad. Máximo 8. No expliques.";
-  const usr = `Consulta: "${q}"\nPasajes:\n${items.map(it=>`[${it.i}] (${it.title}) ${it.snippet}`).join("\n\n")}`;
-  try{
-    const r = await fetch("https://api.openai.com/v1/chat/completions",{
-      method:"POST",
-      headers:{ "Authorization":`Bearer ${OPENAI_API_KEY}`, "Content-Type":"application/json" },
-      body: JSON.stringify({ model: OPENAI_MODEL, temperature: 0, messages:[{role:"system",content:sys},{role:"user",content:usr}], response_format:{ type:"json_object" } })
-    });
-    const j = await r.json();
-    const keep = JSON.parse(j.choices?.[0]?.message?.content || "{}").keep || [];
-    const picked = keep.filter(Number.isInteger).map(k => candidates[k]).filter(Boolean);
-    if (picked.length) return picked.slice(0, MAX_CONTEXT_CHUNKS);
-  }catch{/* fall back */}
-  return (candidates||[]).slice(0, MAX_CONTEXT_CHUNKS);
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, k);
 }
 
-// ---------- Direct docs ----------
-function findMatches(q) {
-  const qn = normalizeName(q);
-  const docs = (CACHE.docs || []).map(d => ({...d, norm: normalizeName(d.title)}));
-  let hits = docs.filter(d => qn.includes(d.norm) || d.norm.includes(qn));
-  if (hits.length === 0) {
-    const tokens = qn.split("").join("").split(" ").filter(t => t.length>=4);
-    hits = docs.filter(d => tokens.some(t => d.norm.includes(t)));
-  }
-  const seen = new Set();
-  const out = [];
-  for (const h of hits) {
-    const key = `${h.dir}/${h.filename}`;
-    if (!seen.has(key)) { seen.add(key); out.push(h); }
-  }
-  return out.slice(0,3);
+function previewOf(t) {
+  return t.replace(/\s+/g, " ").slice(0, 300);
 }
-const suggest = (q) => {
-  const qn = normalizeName(q);
-  const tokens = qn.split(" ").filter(t => t.length >= 4);
-  return (CACHE.docs || [])
-    .map(d => ({...d, score: tokens.reduce((s,t)=> s + (normalizeName(d.title).includes(t)?1:0), 0)}))
-    .filter(d => d.score>0)
-    .sort((a,b)=>b.score-a.score)
-    .slice(0,5)
-    .map(d => d.title);
-};
 
-// ---------- prompting ----------
-const systemPrompt = () => `
-Sos **Valeria**, profesional especialista en **seguridad alimentaria** en Argentina (BPM, POES, HACCP, CAA y procedimientos internos de retail).
-Pensá internamente y devolvé SOLO la respuesta final, breve y accionable.
-Reglas:
-1) Solo temas de inocuidad; si está fuera de alcance, rechazá en una línea.
-2) Priorizá lo recuperado de la base vectorial (PDFs de /documentos o /docs). Si faltan datos y es concepto básico, usá guía estándar segura.
-3) Cuando corresponda, cerrá con una línea "Fuentes:" listando Título · /ruta/al/pdf.
-4) Usá tono directo, argentino; resaltá **negrita** en datos críticos (temperaturas, ppm, tiempos).
+async function callChat(systemPrompt, userPrompt) {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: CHAT_MODEL,
+      temperature: 0.2,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`Chat error ${res.status}: ${t}`);
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || "";
+}
+
+function json(statusCode, body) {
+  return {
+    statusCode,
+    headers: { "Content-Type": "application/json; charset=utf-8", ...CORS },
+    body: JSON.stringify(body),
+  };
+}
+
+// ── Handler Netlify ──────────────────────────────────────────
+exports.handler = async (event) => {
+  try {
+    if (event.httpMethod === "OPTIONS") {
+      return { statusCode: 204, headers: CORS, body: "" };
+    }
+
+    // Carga VDB (para ping y demás)
+    const vdb = loadVDB();
+    const counts = { docs: uniqueDocsCount(vdb), embeddings: vdb.length };
+
+    // Ping
+    const qs = event.queryStringParameters || {};
+    if (qs.ping) {
+      return json(200, { ok: true, version: VERSION, ...counts });
+    }
+
+    // Debug RAG
+    if (qs.debug) {
+      const rawQ = String(qs.q || "").trim();
+      if (!rawQ) return json(400, { ok: false, error: "Falta ?q=" });
+      const q = expandUserQuery(rawQ);
+      const qEmb = await embed(q);
+      const tops = await search(qEmb, RAG_TOP_K);
+      const payload = {
+        ok: true,
+        version: VERSION,
+        ...counts,
+        query: rawQ,
+        maxScore: tops[0]?.score || 0,
+        tops: tops.map((t) => ({
+          title: t.title,
+          source: t.source,
+          score: Number(t.score.toFixed(4)),
+          preview: previewOf(t.text),
+        })),
+      };
+      return json(200, payload);
+    }
+
+    // Chat (POST preferido)
+    if (event.httpMethod === "POST") {
+      if (!OPENAI_API_KEY) return json(500, { ok: false, error: "Falta OPENAI_API_KEY" });
+
+      const body = JSON.parse(event.body || "{}");
+      const userQueryRaw = String(body.message || "").trim();
+      if (!userQueryRaw) return json(400, { ok: false, error: "Falta { message }" });
+
+      // 1) Embedding + búsqueda
+      const userQuery = expandUserQuery(userQueryRaw);
+      const qEmb = await embed(userQuery);
+      const tops = await search(qEmb, RAG_TOP_K);
+
+      const maxScore = tops[0]?.score || 0;
+      const suficientes = tops.filter((x) => x.score >= RAG_MIN_SCORE).length >= RAG_MIN_CHUNKS;
+
+      // 2) Si no hay suficiente señal, da una guía corta (pero útil)
+      if (!suficientes) {
+        return json(200, {
+          ok: true,
+          reply:
+            "Necesito un poco más de precisión para ubicarlo en los documentos. Probá con: “BPM en panadería”, “temperaturas de heladera según CAA”, “POES carnicería: sanitizante”.",
+          meta: { version: VERSION, ...counts, maxScore: Number(maxScore.toFixed(4)) },
+        });
+      }
+
+      // 3) Armar contexto y pedir respuesta
+      const contextChunks = tops
+        .filter((x) => x.score >= RAG_MIN_SCORE)
+        .slice(0, MAX_CONTEXT_CHUNKS);
+
+      const contextText = contextChunks
+        .map(
+          (c, i) =>
+            `[#${i + 1}] Título: ${c.title} (src: ${c.source})\n${c.text}`
+        )
+        .join("\n\n");
+
+      const systemPrompt = `
+Sos **Valeria**, especialista en Seguridad Alimentaria para retail de alimentos en Argentina.
+Tu objetivo es dar respuestas prácticas, accionables y seguras, usando SIEMPRE la evidencia de los documentos suministrados (BPM, CAA, POES, MIP y documentos internos).
+Escribe en español rioplatense, con pasos, puntos clave y advertencias. Incluí límites numéricos (temperaturas, concentraciones, tiempos) cuando corresponda.
+Referenciá los fragmentos usados con [#n] (según el contexto provisto). Si algo no está en las fuentes, acláralo.
 `;
 
-const userPrompt = (q, chunks) => {
-  const ctx = chunks.map(c => `● [${c.title || c.source}] ${String(c.chunk||"").trim()}`).join("\n");
-  return `Consulta: "${q}"\n\nContexto:\n${ctx || "(sin contexto)"}`;
-};
+      const userPrompt = `
+Consulta: ${userQueryRaw}
 
-async function llm(messages){
-  const r = await fetch("https://api.openai.com/v1/chat/completions",{
-    method:"POST",
-    headers:{ "Authorization":`Bearer ${OPENAI_API_KEY}`, "Content-Type":"application/json" },
-    body: JSON.stringify({ model: OPENAI_MODEL, temperature: 0.15, messages })
-  });
-  if (!r.ok) throw new Error(`Chat API: ${r.status} ${await r.text()}`);
-  const j = await r.json();
-  return j.choices?.[0]?.message?.content?.trim() || "";
-}
+Usá SOLO el siguiente contexto para responder. No inventes datos.
+${contextText}
 
-// ---------- HTTP ----------
-const headers = {
-  "Access-Control-Allow-Origin":"*",
-  "Access-Control-Allow-Headers":"Content-Type, Authorization",
-  "Access-Control-Allow-Methods":"GET, POST, OPTIONS",
-  "Content-Type":"application/json",
-  "X-Valeria-Version": VERSION
-};
-const text = (t) => ({ type:"text", content: t });
+Entrega:
+- Pasos/puntos concretos para la operación diaria.
+- Valores numéricos cuando apliquen (°C, ppm, días).
+- Cita breve con [#n] al final de cada afirmación relevante.
+`;
 
-export async function handler(event){
-  try{
-    if (event.httpMethod === "OPTIONS") return { statusCode:204, body:"", headers };
+      const reply = await callChat(systemPrompt, userPrompt);
 
-    // GET → ping / debug
-    if (event.httpMethod === "GET"){
-      const q = (event.queryStringParameters||{}).q;
-      if ((event.queryStringParameters||{}).ping === "1"){
-        ensureLoaded();
-        return { statusCode:200, headers, body: JSON.stringify({ ok:true, version:VERSION, docs:(CACHE.docs||[]).length, embeddings:(CACHE.embeddings||[]).length }) };
-      }
-      if (q){
-        ensureLoaded();
-        const { candidates, maxScore } = await retrieveMulti(q);
-        const tops = candidates.slice(0,6).map(c=>({ title: c.title || c.source, source: c.source, score: Number(c.score.toFixed(4)), preview: String(c.chunk||"").slice(0,160) }));
-        return { statusCode:200, headers, body: JSON.stringify({ ok:true, version:VERSION, docs:(CACHE.docs||[]).length, embeddings:(CACHE.embeddings||[]).length, query:q, maxScore:Number(maxScore.toFixed(4)), tops }) };
-      }
-      return { statusCode:405, headers, body: JSON.stringify({ error:"Method Not Allowed" }) };
+      // 4) Empaquetar respuesta + citas básicas
+      const cites = contextChunks.map((c, i) => ({
+        n: i + 1,
+        title: c.title,
+        source: c.source,
+      }));
+
+      return json(200, {
+        ok: true,
+        reply,
+        citations: cites,
+        meta: {
+          version: VERSION,
+          ...counts,
+          maxScore: Number(maxScore.toFixed(4)),
+        },
+      });
     }
 
-    // POST → conversación
-    if (event.httpMethod !== "POST") return { statusCode:405, headers, body: JSON.stringify({ error:"Method Not Allowed" }) };
-    if (!OPENAI_API_KEY) return { statusCode:500, headers, body: JSON.stringify({ error:"Falta OPENAI_API_KEY" }) };
-
-    const { message } = JSON.parse(event.body||"{}");
-    const q = String(message||"").trim();
-    if (!q) return { statusCode:400, headers, body: JSON.stringify({ error:"Falta 'message'." }) };
-
-    ensureLoaded();
-
-    // definiciones rápidas
-    if (isDefinition(q)){
-      const key = defKey(q);
-      if (key && DEF[key]) return { statusCode:200, headers, body: JSON.stringify(text(DEF[key])) };
-    }
-
-    // PDFs directos
-    if (wantsDoc(q)){
-      const matches = findMatches(q);
-      if (matches.length){
-        const lines = matches.map(m => `✅ ${m.title}\n${m.url}`).join("\n\n");
-        return { statusCode:200, headers, body: JSON.stringify(text(`Acá tenés lo pedido:\n\n${lines}`)) };
-      }
-      const sug = suggest(q);
-      const msg = sug.length
-        ? `No encontré un PDF que coincida. Probá: ${sug.map(s=>`“${s}”`).join(", ")}.`
-        : `No encontré un PDF con esas palabras. Decime el nombre exacto y lo busco.`;
-      return { statusCode:200, headers, body: JSON.stringify(text(msg)) };
-    }
-
-    // RAG con razonamiento (multi-query + re-rank)
-    const { candidates, maxScore } = await retrieveMulti(q);
-    const inDomain = DOMAIN_HINTS.some(k => toLowerNoAccents(q).includes(k));
-    if (!inDomain && maxScore < MIN_SIMILARITY_ANY){
-      return { statusCode:200, headers, body: JSON.stringify(text("⚠️ Solo atiendo **seguridad alimentaria** (BPM, POES, CAA, HACCP, sanitización, temperaturas, plagas, etc.). Reformulá dentro del alcance.")) };
-    }
-    const picked = await rerankWithLLM(q, candidates);
-    const answer = await llm([
-      { role:"system", content: systemPrompt() },
-      { role:"user", content: userPrompt(q, picked) }
-    ]);
-
-    // agregar “Fuentes” con enlaces reales
-    const byDoc = new Map();
-    for (const p of picked){
-      const title = (p.title || p.source);
-      byDoc.set(title, (p.source||""));
-    }
-    const fuentes = Array.from(byDoc.entries()).slice(0,4)
-      .map(([t,s]) => `• ${t} · /${s.replace(/^\/+/,"")}`)
-      .join("\n");
-
-    const final = fuentes ? `${answer}\n\nFuentes:\n${fuentes}` : answer;
-    return { statusCode:200, headers, body: JSON.stringify(text(final)) };
-
-  }catch(err){
-    console.error(err);
-    return { statusCode:500, headers, body: JSON.stringify({ error: `Error interno: ${err.message}`, version: VERSION }) };
+    // Si alguien hace GET sin debug, devolvemos info básica
+    return json(200, {
+      ok: true,
+      version: VERSION,
+      ...counts,
+      tip:
+        "Usá POST con { message } para chatear o GET con ?debug=1&q=... para ver los resultados del RAG.",
+    });
+  } catch (err) {
+    return json(500, { ok: false, error: String(err.message || err) });
   }
-}
+};
