@@ -1,5 +1,5 @@
 [build]
-  command = "node scripts/build-embeddings.mjs"
+  command = "npm ci && node scripts/build-embeddings.mjs"
   publish = "."
 
 [functions]
