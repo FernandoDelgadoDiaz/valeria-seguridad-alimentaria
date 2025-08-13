@@ -1,5 +1,5 @@
 [build]
-  command = "npm install --no-audit --no-fund"
+  command = "npm install --no-audit --no-fund && node scripts/build-embeddings.mjs"
   publish = "."
 
 [functions]
@@ -8,4 +8,4 @@
   included_files = ["data/**", "docs/**"]
 
 [build.environment]
-  NODE_VERSION = "18"
+  NODE_VERSION = "20"
