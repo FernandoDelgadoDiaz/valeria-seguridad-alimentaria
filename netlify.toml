@@ -1,7 +1,12 @@
 [build]
-  command = "npm ci && node scripts/build-embeddings.mjs"
+  # Usá npm install porque no tenés package-lock.json
+  command = "npm install --no-audit --no-fund && node scripts/build-embeddings.mjs"
   publish = "."
 
 [functions]
+  directory = "functions"
   node_bundler = "esbuild"
   included_files = ["data/**", "docs/**"]
+
+[build.environment]
+  NODE_VERSION = "20"
