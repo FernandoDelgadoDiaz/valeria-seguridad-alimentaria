@@ -1,9 +1,7 @@
 [build]
-command = "node scripts/build-embeddings.mjs"
-publish = "."
+  command = "node scripts/build-embeddings.mjs"
+  publish = "."
 
 [functions]
-directory = "functions"
-node_bundler = "esbuild"
-# MUY IMPORTANTE: empaqueta los embeddings y los PDFs con la función
-included_files = ["data/**", "docs/**"]
+  node_bundler = "esbuild"
+  included_files = ["data/**", "docs/**"]
