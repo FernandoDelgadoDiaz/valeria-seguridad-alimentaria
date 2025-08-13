@@ -1,6 +1,5 @@
 [build]
-  # Usá npm install porque no tenés package-lock.json
-  command = "npm install --no-audit --no-fund && node scripts/build-embeddings.mjs"
+  command = "npm install --no-audit --no-fund"
   publish = "."
 
 [functions]
@@ -9,4 +8,4 @@
   included_files = ["data/**", "docs/**"]
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "18"
