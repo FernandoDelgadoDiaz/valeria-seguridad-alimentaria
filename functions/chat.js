@@ -1,4 +1,4 @@
-// functions/chat.js  (v2025-08-13-fix5)
+// functions/chat.js  (v2025-08-13-fix6)
 import fs from "fs";
 import OpenAI from "openai";
 
@@ -6,7 +6,7 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const DOCS_DIR = "/var/task/docs";
 const DATA_FILE = "/var/task/data/embeddings.json";
-const VERSION = "v2025-08-13-fix5";
+const VERSION = "v2025-08-13-fix6";
 
 const json = (o, status = 200) => ({
   statusCode: status,
@@ -56,13 +56,12 @@ function coerceNumberArray(x) {
   return null;
 }
 
-// Posibles claves (inglés + español con/sin tilde)
+// Claves posibles (inglés + español con/sin tilde)
 const TEXT_KEYS   = ["text","content","body","chunk","pageText","raw","t","texto","frase","contenido","fragmento","resumen","snippet"];
 const TITLE_KEYS  = ["title","heading","h","titulo","título"];
 const SOURCE_KEYS = ["source","src","file","path","doc","s","fuente","archivo","ruta"];
 const VEC_KEYS    = ["vec","embedding","emb","v","e","vector","incrustacion","incrustación"];
 
-// Posibles arrays paralelos en raíz
 const TOP_TEXT_ARRS   = ["texts","contents","bodies","snippets","pages","chunksText","textos","frases","fragmentos","contenido"];
 const TOP_TITLE_ARRS  = ["titles","headings","titulos","títulos"];
 const TOP_SOURCE_ARRS = ["sources","files","paths","docs","fuentes","archivos","rutas"];
@@ -81,18 +80,13 @@ function* deepArrays(node, seen = new Set()) {
 function getFirstArrayOfStrings(obj, names) {
   for (const name of names) {
     const arr = obj?.[name];
-    if (Array.isArray(arr) && arr.length && arr.every((x) => typeof x === "string")) {
-      return arr;
-    }
+    if (Array.isArray(arr) && arr.length && arr.every((x) => typeof x === "string")) return arr;
   }
-  // también por claves normalizadas (sin tildes)
   const map = Object.fromEntries(Object.keys(obj || {}).map(k => [normalize(k), k]));
   for (const name of names) {
     const k = map[normalize(name)];
     const arr = obj?.[k];
-    if (Array.isArray(arr) && arr.length && arr.every((x) => typeof x === "string")) {
-      return arr;
-    }
+    if (Array.isArray(arr) && arr.length && arr.every((x) => typeof x === "string")) return arr;
   }
   return null;
 }
@@ -100,16 +94,13 @@ function getFirstArrayOfStrings(obj, names) {
 function longestStringInObject(o) {
   let best = "";
   for (const [k, v] of Object.entries(o)) {
-    if (typeof v === "string" && v.length > best.length && !/\.(pdf|docx?|xlsx?)$/i.test(v)) {
-      best = v;
-    }
+    if (typeof v === "string" && v.length > best.length && !/\.(pdf|docx?|xlsx?)$/i.test(v)) best = v;
   }
   return best;
 }
 
 function mapArrayToChunks(arr, rootForIndexed) {
   const out = [];
-  // Arrays paralelos en raíz (para usar idx)
   const topTexts   = getFirstArrayOfStrings(rootForIndexed, TOP_TEXT_ARRS) || [];
   const topTitles  = getFirstArrayOfStrings(rootForIndexed, TOP_TITLE_ARRS) || [];
   const topSources = getFirstArrayOfStrings(rootForIndexed, TOP_SOURCE_ARRS) || [];
@@ -118,17 +109,14 @@ function mapArrayToChunks(arr, rootForIndexed) {
     const o = arr[i];
     if (!o || typeof o !== "object") continue;
 
-    // texto direct
     let textKey = TEXT_KEYS.find(k => typeof o[k] === "string");
     let text = textKey ? o[textKey] : "";
 
-    // título/fuente direct
     const titleKey  = TITLE_KEYS.find(k => typeof o[k] === "string");
     const sourceKey = SOURCE_KEYS.find(k => typeof o[k] === "string");
     let title = titleKey ? o[titleKey] : "";
     let source = sourceKey ? o[sourceKey] : "";
 
-    // vector directo o anidado
     let vec = null;
     for (const vk of VEC_KEYS) { if (vk in o) { vec = coerceNumberArray(o[vk]); if (vec) break; } }
     if (!vec) {
@@ -141,23 +129,15 @@ function mapArrayToChunks(arr, rootForIndexed) {
       }
     }
 
-    // si viene con idx, tomar de arrays paralelos
     const idx = Number.isInteger(o.idx) ? o.idx : (Number.isInteger(o.i) ? o.i : null);
     if (!text && idx != null && topTexts[idx]) text = topTexts[idx];
     if (!title && idx != null && topTitles[idx]) title = topTitles[idx];
     if (!source && idx != null && topSources[idx]) source = topSources[idx];
 
-    // último recurso: cadena más larga del objeto
     if (!text) text = longestStringInObject(o);
 
     if (text && vec) {
-      out.push({
-        id: o.id ?? o.i ?? idx ?? i,
-        title,
-        source,
-        text,
-        vec,
-      });
+      out.push({ id: o.id ?? o.i ?? idx ?? i, title, source, text, vec });
     }
   }
   return out;
@@ -175,14 +155,32 @@ function mapParallel(obj) {
       const v = coerceNumberArray(emb[i]);
       const t = texts[i];
       if (v && typeof t === "string") {
-        out.push({
-          id: i,
-          title: titles?.[i] || "",
-          source: sources?.[i] || "",
-          text: t,
-          vec: v,
-        });
+        out.push({ id: i, title: titles?.[i] || "", source: sources?.[i] || "", text: t, vec: v });
       }
+    }
+    return out;
+  }
+  return [];
+}
+
+// NUEVO: unir obj.chunks[] con obj.embeddings[] por índice
+function mapChunksWithEmbeddings(obj) {
+  const chunks = obj?.chunks;
+  const embs = obj?.embeddings || obj?.vectors || obj?.vecs;
+  if (Array.isArray(chunks) && Array.isArray(embs) && chunks.length === embs.length && chunks.length) {
+    const out = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const c = chunks[i] || {};
+      const v = coerceNumberArray(embs[i]);
+      if (!v) continue;
+      const text =
+        c.text || c.texto || c.content || c.contenido || longestStringInObject(c);
+      if (!text) continue;
+      const title =
+        c.title || c.titulo || c["título"] || c.heading || "";
+      const source =
+        c.source || c.src || c.file || c.path || c.doc || c.fuente || c.archivo || c.ruta || "";
+      out.push({ id: c.id ?? i, title, source, text, vec: v });
     }
     return out;
   }
@@ -199,22 +197,22 @@ function parseNDJSON(text) {
 function pickChunksFromAny(root) {
   if (Array.isArray(root)) return mapArrayToChunks(root, {});
 
+  const joined = mapChunksWithEmbeddings(root || {});
+  if (joined.length) return joined;
+
   const par = mapParallel(root || {});
   if (par.length) return par;
 
-  // buscar arrays candidatas en raíz
   let arr =
     root?.chunks || root?.items || root?.entries || root?.data ||
     root?.fragments || root?.fragmentos || root?.incrustaciones;
 
   if (arr && !Array.isArray(arr) && typeof arr === "object") arr = Object.values(arr);
-
   if (Array.isArray(arr)) {
-    const a2 = mapArrayToChunks(arr, root); // <- pasa root para usar idx
+    const a2 = mapArrayToChunks(arr, root);
     if (a2.length) return a2;
   }
 
-  // buscar profundo
   if (root && typeof root === "object") {
     for (const arr2 of deepArrays(root)) {
       const a3 = mapArrayToChunks(arr2, root);
@@ -247,14 +245,19 @@ async function loadData(peekOnly = false) {
         chunks = mapArrayToChunks(parsed, {});
         peek.mode = "array";
       } else {
-        // guardar algunas pistas para debug si fallara
         peek.rootKeys = Object.keys(parsed).slice(0, 30);
-        if (Array.isArray(parsed.incrustaciones) && parsed.incrustaciones[0]) {
-          peek.firstItemKeys = Object.keys(parsed.incrustaciones[0]).slice(0, 30);
+        if (Array.isArray(parsed.chunks) && parsed.chunks[0]) {
+          peek.firstItemKeys = Object.keys(parsed.chunks[0]).slice(0, 30);
         }
-        const parallel = mapParallel(parsed);
-        chunks = parallel.length ? parallel : pickChunksFromAny(parsed);
-        peek.mode = parallel.length ? "parallel" : "object";
+        const joined = mapChunksWithEmbeddings(parsed);
+        if (joined.length) {
+          chunks = joined;
+          peek.mode = "chunks+embeddings";
+        } else {
+          const parallel = mapParallel(parsed);
+          chunks = parallel.length ? parallel : pickChunksFromAny(parsed);
+          peek.mode = parallel.length ? "parallel" : "object";
+        }
       }
     }
 
