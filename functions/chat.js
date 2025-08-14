@@ -1,4 +1,4 @@
-// functions/chat.js  (v2025-08-13-fix4)
+// functions/chat.js  (v2025-08-13-fix5)
 import fs from "fs";
 import OpenAI from "openai";
 
@@ -6,12 +6,12 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const DOCS_DIR = "/var/task/docs";
 const DATA_FILE = "/var/task/data/embeddings.json";
-const VERSION = "v2025-08-13-fix4";
+const VERSION = "v2025-08-13-fix5";
 
-const json = (obj, status = 200) => ({
+const json = (o, status = 200) => ({
   statusCode: status,
   headers: { "content-type": "application/json; charset=utf-8" },
-  body: JSON.stringify(obj),
+  body: JSON.stringify(o),
 });
 
 const normalize = (s = "") =>
@@ -56,10 +56,16 @@ function coerceNumberArray(x) {
   return null;
 }
 
-const TEXT_KEYS   = ["text","content","body","chunk","pageText","raw","t","texto","frase","contenido"];
+// Posibles claves (inglés + español con/sin tilde)
+const TEXT_KEYS   = ["text","content","body","chunk","pageText","raw","t","texto","frase","contenido","fragmento","resumen","snippet"];
 const TITLE_KEYS  = ["title","heading","h","titulo","título"];
 const SOURCE_KEYS = ["source","src","file","path","doc","s","fuente","archivo","ruta"];
 const VEC_KEYS    = ["vec","embedding","emb","v","e","vector","incrustacion","incrustación"];
+
+// Posibles arrays paralelos en raíz
+const TOP_TEXT_ARRS   = ["texts","contents","bodies","snippets","pages","chunksText","textos","frases","fragmentos","contenido"];
+const TOP_TITLE_ARRS  = ["titles","headings","titulos","títulos"];
+const TOP_SOURCE_ARRS = ["sources","files","paths","docs","fuentes","archivos","rutas"];
 
 function* deepArrays(node, seen = new Set()) {
   if (!node || typeof node !== "object") return;
@@ -72,16 +78,57 @@ function* deepArrays(node, seen = new Set()) {
   }
 }
 
-function mapArrayToChunks(arr) {
+function getFirstArrayOfStrings(obj, names) {
+  for (const name of names) {
+    const arr = obj?.[name];
+    if (Array.isArray(arr) && arr.length && arr.every((x) => typeof x === "string")) {
+      return arr;
+    }
+  }
+  // también por claves normalizadas (sin tildes)
+  const map = Object.fromEntries(Object.keys(obj || {}).map(k => [normalize(k), k]));
+  for (const name of names) {
+    const k = map[normalize(name)];
+    const arr = obj?.[k];
+    if (Array.isArray(arr) && arr.length && arr.every((x) => typeof x === "string")) {
+      return arr;
+    }
+  }
+  return null;
+}
+
+function longestStringInObject(o) {
+  let best = "";
+  for (const [k, v] of Object.entries(o)) {
+    if (typeof v === "string" && v.length > best.length && !/\.(pdf|docx?|xlsx?)$/i.test(v)) {
+      best = v;
+    }
+  }
+  return best;
+}
+
+function mapArrayToChunks(arr, rootForIndexed) {
   const out = [];
+  // Arrays paralelos en raíz (para usar idx)
+  const topTexts   = getFirstArrayOfStrings(rootForIndexed, TOP_TEXT_ARRS) || [];
+  const topTitles  = getFirstArrayOfStrings(rootForIndexed, TOP_TITLE_ARRS) || [];
+  const topSources = getFirstArrayOfStrings(rootForIndexed, TOP_SOURCE_ARRS) || [];
+
   for (let i = 0; i < arr.length; i++) {
     const o = arr[i];
     if (!o || typeof o !== "object") continue;
 
-    const textKey   = TEXT_KEYS.find(k => typeof o[k] === "string");
+    // texto direct
+    let textKey = TEXT_KEYS.find(k => typeof o[k] === "string");
+    let text = textKey ? o[textKey] : "";
+
+    // título/fuente direct
     const titleKey  = TITLE_KEYS.find(k => typeof o[k] === "string");
     const sourceKey = SOURCE_KEYS.find(k => typeof o[k] === "string");
+    let title = titleKey ? o[titleKey] : "";
+    let source = sourceKey ? o[sourceKey] : "";
 
+    // vector directo o anidado
     let vec = null;
     for (const vk of VEC_KEYS) { if (vk in o) { vec = coerceNumberArray(o[vk]); if (vec) break; } }
     if (!vec) {
@@ -94,12 +141,20 @@ function mapArrayToChunks(arr) {
       }
     }
 
-    const text = textKey ? o[textKey] : "";
+    // si viene con idx, tomar de arrays paralelos
+    const idx = Number.isInteger(o.idx) ? o.idx : (Number.isInteger(o.i) ? o.i : null);
+    if (!text && idx != null && topTexts[idx]) text = topTexts[idx];
+    if (!title && idx != null && topTitles[idx]) title = topTitles[idx];
+    if (!source && idx != null && topSources[idx]) source = topSources[idx];
+
+    // último recurso: cadena más larga del objeto
+    if (!text) text = longestStringInObject(o);
+
     if (text && vec) {
       out.push({
-        id: o.id ?? o.i ?? i,
-        title: titleKey ? o[titleKey] : "",
-        source: sourceKey ? o[sourceKey] : "",
+        id: o.id ?? o.i ?? idx ?? i,
+        title,
+        source,
         text,
         vec,
       });
@@ -110,7 +165,7 @@ function mapArrayToChunks(arr) {
 
 function mapParallel(obj) {
   const emb = obj.embeddings || obj.vectors || obj.vecs || obj.incrustaciones;
-  const texts = obj.texts || obj.contents || obj.bodies || obj.textos || obj.frases;
+  const texts = obj.texts || obj.contents || obj.bodies || obj.textos || obj.frases || obj.fragmentos;
   const titles = obj.titles || obj.titulos || obj["títulos"];
   const sources = obj.sources || obj.fuentes || obj.archivos || obj.rutas;
 
@@ -141,26 +196,28 @@ function parseNDJSON(text) {
   return objs.length ? objs : null;
 }
 
-function pickChunksFromAny(raw) {
-  if (Array.isArray(raw)) {
-    const a1 = mapArrayToChunks(raw);
-    if (a1.length) return a1;
-  }
-  const par = mapParallel(raw || {});
+function pickChunksFromAny(root) {
+  if (Array.isArray(root)) return mapArrayToChunks(root, {});
+
+  const par = mapParallel(root || {});
   if (par.length) return par;
 
+  // buscar arrays candidatas en raíz
   let arr =
-    raw?.chunks || raw?.items || raw?.entries || raw?.data ||
-    raw?.fragments || raw?.fragmentos || raw?.incrustaciones;
+    root?.chunks || root?.items || root?.entries || root?.data ||
+    root?.fragments || root?.fragmentos || root?.incrustaciones;
 
   if (arr && !Array.isArray(arr) && typeof arr === "object") arr = Object.values(arr);
+
   if (Array.isArray(arr)) {
-    const a2 = mapArrayToChunks(arr);
+    const a2 = mapArrayToChunks(arr, root); // <- pasa root para usar idx
     if (a2.length) return a2;
   }
-  if (raw && typeof raw === "object") {
-    for (const arr2 of deepArrays(raw)) {
-      const a3 = mapArrayToChunks(arr2);
+
+  // buscar profundo
+  if (root && typeof root === "object") {
+    for (const arr2 of deepArrays(root)) {
+      const a3 = mapArrayToChunks(arr2, root);
       if (a3.length) return a3;
     }
   }
@@ -177,7 +234,7 @@ async function loadData(peekOnly = false) {
 
   let chunks = [];
   let dims = 0;
-  let peek = { parsed: false };
+  const peek = { parsed: false };
 
   if (exists) {
     const text = safeReadText(DATA_FILE);
@@ -186,17 +243,18 @@ async function loadData(peekOnly = false) {
 
     if (parsed != null) {
       peek.parsed = true;
-      const parallel = Array.isArray(parsed) ? [] : mapParallel(parsed);
-      if (parallel.length) {
-        chunks = parallel;
-        peek.mode = "parallel";
+      if (Array.isArray(parsed)) {
+        chunks = mapArrayToChunks(parsed, {});
+        peek.mode = "array";
       } else {
-        chunks = pickChunksFromAny(parsed);
-        peek.mode = Array.isArray(parsed) ? "array" : "object";
-      }
-      if (!chunks.length && Array.isArray(parsed)) {
-        chunks = mapArrayToChunks(parsed);
-        peek.mode = peek.mode || "ndjson-array";
+        // guardar algunas pistas para debug si fallara
+        peek.rootKeys = Object.keys(parsed).slice(0, 30);
+        if (Array.isArray(parsed.incrustaciones) && parsed.incrustaciones[0]) {
+          peek.firstItemKeys = Object.keys(parsed.incrustaciones[0]).slice(0, 30);
+        }
+        const parallel = mapParallel(parsed);
+        chunks = parallel.length ? parallel : pickChunksFromAny(parsed);
+        peek.mode = parallel.length ? "parallel" : "object";
       }
     }
 
@@ -211,7 +269,7 @@ async function loadData(peekOnly = false) {
         textSample: chunks[0].text.slice(0, 120),
       };
     } else {
-      peek.error = "No se hallaron vectores/textos en el archivo.";
+      peek.error = "No se encontraron vectores/textos en el archivo.";
       peek.head = text.slice(0, 2000);
     }
   }
