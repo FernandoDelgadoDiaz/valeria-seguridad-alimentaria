@@ -3,168 +3,93 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Valeria · Seguridad Alimentaria</title>
-  <meta name="description" content="Asistente Valeria - Seguridad Alimentaria" />
+  <title>Inocuo · Seguridad Alimentaria</title>
   <link rel="icon" href="/favicon.jpg" />
   <style>
-    :root{ --brand:#0a2f73; --bg:#f6f7fb; --fg:#0f172a; --muted:#64748b; --va:#eaf2ff; --us:#e8f5e9; --card:#fff; }
+    :root{ --brand:#004a99; --bg:#f0f2f5; --fg:#1c1e21; --muted:#65676b; --va:#e7f3ff; --us:#e4e6eb; --card:#fff; }
     *{ box-sizing:border-box }
-    html,body{ height:100% }
-    body{ margin:0; font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--fg); display:flex; flex-direction:column }
-    header{ position:sticky; top:0; background:var(--brand); color:#fff; display:flex; gap:12px; align-items:center; padding:10px 12px; z-index:10 }
-    header img{ width:40px; height:40px; border-radius:50%; object-fit:cover; cursor:pointer }
-    main{ flex:1; overflow:auto; padding:14px; display:flex; flex-direction:column; gap:10px }
-    .msg{ max-width:860px; padding:12px 14px; border-radius:16px; line-height:1.45; box-shadow:0 1px 0 rgba(15,23,42,.04) }
-    .va{ align-self:flex-start; background:var(--va) }
-    .us{ align-self:flex-end; background:var(--us) }
-    form{ display:flex; gap:10px; padding:10px; background:var(--card); border-top:1px solid #e2e8f0 }
-    textarea{ flex:1; border:1px solid #cbd5e1; border-radius:14px; padding:10px 12px; font-size:14px; resize:none; max-height:180px }
-    .send{ border:0; background:var(--brand); color:#fff; border-radius:12px; padding:0 12px; font-size:18px; cursor:pointer }
-    .profile{ position:fixed; top:64px; left:50%; transform:translateX(-50%); background:var(--card); border-radius:16px; box-shadow:0 12px 28px rgba(15,23,42,.18); padding:18px; display:none; z-index:50; width:min(560px,92vw) }
-    .disclaimer{ color:var(--muted); font-size:12px }
-    .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px }
-    .chip{ background:#eef2ff; border:1px solid #dbeafe; border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer }
-    a{ color: var(--brand); font-weight: 600; text-decoration: none; border-bottom: 1px solid; }
+    body{ margin:0; font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--fg); display:flex; flex-direction:column; height:100vh; }
+    header{ background:var(--brand); color:#fff; padding:12px; display:flex; align-items:center; gap:12px; box-shadow:0 2px 4px rgba(0,0,0,.1); }
+    header img{ width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid #fff; }
+    main{ flex:1; overflow-y:auto; padding:15px; display:flex; flex-direction:column; gap:12px; }
+    .msg{ max-width:85%; padding:12px 16px; border-radius:18px; font-size:15px; line-height:1.4; position:relative; }
+    .va{ align-self:flex-start; background:var(--va); border-bottom-left-radius:4px; }
+    .us{ align-self:flex-end; background:var(--us); border-bottom-right-radius:4px; }
+    form{ display:flex; gap:8px; padding:12px; background:var(--card); border-top:1px solid #ddd; }
+    textarea{ flex:1; border:1px solid #ccd0d5; border-radius:20px; padding:10px 15px; font-size:15px; resize:none; outline:none; }
+    button{ background:var(--brand); border:none; color:#fff; border-radius:50%; width:40px; height:40px; cursor:pointer; font-size:18px; }
+    a{ color: var(--brand); font-weight: bold; text-decoration: none; }
   </style>
 </head>
 <body>
   <header>
-    <img id="avatar" src="/valeria-mini.jpg" alt="Valeria" title="Abrir perfil" />
+    <img src="/valeria-mini.jpg" alt="Inocuo" />
     <div>
-      <div style="font-weight:700">Valeria</div>
-      <div style="font-size:12px;opacity:.95">Seguridad Alimentaria</div>
+      <div style="font-weight:bold; font-size:18px;">Inocuo</div>
+      <div style="font-size:12px; opacity:0.9;">Asistente de Seguridad Alimentaria</div>
     </div>
   </header>
 
   <main id="chat"></main>
+
   <form id="form">
-    <textarea id="input" rows="1" placeholder="Ej.: Rotulación 2025 · POES Carnicería · MIP"></textarea>
-    <button class="send" aria-label="Enviar">➤</button>
+    <textarea id="input" rows="1" placeholder="Consulta sobre manuales o el CAA..."></textarea>
+    <button type="submit">➤</button>
   </form>
 
-  <div id="profile" class="profile">
-    <div style="display:flex;gap:14px;align-items:center">
-      <img src="/valeria-full.jpg" alt="Valeria" style="width:88px;height:88px;border-radius:50%;object-fit:cover" />
-      <div>
-        <h3 style="margin:6px 0 4px">Valeria · Seguridad Alimentaria</h3>
-        <div class="disclaimer">Asistente técnica basada en el CAA y Manuales de Procedimientos internos.</div>
-        <div class="chips" id="chips"></div>
-      </div>
-    </div>
-  </div>
-
   <script>
-  const $ = s => document.querySelector(s);
-  const chat = $('#chat'), form = $('#form'), input = $('#input');
-  const profile = $('#profile'), avatar = $('#avatar');
+    const chat = document.getElementById('chat');
+    const form = document.getElementById('form');
+    const input = document.getElementById('input');
 
-  function addMsg(html, who='va'){
-    const d=document.createElement('div');
-    d.className='msg '+(who==='va'?'va':'us');
-    d.innerHTML=html.replace(/\n/g,'<br>');
-    chat.appendChild(d);
-    chat.scrollTop = chat.scrollHeight;
-  }
-  function norm(s){ return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,''); }
-
-  let open=false;
-  avatar.onclick=()=>{ open=!open; profile.style.display=open?'block':'none'; };
-
-  setTimeout(()=>{ if(chat.children.length===0){ addMsg('👋 Hola, soy <b>Valeria</b>. ¿Qué procedimiento o normativa del Código Alimentario necesitás consultar?'); }}, 1000);
-
-  // Sugerencias basadas en tus archivos reales
-  const SUG = ['Rotulación 2025','POES Carnicería','Manejo de Plagas','Fraccionamiento Quesos','Decomiso de mercadería','Manual de Manufactura'];
-  const chips = $('#chips');
-  SUG.forEach(s=>{ const c=document.createElement('div'); c.className='chip'; c.textContent=s; c.onclick=()=>{input.value=s; form.requestSubmit();}; chips.appendChild(c); });
-
-  // Reglas fijas (Ejemplos de seguridad)
-  function ruleDominio(q){
-    const ok = /(bpm|poes|proced|sanit|desinfect|j-512|amonio|recepcion|decomiso|retiro|reclamo|temperatura|rotulado|fraccion|dulce|queso|pollo|carne|milanesa|mip|caa|codigo|limpieza|camara|cocina|panader|reposter|fiambre|lacteo|manufactura|agua)/.test(q);
-    return ok ? null : '⚠️ Por favor, realizá una consulta relacionada a <b>Seguridad Alimentaria o procedimientos del Supermercado</b>.';
-  }
-
-  // RAG (Netlify Function)
-  async function callVector(q){
-    try{
-      const r = await fetch('/.netlify/functions/chat', {
-        method: 'POST',
-        headers: { 'Content-Type':'application/json' },
-        body: JSON.stringify({ query: q })
-      });
-      if(!r.ok) return null;
-      const d = await r.json();
-      return d && d.answer ? d.answer : null;
-    }catch(e){ return null; }
-  }
-
-  // Mapeo EXACTO a tus archivos de las capturas
-  const DOCS = {
-    'codigo alimentario': 'Capitulo_II.pdf',
-    'envases': 'capitulo_iv_envasesactualiz_2024-08.pdf',
-    'rotulacion': 'capitulo_v_rotulacion_actualiz_2025-06.pdf',
-    'rotulado': 'capitulo_v_rotulacion_actualiz_2025-06.pdf',
-    'bpm': 'Manual_BPM.pdf',
-    'manipuladores': 'anmat_manual_manipuladores_de_alimentos_...pdf',
-    'agua': 'g control de agua de red rev..pdf',
-    'decomiso': 'g decomiso de mercaderia rev..pdf',
-    'plagas': 'g manual de mip rev..pdf',
-    'mip': 'g manual de mip rev..pdf',
-    'sanitizante': 'g med. cc sanitizante rev..pdf',
-    'no apta': 'g mercaderia no apta para la venta.pdf',
-    'plan de accion': 'g plan de accin rev..pdf',
-    'recepcion': 'g recepcion de mercaderia rev..pdf',
-    'retiro': 'g retiro de alimentos del mercado.pdf',
-    'vence': 'g uso de la etiqueta de producto prximo a ven....pdf',
-    'poes cocina': 'poes general cocina.pdf',
-    'poes baños': 'poes sector baos y vestuarios rev..pdf',
-    'poes carniceria': 'poes sector carnicera.pdf',
-    'poes fiambres': 'poes sector fiambres y lacteos rev..pdf',
-    'poes lacteos': 'poes sector fiambres y lacteos rev..pdf',
-    'poes panaderia': 'poes sector panadera.pdf',
-    'poes reposteria': 'poes sector repostera.pdf',
-    'poes rotiseria': 'poes sector rotisera.pdf',
-    'poes trastienda': 'poes trastienda.pdf',
-    'pan rallado': 'elaboracin de pan rallado rev..pdf',
-    'quesos': 'fraccionamiento de quesos rev..pdf',
-    'dulces': 'fraccionamiento de dulces.pdf',
-    'carne picada': 'temperatura de carne picada.pdf',
-    'transporte': 'transporte de perecederos.pdf',
-    'la anonima': 'la anonima manufactura.pdf',
-    'manufactura': 'la anonima manufactura.pdf',
-    'muestra de agua': 'instructivo de toma de muestra de agua.pdf'
-  };
-
-  function docLinkByAlias(q){
-    const nq = norm(q);
-    for(const k in DOCS){
-      if(nq.includes(norm(k))) return `/docs/${encodeURIComponent(DOCS[k])}`;
-    }
-    return null;
-  }
-
-  form.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    const qRaw = input.value.trim(); if(!qRaw) return;
-    addMsg(qRaw, 'us'); input.value='';
-
-    const q = norm(qRaw);
-
-    // 1) Validar dominio
-    const dom = ruleDominio(q); if(dom){ addMsg(dom); return; }
-
-    // 2) Intentar RAG (Inteligencia)
-    const rag = await callVector(qRaw);
-    if(rag){ addMsg(rag); return; }
-
-    // 3) Fallback a PDF directo (Busca en el listado de arriba)
-    const link = docLinkByAlias(qRaw);
-    if(link){ 
-      addMsg(`He encontrado un documento oficial relacionado:\n✅ <a href="${link}" target="_blank">Abrir ${link.split('/').pop()}</a>`); 
-      return; 
+    function addMsg(text, type='va') {
+      const div = document.createElement('div');
+      div.className = `msg ${type}`;
+      div.innerHTML = text.replace(/\n/g, '<br>');
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
     }
 
-    addMsg('No encontré un documento específico, pero podés consultar sobre: POES, Rotulación, Decomisos o Temperaturas.');
-  });
+    // Filtro estricto de competencia
+    function esConsultaValida(q) {
+      const terminos = /(la anonima|manual|procedimiento|caa|codigo alimentario|bpm|poes|limpieza|desinfeccion|temperatura|carne|pollo|fiambreria|rotulo|vencimiento|decomiso|plagas|sanitizante|agua|auditoria)/i;
+      return terminos.test(q);
+    }
+
+    // Simulación de respuesta o llamada a la función de Netlify
+    async function obtenerRespuesta(query) {
+      if (!esConsultaValida(query)) {
+        return "Lo siento, mi competencia se limita exclusivamente a **Seguridad Alimentaria**, manuales internos de **La Anónima** y el **Código Alimentario Argentino**. No puedo responder sobre otros temas.";
+      }
+
+      // Aquí es donde Netlify/IA debería actuar
+      try {
+        const res = await fetch('/.netlify/functions/chat', {
+          method: 'POST',
+          body: JSON.stringify({ query })
+        });
+        const data = await res.json();
+        return data.answer || "No encontré una respuesta específica en los manuales. Por favor, intenta con palabras clave como 'POES', 'Carnicería' o 'Temperaturas'.";
+      } catch (e) {
+        return "Error de conexión con la base de datos de manuales.";
+      }
+    }
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const q = input.value.trim();
+      if (!q) return;
+
+      addMsg(q, 'us');
+      input.value = '';
+
+      const respuesta = await obtenerRespuesta(q);
+      addMsg(respuesta, 'va');
+    };
+
+    window.onload = () => {
+      addMsg("Hola, soy **Inocuo**. Estoy aquí para ayudarte con los procedimientos de **La Anónima** y normativas del **CAA**. ¿Qué necesitas consultar?");
+    };
   </script>
 </body>
 </html>
