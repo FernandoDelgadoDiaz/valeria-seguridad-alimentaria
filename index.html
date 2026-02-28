@@ -24,6 +24,7 @@
     .disclaimer{ color:var(--muted); font-size:12px }
     .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px }
     .chip{ background:#eef2ff; border:1px solid #dbeafe; border-radius:999px; padding:6px 10px; font-size:12px; cursor:pointer }
+    a{ color: var(--brand); font-weight: 600; text-decoration: none; border-bottom: 1px solid; }
   </style>
 </head>
 <body>
@@ -37,24 +38,22 @@
 
   <main id="chat"></main>
   <form id="form">
-    <textarea id="input" rows="1" placeholder="Ej.: ¿Cómo sanitizo correctamente? · POES carnicería · Recepción de perecederos"></textarea>
+    <textarea id="input" rows="1" placeholder="Ej.: Rotulación 2025 · POES Carnicería · MIP"></textarea>
     <button class="send" aria-label="Enviar">➤</button>
   </form>
 
-  <!-- Perfil expandible -->
   <div id="profile" class="profile">
     <div style="display:flex;gap:14px;align-items:center">
       <img src="/valeria-full.jpg" alt="Valeria" style="width:88px;height:88px;border-radius:50%;object-fit:cover" />
       <div>
         <h3 style="margin:6px 0 4px">Valeria · Seguridad Alimentaria</h3>
-        <div class="disclaimer">Respondo con base documental interna (procedimientos, POES, manuales, registros) y reglas operativas acordadas. Solo seguridad alimentaria/BPM/CAA.</div>
+        <div class="disclaimer">Asistente técnica basada en el CAA y Manuales de Procedimientos internos.</div>
         <div class="chips" id="chips"></div>
       </div>
     </div>
   </div>
 
   <script>
-  // ===== Utilidades =====
   const $ = s => document.querySelector(s);
   const chat = $('#chat'), form = $('#form'), input = $('#input');
   const profile = $('#profile'), avatar = $('#avatar');
@@ -68,33 +67,23 @@
   }
   function norm(s){ return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,''); }
 
-  // Perfil: abre/cierra
   let open=false;
   avatar.onclick=()=>{ open=!open; profile.style.display=open?'block':'none'; };
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ open=false; profile.style.display='none'; }});
-  document.addEventListener('click',e=>{ if(open && !profile.contains(e.target) && e.target!==avatar){ open=false; profile.style.display='none'; }});
 
-  // Intro + chips
-  setTimeout(()=>{ if(chat.children.length===0){ addMsg('👋 Hola, soy <b>Valeria</b>. ¿En qué te puedo ayudar hoy?'); }}, 1500);
-  const SUG = ['¿Cómo sanitizo correctamente?','POES carnicería','Fraccionamiento de quesos','Recepción de perecederos','Gestión de reclamos','Retiro del mercado'];
+  setTimeout(()=>{ if(chat.children.length===0){ addMsg('👋 Hola, soy <b>Valeria</b>. ¿Qué procedimiento o normativa del Código Alimentario necesitás consultar?'); }}, 1000);
+
+  // Sugerencias basadas en tus archivos reales
+  const SUG = ['Rotulación 2025','POES Carnicería','Manejo de Plagas','Fraccionamiento Quesos','Decomiso de mercadería','Manual de Manufactura'];
   const chips = $('#chips');
   SUG.forEach(s=>{ const c=document.createElement('div'); c.className='chip'; c.textContent=s; c.onclick=()=>{input.value=s; form.requestSubmit();}; chips.appendChild(c); });
 
-  // ===== Reglas operativas (prioridad) =====
+  // Reglas fijas (Ejemplos de seguridad)
   function ruleDominio(q){
-    const ok = /(bpm|poes|proced|sanit|desinfect|j-512|amonio|recepcion|decomiso|retiro|reclamo|temperatura|rotulado|fraccion|dulce|queso|pollo|carne|milanesa|mip|\b5s\b|plan de accion|caa|codigo alimentario|limpieza|desengrasante|camara|cocina|comedor|panader|reposter|trastienda|fruta|verdura|fiambre|lacteo|mobiliario|utensilio|residuo|transporte|perecedero|muestra|reservorio|agua de red)/.test(q);
-    return ok ? null : '⚠️ Solo puedo ayudarte con <b>seguridad alimentaria, BPM/CAA o procedimientos internos</b>.';
-  }
-  function ruleSanitizacion(q){
-    if(!/(sanit|desinfect|j-512|amonio|qac)/.test(q)) return null;
-    return `🛡️ <b>Sanitización = paso final</b>. Antes hacé la <b>limpieza completa</b>: retirar residuos → pre-enjuague → <b>desengrasante</b> → fregado → enjuague final. Luego aplicá <b>J-512 a 200 ppm</b> con <b>dilutor</b> (manual solo si falla) y verificá con <b>tiras QAC</b> (50/100/200/400 ppm).`;
-  }
-  function ruleQuesos(q){
-    if(!/(ques|horma|fraccion)/.test(q)) return null;
-    return `🧀 <b>Sobrante de quesos ≠ consumo interno</b>. Resguardar a <b>0–5 °C</b>, <b>resinitar</b> y <b>etiquetar</b> (fraccionado, vencimiento, lote, peso, conservación). Tolerancia <b>5 días</b> para fraccionado definitivo con <b>control diario</b>.`;
+    const ok = /(bpm|poes|proced|sanit|desinfect|j-512|amonio|recepcion|decomiso|retiro|reclamo|temperatura|rotulado|fraccion|dulce|queso|pollo|carne|milanesa|mip|caa|codigo|limpieza|camara|cocina|panader|reposter|fiambre|lacteo|manufactura|agua)/.test(q);
+    return ok ? null : '⚠️ Por favor, realizá una consulta relacionada a <b>Seguridad Alimentaria o procedimientos del Supermercado</b>.';
   }
 
-  // ===== RAG (Netlify Function) =====
+  // RAG (Netlify Function)
   async function callVector(q){
     try{
       const r = await fetch('/.netlify/functions/chat', {
@@ -108,46 +97,43 @@
     }catch(e){ return null; }
   }
 
-  // ===== Fallback a PDFs por alias (por si el RAG aún no está listo) =====
+  // Mapeo EXACTO a tus archivos de las capturas
   const DOCS = {
-    'poes carniceria':'poes sector carniceria.pdf',
-    'poes pollos':'poes sector pollos.pdf',
-    'poes panaderia':'poes sector panaderia.pdf',
-    'poes reposteria':'poes sector reposteria.pdf',
-    'poes rotiseria':'poes sector rotiseria.pdf',
-    'poes frutas y verduras':'poes sector frutas y verduras.pdf',
-    'poes baños y vestuarios':'poes sector baños y vestuarios.pdf',
-    'poes camaras':'poes camaras.pdf',
-    'poes trastienda':'poes trastienda.pdf',
-    'poes comedor':'poes general comedor.pdf',
-    'poes cocina':'poes general cocina.pdf',
-    'poes mobiliarios':'poes mobiliarios.pdf',
-    'poes utensilios':'poes utensilios general.pdf',
-    'poes elementos de limpieza':'poes general elementos de limpieza.pdf',
-    'recepcion de mercaderia':'recepcion de mercaderia.pdf',
-    'recepcion de perecederos':'recepcion de perecederos y decomisos.pdf',
-    'registro de recepcion':'registro de recepcion de mercaderia.pdf',
-    'retiro del mercado':'retiro de alimentos del mercado.pdf',
-    'decomiso':'decomiso de mercaderia.pdf',
-    'gestion de reclamos':'gestion de reclamos.pdf',
-    'plan de accion':'plan de accion.pdf',
-    'temperatura carne picada':'temperatura de carne picada.pdf',
-    'termometro pinche':'medicion de temperatura con termometro pinche.pdf',
-    'control de agua de red':'control de agua de red.pdf',
-    'reservorio':'higiene de reservorio de agua fria.pdf',
-    'muestras de agua':'instructivo de toma de muestras de agua.pdf',
-    'sanitizante':'medicion de sanitizante.pdf',
-    'procedimiento de sanitizantes':'procedimiento de sanitizantes.pdf',
-    'fraccionamiento de quesos':'fraccionamiento de quesos.pdf',
-    'fraccionamiento de dulces':'fraccionamiento de dulces.pdf',
-    'etiquetado de hormas':'etiquetado de hormas fraccionadas.pdf',
-    'etiqueta proximo a vencer':'uso de etiqueta proximo a vencer.pdf',
-    'transporte de perecederos':'transporte de perecederos.pdf',
-    'compra y distribucion de perecederos':'compra y distribucion de productos perecederos.pdf',
-    '5s':'metodologia 5s.pdf',
-    'mip':'manual mip o manejo integrado de plagas.pdf'
+    'codigo alimentario': 'Capitulo_II.pdf',
+    'envases': 'capitulo_iv_envasesactualiz_2024-08.pdf',
+    'rotulacion': 'capitulo_v_rotulacion_actualiz_2025-06.pdf',
+    'rotulado': 'capitulo_v_rotulacion_actualiz_2025-06.pdf',
+    'bpm': 'Manual_BPM.pdf',
+    'manipuladores': 'anmat_manual_manipuladores_de_alimentos_...pdf',
+    'agua': 'g control de agua de red rev..pdf',
+    'decomiso': 'g decomiso de mercaderia rev..pdf',
+    'plagas': 'g manual de mip rev..pdf',
+    'mip': 'g manual de mip rev..pdf',
+    'sanitizante': 'g med. cc sanitizante rev..pdf',
+    'no apta': 'g mercaderia no apta para la venta.pdf',
+    'plan de accion': 'g plan de accin rev..pdf',
+    'recepcion': 'g recepcion de mercaderia rev..pdf',
+    'retiro': 'g retiro de alimentos del mercado.pdf',
+    'vence': 'g uso de la etiqueta de producto prximo a ven....pdf',
+    'poes cocina': 'poes general cocina.pdf',
+    'poes baños': 'poes sector baos y vestuarios rev..pdf',
+    'poes carniceria': 'poes sector carnicera.pdf',
+    'poes fiambres': 'poes sector fiambres y lacteos rev..pdf',
+    'poes lacteos': 'poes sector fiambres y lacteos rev..pdf',
+    'poes panaderia': 'poes sector panadera.pdf',
+    'poes reposteria': 'poes sector repostera.pdf',
+    'poes rotiseria': 'poes sector rotisera.pdf',
+    'poes trastienda': 'poes trastienda.pdf',
+    'pan rallado': 'elaboracin de pan rallado rev..pdf',
+    'quesos': 'fraccionamiento de quesos rev..pdf',
+    'dulces': 'fraccionamiento de dulces.pdf',
+    'carne picada': 'temperatura de carne picada.pdf',
+    'transporte': 'transporte de perecederos.pdf',
+    'la anonima': 'la anonima manufactura.pdf',
+    'manufactura': 'la anonima manufactura.pdf',
+    'muestra de agua': 'instructivo de toma de muestra de agua.pdf'
   };
-  function normInc(s){ return s ? norm(s) : ''; }
+
   function docLinkByAlias(q){
     const nq = norm(q);
     for(const k in DOCS){
@@ -156,7 +142,6 @@
     return null;
   }
 
-  // ===== Pipeline de respuesta =====
   form.addEventListener('submit', async (e)=>{
     e.preventDefault();
     const qRaw = input.value.trim(); if(!qRaw) return;
@@ -164,22 +149,21 @@
 
     const q = norm(qRaw);
 
-    // 1) Dominio
+    // 1) Validar dominio
     const dom = ruleDominio(q); if(dom){ addMsg(dom); return; }
 
-    // 2) Reglas prioritarias
-    const rs = ruleSanitizacion(q); if(rs){ addMsg(rs); return; }
-    const rq = ruleQuesos(q); if(rq){ addMsg(rq); return; }
-
-    // 3) RAG (Netlify)
+    // 2) Intentar RAG (Inteligencia)
     const rag = await callVector(qRaw);
     if(rag){ addMsg(rag); return; }
 
-    // 4) Fallback a PDF por alias
+    // 3) Fallback a PDF directo (Busca en el listado de arriba)
     const link = docLinkByAlias(qRaw);
-    if(link){ addMsg(`✅ <a href="${link}">Abrir PDF</a>`); return; }
+    if(link){ 
+      addMsg(`He encontrado un documento oficial relacionado:\n✅ <a href="${link}" target="_blank">Abrir ${link.split('/').pop()}</a>`); 
+      return; 
+    }
 
-    addMsg('No encontré un documento directo para esa consulta. Probá con: "POES carnicería", "Recepción de perecederos", "Fraccionamiento de quesos".');
+    addMsg('No encontré un documento específico, pero podés consultar sobre: POES, Rotulación, Decomisos o Temperaturas.');
   });
   </script>
 </body>
