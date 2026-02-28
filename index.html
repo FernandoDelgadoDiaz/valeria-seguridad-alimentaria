@@ -9,110 +9,65 @@
     *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
     html,body{ height:100%; margin:0; font-family: 'Segoe UI', system-ui, sans-serif; background:var(--bg); color:var(--fg); }
     body{ display:flex; flex-direction:column; }
-    
     header{ position:sticky; top:0; background:var(--brand); color:#fff; display:flex; gap:14px; align-items:center; padding:12px 16px; z-index:100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-    .logo-shield { width: 42px; height: 42px; background: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; fill: var(--brand); }
-
+    .logo-shield { width: 42px; height: 42px; background: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; fill: var(--brand); cursor:pointer; }
     main{ flex:1; overflow-y:auto; padding:20px 16px; display:flex; flex-direction:column; gap:14px; }
-    .msg{ max-width:85%; padding:14px 18px; border-radius:15px; line-height:1.5; font-size:15px; position: relative; box-shadow:0 2px 4px rgba(0,0,0,0.05); }
+    .msg{ max-width:85%; padding:14px 18px; border-radius:15px; line-height:1.5; font-size:15px; box-shadow:0 2px 4px rgba(0,0,0,0.05); }
     .va{ align-self:flex-start; background:var(--va); color:var(--fg); border-top-left-radius:2px; border: 1px solid #cfd8dc; }
     .us{ align-self:flex-end; background:var(--us); color:#1b5e20; border-top-right-radius:2px; }
-    
     .chips-container { padding: 10px 16px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; background: var(--bg); }
     .chips-container::-webkit-scrollbar { display: none; }
     .chip{ background: #fff; border: 1.5px solid var(--brand); border-radius: 8px; padding: 8px 14px; font-size: 13px; color: var(--brand); cursor: pointer; font-weight: 600; white-space: nowrap; }
-
     form{ display:flex; gap:10px; padding:12px 16px; background:#fff; border-top:1px solid #cfd8dc; align-items: center; }
     textarea{ flex:1; border: 1.5px solid #cfd8dc; border-radius:12px; padding:12px; font-size:15px; resize:none; max-height:120px; outline:none; }
     .send{ border:0; background:var(--brand); color:#fff; border-radius:10px; width:45px; height:45px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-
     .about-card{ position:fixed; top:75px; left:50%; transform:translateX(-50%); background:#fff; border-radius:15px; box-shadow:0 15px 30px rgba(0,0,0,0.2); padding:20px; display:none; z-index:200; width:90%; max-width:400px; text-align: center; border: 1px solid var(--brand); }
   </style>
 </head>
 <body>
   <header>
-    <div class="logo-shield" id="logoBtn" onclick="toggleAbout()">
+    <div class="logo-shield" onclick="document.getElementById('about').style.display='block'">
       <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
     </div>
-    <div>
-      <div style="font-weight:700; font-size: 18px; letter-spacing: 0.5px;">INOCUO</div>
-      <div style="font-size:11px; color: #c8e6c9;">Protección Alimentaria Basada en Normativas</div>
-    </div>
+    <div><div style="font-weight:700; font-size: 18px;">INOCUO</div><div style="font-size:11px; color: #c8e6c9;">Asistente de Seguridad Alimentaria</div></div>
   </header>
-
   <main id="chat"></main>
   <div class="chips-container" id="chips"></div>
-
   <form id="form">
-    <textarea id="input" rows="1" placeholder="Consulta técnica sobre procesos o CAA..." autocomplete="off"></textarea>
+    <textarea id="input" rows="1" placeholder="Consulta técnica..."></textarea>
     <button class="send" type="submit">➤</button>
   </form>
-
-  <div id="about" class="about-card">
-    <h3 style="margin:0 0 10px; color:var(--brand);">Inocuo</h3>
-    <p style="font-size:14px; color:var(--muted); line-height:1.6; margin:0;">Asistente especializado en <b>Buenas Prácticas de Manufactura</b> y el <b>Código Alimentario Argentino</b>. Mi propósito es brindar soporte técnico para garantizar la inocuidad en el manejo de alimentos.</p>
+  <div id="about" class="about-card" onclick="this.style.display='none'">
+    <h3>Inocuo</h3>
+    <p>Soporte técnico basado en <b>Buenas Prácticas</b> y el <b>CAA</b>. Sin referencias corporativas, enfocado en PyMEs.</p>
   </div>
-
   <script>
-    const chat = document.getElementById('chat'), form = document.getElementById('form'), input = document.getElementById('input'), about = document.getElementById('about');
-
+    const chat = document.getElementById('chat'), form = document.getElementById('form'), input = document.getElementById('input');
     function addMsg(html, who='va'){
-      const d=document.createElement('div');
-      d.className='msg '+(who==='va'?'va':'us');
-      d.innerHTML=html.replace(/\n/g,'<br>');
-      chat.appendChild(d);
+      const d=document.createElement('div'); d.className=`msg ${who}`;
+      d.innerHTML=html.replace(/\n/g,'<br>'); chat.appendChild(d);
       chat.scrollTop = chat.scrollHeight;
     }
-
-    function toggleAbout() { about.style.display = about.style.display === 'block' ? 'none' : 'block'; }
-
-    // Filtro de dominio: Solo temas de seguridad alimentaria
-    const esValido = (q) => /(bpm|poes|higiene|limpieza|desinfeccion|alimento|temperatura|vencimiento|rotulado|etiqueta|plagas|agua|recepcion|decomiso|perecedero|caa|codigo|seguridad)/i.test(q);
-
-    const SUG = ['Sanitización de áreas', 'Temperaturas críticas', 'Control de plagas', 'Recepción de alimentos'];
+    const SUG = ['Sanitización de carnes', 'Control de plagas', 'Temperaturas de seguridad', 'Rotulado CAA'];
     SUG.forEach(s => {
       const c = document.createElement('div'); c.className = 'chip'; c.textContent = s;
       c.onclick = () => { input.value = s; form.dispatchEvent(new Event('submit')); };
       document.getElementById('chips').appendChild(c);
     });
-
-    window.onload = () => {
-      addMsg("Hola. Soy **INOCUO**. Proporciono información técnica basada en protocolos de **Buenas Prácticas** y el **Código Alimentario Argentino**.\n\n¿En qué proceso necesitas asistencia hoy?");
-    };
-
+    window.onload = () => addMsg("Hola. Soy **INOCUO**. Proporciono información técnica basada en protocolos de **Buenas Prácticas** y el **CAA**.");
     form.onsubmit = async (e) => {
-      e.preventDefault();
-      const q = input.value.trim(); if(!q) return;
+      e.preventDefault(); const q = input.value.trim(); if(!q) return;
       addMsg(q, 'us'); input.value = '';
-
-      if (!esValido(q)) {
-        addMsg("Mi asistencia es exclusivamente técnica sobre **Seguridad Alimentaria** y normativas vigentes. No tengo información sobre el tema consultado.");
-        return;
-      }
-
-      // El chatbot INOCUO ahora solo responde a través de la IA procesada (RAG)
-      // Se eliminó el buscador de archivos para proteger la confidencialidad del origen.
       try {
         const res = await fetch('/.netlify/functions/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: q })
         });
-        
-        if (res.ok) {
-          const data = await res.json();
-          if (data.answer) {
-            addMsg(data.answer); 
-            return;
-          }
-        }
-      } catch (err) {}
-
-      // Respuesta genérica de seguridad en caso de fallo de red
-      addMsg("En este momento no puedo acceder a la base de datos detallada. Según los principios generales de **Buenas Prácticas**, asegúrate de mantener la higiene, evitar la contaminación cruzada y respetar las temperaturas de seguridad.");
+        const data = await res.json();
+        addMsg(data.answer || "No tengo información específica sobre ese punto.");
+      } catch (err) { addMsg("Error al conectar con la base de datos de seguridad."); }
     };
-
-    input.oninput = () => { input.style.height = '45px'; input.style.height = input.scrollHeight + 'px'; };
   </script>
 </body>
 </html>
