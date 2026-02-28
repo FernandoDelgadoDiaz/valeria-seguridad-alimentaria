@@ -3,48 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Inocuo · Seguridad Alimentaria PyME</title>
-  <meta name="description" content="Inocuo - Asistente de Seguridad Alimentaria basado en Retail y CAA" />
-  <link rel="icon" href="/favicon.jpg" />
+  <title>Inocuo · Asistente de Seguridad Alimentaria</title>
   <style>
-    :root{ --brand:#0a2f73; --bg:#f8fafc; --fg:#1e293b; --muted:#64748b; --va:#f1f5f9; --us:#dcfce7; --card:#ffffff; }
+    :root{ --brand:#1b5e20; --accent:#2e7d32; --bg:#f4f7f6; --fg:#263238; --muted:#546e7a; --va:#ffffff; --us:#e8f5e9; --card:#ffffff; }
     *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
-    html,body{ height:100%; margin:0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:var(--fg); }
+    html,body{ height:100%; margin:0; font-family: 'Segoe UI', system-ui, sans-serif; background:var(--bg); color:var(--fg); }
     body{ display:flex; flex-direction:column; }
     
-    header{ position:sticky; top:0; background:var(--brand); color:#fff; display:flex; gap:14px; align-items:center; padding:12px 16px; z-index:100; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    header img{ width:42px; height:42px; border-radius:50%; object-fit:cover; border: 2px solid rgba(255,255,255,0.8); cursor:pointer; }
-    header .status { font-size:11px; color: #adffd1; display: block; }
+    header{ position:sticky; top:0; background:var(--brand); color:#fff; display:flex; gap:14px; align-items:center; padding:12px 16px; z-index:100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    /* Icono representativo de Seguridad Alimentaria (Escudo + Check) */
+    .logo-icon { width: 42px; height: 42px; background: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; fill: var(--brand); cursor: pointer; }
 
-    main{ flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
-    .msg{ max-width:88%; padding:12px 16px; border-radius:18px; line-height:1.5; font-size:15px; box-shadow:0 1px 2px rgba(0,0,0,0.05); }
-    .va{ align-self:flex-start; background:var(--va); color:var(--fg); border-bottom-left-radius:4px; }
-    .us{ align-self:flex-end; background:var(--us); color:#064e3b; border-bottom-right-radius:4px; }
+    main{ flex:1; overflow-y:auto; padding:20px 16px; display:flex; flex-direction:column; gap:14px; }
+    .msg{ max-width:85%; padding:14px 18px; border-radius:15px; line-height:1.5; font-size:15px; position: relative; box-shadow:0 2px 4px rgba(0,0,0,0.05); }
+    .va{ align-self:flex-start; background:var(--va); color:var(--fg); border-top-left-radius:2px; border: 1px solid #cfd8dc; }
+    .us{ align-self:flex-end; background:var(--us); color:#1b5e20; border-top-right-radius:2px; }
     
-    .chips-container { padding: 8px 16px; background: var(--bg); display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+    .chips-container { padding: 10px 16px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
     .chips-container::-webkit-scrollbar { display: none; }
-    .chip{ background: #fff; border: 1px solid #e2e8f0; border-radius: 999px; padding: 6px 14px; font-size: 13px; color: var(--brand); cursor: pointer; font-weight: 500; flex-shrink: 0; }
-    .chip:active { background: #f1f5f9; }
+    .chip{ background: #fff; border: 1px solid var(--brand); border-radius: 8px; padding: 8px 14px; font-size: 13px; color: var(--brand); cursor: pointer; font-weight: 600; white-space: nowrap; }
 
-    form{ display:flex; gap:10px; padding:12px; background:var(--card); border-top:1px solid #e2e8f0; align-items: flex-end; }
-    textarea{ flex:1; border:1px solid #cbd5e1; border-radius:20px; padding:10px 16px; font-size:15px; resize:none; max-height:150px; outline:none; font-family: inherit; }
+    form{ display:flex; gap:10px; padding:12px 16px; background:var(--card); border-top:1px solid #cfd8dc; align-items: center; }
+    textarea{ flex:1; border: 1.5px solid #cfd8dc; border-radius:12px; padding:12px; font-size:15px; resize:none; max-height:120px; outline:none; transition: border-color 0.2s; }
     textarea:focus { border-color: var(--brand); }
-    .send{ border:0; background:var(--brand); color:#fff; border-radius:50%; width:40px; height:40px; display:flex; align-items:center; justify-content:center; cursor:pointer; transition: transform 0.1s; }
-    .send:active { transform: scale(0.9); }
+    .send{ border:0; background:var(--brand); color:#fff; border-radius:10px; width:45px; height:45px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 
-    .profile{ position:fixed; top:70px; left:50%; transform:translateX(-50%); background:var(--card); border-radius:20px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1); padding:20px; display:none; z-index:200; width:min(400px, 90vw); border: 1px solid #e2e8f0; }
-    .profile h3 { margin: 0 0 8px 0; color: var(--brand); }
-    .profile p { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.4; }
+    .profile-card{ position:fixed; top:75px; left:50%; transform:translateX(-50%); background:#fff; border-radius:15px; box-shadow:0 15px 30px rgba(0,0,0,0.2); padding:20px; display:none; z-index:200; width:90%; max-width:400px; text-align: center; }
+    .profile-card h3 { margin: 0 0 10px; color: var(--brand); }
+    .profile-card p { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.6; }
     
-    a.doc-link { display: inline-block; margin-top: 8px; padding: 8px 12px; background: #fff; border: 1px solid var(--brand); color: var(--brand); border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 13px; }
+    .doc-link { display: inline-flex; align-items: center; margin-top: 10px; padding: 10px; background: #f1f8e9; border: 1px dashed var(--brand); color: var(--brand); border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px; width: 100%; }
   </style>
 </head>
 <body>
   <header>
-    <img id="avatar" src="/valeria-mini.jpg" alt="Inocuo" />
+    <div class="logo-icon" id="logoBtn">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+    </div>
     <div>
-      <div style="font-weight:700; font-size: 17px;">Inocuo</div>
-      <span class="status">● Especialista en Seguridad Alimentaria</span>
+      <div style="font-weight:700; font-size: 19px; letter-spacing: 0.5px;">INOCUO</div>
+      <div style="font-size:11px; color: #c8e6c9;">Protección y Seguridad Alimentaria</div>
     </div>
   </header>
 
@@ -53,20 +51,19 @@
   <div class="chips-container" id="chips"></div>
 
   <form id="form">
-    <textarea id="input" rows="1" placeholder="Ej: ¿Cómo sanitizo la carnicería?" autocomplete="off"></textarea>
-    <button class="send" type="submit" aria-label="Enviar">➤</button>
+    <textarea id="input" rows="1" placeholder="Realiza una consulta técnica..." autocomplete="off"></textarea>
+    <button class="send" type="submit">➤</button>
   </form>
 
-  <div id="profile" class="profile">
-    <h3>Inocuo</h3>
-    <p>Asistente virtual diseñado para PyMEs (almacenes, rotiserías, panaderías). Utilizo manuales de retail y el Código Alimentario Argentino para garantizar la inocuidad en tu negocio.</p>
+  <div id="profile" class="profile-card">
+    <h3>Asistente Inocuo</h3>
+    <p>Soy un sistema de soporte técnico para PyMEs. Mi conocimiento se basa en el <b>Código Alimentario Argentino</b> y <b>Manuales de Buenas Prácticas (BPM)</b> para asegurar la calidad en la elaboración y venta de alimentos.</p>
   </div>
 
   <script>
   const $ = s => document.querySelector(s);
-  const chat = $('#chat'), form = $('#form'), input = $('#input'), profile = $('#profile'), avatar = $('#avatar');
+  const chat = $('#chat'), form = $('#form'), input = $('#input'), profile = $('#profile'), logoBtn = $('#logoBtn');
 
-  // --- CONFIGURACIÓN DE RESPUESTAS ---
   function addMsg(html, who='va'){
     const d=document.createElement('div');
     d.className='msg '+(who==='va'?'va':'us');
@@ -75,34 +72,29 @@
     chat.scrollTop = chat.scrollHeight;
   }
 
-  // Filtro de competencia estricto
-  const esDeCompetencia = (q) => {
-    const terminos = /(bpm|poes|sanit|limpieza|desinfect|detergente|carne|pollo|fiambreria|panaderia|rotiseria|almacen|caa|codigo|temperatura|vencimiento|rotulado|etiqueta|plagas|agua|recepcion|decomiso|perecedero|manufactura|la anonima|higiene)/i;
+  // Filtro de competencia profesional
+  const esConsultaTecnica = (q) => {
+    const terminos = /(bpm|poes|higiene|sanitizacion|limpieza|desinfeccion|alimento|carne|vencimiento|temperatura|rotulado|etiqueta|plagas|agua|recepcion|decomiso|perecedero|caa|codigo|manipulacion|seguridad)/i;
     return terminos.test(q);
   };
 
-  // Mapeo de archivos basado en tus capturas reales
+  // Base de datos de documentos (actualizada según tus capturas)
   const DOCS = {
     'codigo alimentario': 'Capitulo_II.pdf',
     'rotulacion': 'capitulo_v_rotulacion_actualiz_2025-06.pdf',
-    'envases': 'capitulo_iv_envasesactualiz_2024-08.pdf',
     'carniceria': 'poes sector carnicera.pdf',
     'panaderia': 'poes sector panadera.pdf',
     'fiambreria': 'poes sector fiambres y lacteos rev..pdf',
     'rotiseria': 'poes sector rotisera.pdf',
     'plagas': 'g manual de mip rev..pdf',
-    'manufactura': 'la anonima manufactura.pdf',
+    'buenas practicas': 'Manual_BPM.pdf',
     'agua': 'g control de agua de red rev..pdf',
-    'sanitizante': 'g med. cc sanitizante rev..pdf',
-    'carne picada': 'temperatura de carne picada.pdf',
-    'pan rallado': 'elaboracin de pan rallado rev..pdf',
-    'quesos': 'fraccionamiento de quesos rev..pdf'
+    'carne picada': 'temperatura de carne picada.pdf'
   };
 
-  // --- LÓGICA DE INTERACCIÓN ---
-  avatar.onclick = () => { profile.style.display = profile.style.display === 'block' ? 'none' : 'block'; };
+  logoBtn.onclick = () => { profile.style.display = profile.style.display === 'block' ? 'none' : 'block'; };
 
-  const SUG = ['Sanitización de carnicería', 'Temperaturas CAA', 'Manejo de plagas', 'Rotulado 2025', 'Recepción de mercadería'];
+  const SUG = ['Sanitización de locales', 'Temperaturas de seguridad', 'Control de Plagas', 'Rotulado Obligatorio'];
   SUG.forEach(s => {
     const c = document.createElement('div'); c.className = 'chip'; c.textContent = s;
     c.onclick = () => { input.value = s; form.dispatchEvent(new Event('submit')); };
@@ -110,7 +102,7 @@
   });
 
   window.onload = () => {
-    addMsg("Hola, soy **Inocuo**. Ayudo a comercios y PyMEs a implementar procesos de seguridad alimentaria de alta calidad.\n\n¿En qué sector de tu negocio necesitas ayuda hoy?");
+    addMsg("Bienvenido a **Inocuo**. Estoy listo para asistirte en normativas del **CAA** y protocolos de **Buenas Prácticas**.\n\n¿Qué área de seguridad alimentaria deseas consultar?");
   };
 
   form.onsubmit = async (e) => {
@@ -118,12 +110,12 @@
     const qRaw = input.value.trim(); if(!qRaw) return;
     addMsg(qRaw, 'us'); input.value = '';
 
-    if (!esDeCompetencia(qRaw)) {
-      addMsg("Mi competencia se limita a **Seguridad Alimentaria**, procedimientos de **La Anónima** y el **CAA**. No puedo responder sobre otros temas.");
+    if (!esConsultaTecnica(qRaw)) {
+      addMsg("Lo siento, solo puedo responder consultas sobre **Seguridad Alimentaria**, **Manuales de Buenas Prácticas** y normativas del **CAA**.");
       return;
     }
 
-    // 1. Intento de RAG (Netlify Function)
+    // Intento de conexión con la IA
     try {
       const res = await fetch('/.netlify/functions/chat', {
         method: 'POST',
@@ -134,23 +126,22 @@
         const data = await res.json();
         if (data.answer) { addMsg(data.answer); return; }
       }
-    } catch (err) { console.error("Error en RAG:", err); }
+    } catch (err) {}
 
-    // 2. Fallback a Buscador de PDF (Si la IA falla o no encuentra)
+    // Fallback a archivos directos
     const qNorm = qRaw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     let found = false;
     for (const key in DOCS) {
       if (qNorm.includes(key)) {
-        addMsg(`He encontrado información específica en los manuales:\n<a href="/docs/${encodeURIComponent(DOCS[key])}" target="_blank" class="doc-link">📄 Abrir ${key.toUpperCase()}</a>`);
+        addMsg(`He localizado el protocolo en los manuales de seguridad:\n<a href="/docs/${encodeURIComponent(DOCS[key])}" target="_blank" class="doc-link">📑 Consultar Protocolo: ${key.toUpperCase()}</a>`);
         found = true; break;
       }
     }
 
-    if (!found) addMsg("No encontré un procedimiento específico para esa consulta. Intenta con palabras clave como 'carnicería', 'temperaturas' o 'limpieza'.");
+    if (!found) addMsg("No tengo un procedimiento específico para ese término. Por favor, intenta con palabras como: 'limpieza', 'temperaturas', 'rotulado' o un sector específico (ej. carnicería).");
   };
 
-  // Auto-resize textarea
-  input.oninput = () => { input.style.height = 'auto'; input.style.height = input.scrollHeight + 'px'; };
+  input.oninput = () => { input.style.height = '45px'; input.style.height = input.scrollHeight + 'px'; };
   </script>
 </body>
 </html>
