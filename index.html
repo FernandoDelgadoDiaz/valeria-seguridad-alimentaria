@@ -3,77 +3,222 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>INOCUO · Asistente Alimentario</title>
+  <title>INOCUO · Asistente de Seguridad Alimentaria</title>
   <style>
-    :root { --brand: #1b5e20; --bg: #f4f7f6; --white: #ffffff; }
-    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: var(--bg); height: 100vh; display: flex; flex-direction: column; }
-    header { background: var(--brand); color: white; padding: 15px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    header svg { width: 30px; height: 30px; fill: white; }
-    main { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-    .msg { max-width: 85%; padding: 12px 16px; border-radius: 15px; font-size: 15px; line-height: 1.4; }
-    .va { align-self: flex-start; background: white; border: 1px solid #ddd; border-bottom-left-radius: 2px; }
-    .us { align-self: flex-end; background: #e8f5e9; color: #1b5e20; border-bottom-right-radius: 2px; font-weight: 500; }
-    .chips { padding: 10px; display: flex; gap: 8px; overflow-x: auto; }
-    .chip { background: white; border: 1px solid var(--brand); color: var(--brand); padding: 8px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
-    form { padding: 15px; background: white; display: flex; gap: 10px; border-top: 1px solid #ddd; }
-    textarea { flex: 1; border: 1px solid #ccc; border-radius: 20px; padding: 10px 15px; resize: none; outline: none; font-family: inherit; }
-    button { background: var(--brand); border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-    button svg { fill: white; width: 18px; }
+    :root { 
+      --brand: #1b5e20; /* Verde Seguridad */
+      --accent: #2e7d32; 
+      --bg: #f8faf9; 
+      --fg: #2c3e50; 
+      --white: #ffffff; 
+      --user-msg: #e8f5e9; 
+    }
+    
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    
+    body { 
+      margin: 0; 
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+      background-color: var(--bg); 
+      color: var(--fg); 
+      height: 100vh; 
+      display: flex; 
+      flex-direction: column; 
+    }
+
+    header { 
+      background: var(--brand); 
+      color: var(--white); 
+      padding: 15px 20px; 
+      display: flex; 
+      align-items: center; 
+      gap: 15px; 
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 10;
+    }
+    
+    header svg { width: 35px; height: 35px; fill: var(--white); }
+    .header-text h1 { margin: 0; font-size: 1.2rem; letter-spacing: 1px; }
+    .header-text p { margin: 0; font-size: 0.75rem; opacity: 0.9; }
+
+    main { 
+      flex: 1; 
+      overflow-y: auto; 
+      padding: 20px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 15px; 
+    }
+
+    .bubble { 
+      max-width: 85%; 
+      padding: 12px 16px; 
+      border-radius: 18px; 
+      font-size: 0.95rem; 
+      line-height: 1.5; 
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      word-wrap: break-word;
+    }
+
+    .inocuo { 
+      align-self: flex-start; 
+      background: var(--white); 
+      border: 1px solid #e0e6e4; 
+      border-bottom-left-radius: 4px; 
+    }
+
+    .user { 
+      align-self: flex-end; 
+      background: var(--user-msg); 
+      color: var(--brand); 
+      border-bottom-right-radius: 4px; 
+      font-weight: 500;
+    }
+
+    .chips { 
+      padding: 10px 20px; 
+      display: flex; 
+      gap: 8px; 
+      overflow-x: auto; 
+      white-space: nowrap;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    
+    .chip { 
+      background: var(--white); 
+      border: 1.5px solid var(--brand); 
+      color: var(--brand); 
+      padding: 8px 15px; 
+      border-radius: 20px; 
+      font-size: 0.85rem; 
+      font-weight: 600; 
+      cursor: pointer; 
+    }
+
+    form { 
+      background: var(--white); 
+      padding: 15px 20px; 
+      display: flex; 
+      gap: 10px; 
+      border-top: 1px solid #eee; 
+    }
+
+    textarea { 
+      flex: 1; 
+      border: 1px solid #ddd; 
+      border-radius: 24px; 
+      padding: 12px 18px; 
+      font-size: 1rem; 
+      resize: none; 
+      outline: none; 
+      max-height: 100px;
+    }
+
+    button { 
+      background: var(--brand); 
+      border: none; 
+      width: 45px; 
+      height: 45px; 
+      border-radius: 50%; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      cursor: pointer; 
+    }
+    button svg { fill: white; width: 20px; }
+
+    strong { color: var(--brand); }
   </style>
 </head>
 <body>
+
   <header>
     <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
-    <div><b style="display:block">INOCUO</b><small>Seguridad Alimentaria PyME</small></div>
+    <div class="header-text">
+      <h1>INOCUO</h1>
+      <p>Asistente Técnico de Seguridad Alimentaria</p>
+    </div>
   </header>
 
-  <main id="box"></main>
+  <main id="chat-box">
+    <div class="bubble inocuo">
+      Hola. Soy <strong>Inocuo</strong>, tu asistente especializado en normativas del <strong>CAA</strong> y <strong>BPM</strong>. <br><br>
+      ¿En qué puedo asesorarte hoy?
+    </div>
+  </main>
 
   <div class="chips">
-    <div class="chip" onclick="ask('¿Qué es una No Conformidad?')">¿Qué es una NC?</div>
-    <div class="chip" onclick="ask('¿A qué temperatura debe estar el pollo?')">Temp. Pollo</div>
-    <div class="chip" onclick="ask('Protocolo lavado de manos')">Lavado Manos</div>
+    <div class="chip" onclick="quickAsk('¿Qué es una No Conformidad?')">¿Qué es una NC?</div>
+    <div class="chip" onclick="quickAsk('¿Cómo se dividen las NC?')">División de NC</div>
+    <div class="chip" onclick="quickAsk('¿Qué es un contaminante físico?')">Contaminantes</div>
   </div>
 
-  <form id="f">
-    <textarea id="i" rows="1" placeholder="Consultar..."></textarea>
-    <button type="submit"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+  <form id="chat-form">
+    <textarea id="user-input" rows="1" placeholder="Escribe tu consulta..."></textarea>
+    <button type="submit">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
   </form>
 
   <script>
-    const box = document.getElementById('box'), f = document.getElementById('f'), i = document.getElementById('i');
-    let history = []; // La memoria local
+    const chatBox = document.getElementById('chat-box');
+    const chatForm = document.getElementById('chat-form');
+    const userInput = document.getElementById('user-input');
+    
+    // --- MEMORIA DE LA CONVERSACIÓN ---
+    let conversationHistory = [];
 
-    function add(txt, side) {
-      const d = document.createElement('div');
-      d.className = `msg ${side}`;
-      d.innerHTML = txt.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
-      box.appendChild(d);
-      box.scrollTop = box.scrollHeight;
+    function appendMessage(text, side) {
+      const msg = document.createElement('div');
+      msg.className = `bubble ${side}`;
+      msg.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    function ask(txt) { i.value = txt; f.dispatchEvent(new Event('submit')); }
+    function quickAsk(text) {
+      userInput.value = text;
+      chatForm.dispatchEvent(new Event('submit'));
+    }
 
-    window.onload = () => add("Hola, soy **Inocuo**. Estoy listo para asesorarte con normativas del **CAA** y **BPM**. ¿Qué deseas consultar?", 'va');
-
-    f.onsubmit = async (e) => {
+    chatForm.onsubmit = async (e) => {
       e.preventDefault();
-      const q = i.value.trim(); if (!q) return;
-      add(q, 'us'); i.value = '';
+      const query = userInput.value.trim();
+      if (!query) return;
+
+      appendMessage(query, 'user');
+      userInput.value = '';
+      userInput.style.height = 'auto';
 
       try {
-        const res = await fetch('/.netlify/functions/chat', {
+        const response = await fetch('/.netlify/functions/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: q, history: history })
+          body: JSON.stringify({ 
+            query: query,
+            history: conversationHistory // Enviamos el historial acumulado
+          })
         });
-        const data = await res.json();
+
+        const data = await response.json();
+        
         if (data.ok) {
-          add(data.answer, 'va');
-          history = data.history; // Actualizamos el hilo
+          appendMessage(data.answer, 'inocuo');
+          // Actualizamos el historial con la respuesta del servidor
+          conversationHistory = data.history; 
+        } else {
+          appendMessage("Lo siento, tuve un problema al procesar los manuales.", 'inocuo');
         }
-      } catch (e) { add("Error de conexión.", 'va'); }
+      } catch (err) {
+        appendMessage("Error de conexión con el servidor de Inocuo.", 'inocuo');
+      }
     };
+
+    // Auto-ajuste del área de texto
+    userInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
   </script>
 </body>
 </html>
