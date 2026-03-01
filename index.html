@@ -2,68 +2,229 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>INOCUO - Seguridad Alimentaria</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>INOCUO</title>
   <style>
-    :root { --brand: #1b5e20; --bg: #f8faf9; }
-    body { margin: 0; font-family: sans-serif; background: var(--bg); display: flex; flex-direction: column; height: 100vh; }
-    header { background: var(--brand); color: white; padding: 15px; font-weight: bold; text-align: center; }
-    main { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 10px; }
-    .bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; line-height: 1.4; }
-    .va { align-self: flex-start; background: white; border: 1px solid #ddd; }
-    .us { align-self: flex-end; background: #e8f5e9; color: var(--brand); font-weight: 500; }
-    form { padding: 15px; background: white; display: flex; gap: 10px; border-top: 1px solid #eee; }
-    textarea { flex: 1; border: 1px solid #ddd; border-radius: 20px; padding: 10px; outline: none; resize: none; }
-    button { background: var(--brand); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; }
-    strong { color: var(--brand); }
+    :root { 
+      --wa-header: #075e54; 
+      --wa-bg: #e5ddd5; 
+      --wa-msg-in: #ffffff;
+      --wa-msg-out: #dcf8c6;
+      --wa-btn: #008069;
+    }
+
+    * { box-sizing: border-box; }
+
+    body { 
+      margin: 0; 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background-color: var(--wa-bg); 
+      display: flex; 
+      flex-direction: column; 
+      height: 100vh;
+      overflow: hidden; /* Evita que el cuerpo haga scroll, solo el chat */
+    }
+
+    /* BARRA SUPERIOR FIJA */
+    header { 
+      background: var(--wa-header); 
+      color: white; 
+      padding: 10px 15px; 
+      display: flex; 
+      align-items: center; 
+      gap: 12px; 
+      position: fixed;
+      top: 0;
+      width: 100%;
+      height: 60px;
+      z-index: 1000;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .shield-icon {
+      width: 38px;
+      height: 38px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .shield-icon svg { fill: var(--wa-header); width: 22px; height: 22px; }
+
+    .header-info h1 { font-size: 1.05rem; margin: 0; font-weight: 600; }
+    .header-info p { font-size: 0.75rem; margin: 0; opacity: 0.8; }
+
+    /* ÁREA DE MENSAJES */
+    main { 
+      flex: 1; 
+      overflow-y: auto; 
+      padding: 75px 15px 15px 15px; /* 75px para dejar espacio al header */
+      display: flex; 
+      flex-direction: column; 
+      gap: 8px; 
+    }
+
+    .bubble { 
+      max-width: 85%; 
+      padding: 8px 12px; 
+      border-radius: 8px; 
+      font-size: 0.95rem; 
+      line-height: 1.4; 
+      position: relative;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.15);
+      word-wrap: break-word;
+    }
+
+    /* Burbuja Recibida (Inocuo) */
+    .va { 
+      align-self: flex-start; 
+      background: var(--wa-msg-in); 
+      border-top-left-radius: 0; 
+    }
+
+    /* Burbuja Enviada (Usuario) */
+    .us { 
+      align-self: flex-end; 
+      background: var(--wa-msg-out); 
+      border-top-right-radius: 0; 
+    }
+
+    /* CUADRO DE ESCRITURA (FOOTER) */
+    footer {
+      background: transparent;
+      padding: 8px 10px;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      z-index: 1000;
+    }
+
+    .input-wrapper {
+      background: white;
+      border-radius: 25px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 2px 15px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    textarea { 
+      flex: 1; 
+      border: none; 
+      outline: none; 
+      padding: 10px 0;
+      font-size: 1rem; 
+      max-height: 120px;
+      resize: none;
+      font-family: inherit;
+      background: transparent;
+    }
+
+    .send-circle { 
+      background: var(--wa-btn); 
+      color: white; 
+      border: none; 
+      border-radius: 50%; 
+      width: 48px; 
+      height: 48px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      cursor: pointer;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      transition: background 0.2s;
+    }
+
+    .send-circle:active { background: #005a4a; }
+
+    strong { color: var(--wa-header); }
   </style>
 </head>
 <body>
-  <header>INOCUO - Asistente Técnico</header>
-  <main id="chat"></main>
-  <form id="f">
-    <textarea id="i" placeholder="Escribe tu consulta..."></textarea>
-    <button type="submit">></button>
-  </form>
+
+  <header>
+    <div class="shield-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+    </div>
+    <div class="header-info">
+      <h1>INOCUO</h1>
+      <p>Asistente Técnico · en línea</p>
+    </div>
+  </header>
+
+  <main id="chat-box"></main>
+
+  <footer>
+    <div class="input-wrapper">
+      <textarea id="user-input" placeholder="Escribe un mensaje" rows="1"></textarea>
+    </div>
+    <button class="send-circle" id="send-btn">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="white">
+        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+      </svg>
+    </button>
+  </footer>
 
   <script>
-    const box = document.getElementById('chat'), f = document.getElementById('f'), i = document.getElementById('i');
+    const box = document.getElementById('chat-box'), 
+          input = document.getElementById('user-input'), 
+          btn = document.getElementById('send-btn');
     
-    // ESTA ES LA VARIABLE QUE HACE LA MAGIA
-    let conversationHistory = []; 
+    let history = []; 
 
-    function add(txt, side) {
+    function append(text, side) {
       const d = document.createElement('div');
       d.className = `bubble ${side}`;
-      d.innerHTML = txt.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+      d.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
       box.appendChild(d);
       box.scrollTop = box.scrollHeight;
     }
 
-    window.onload = () => add("Hola, soy **Inocuo**. ¿En qué proceso de seguridad alimentaria te ayudo?", 'va');
+    // Mensaje inicial
+    window.onload = () => append("Hola, soy **Inocuo**. Estoy aquí para asistirte en temas de seguridad alimentaria y normativas del CAA. ¿Qué consulta tienes?", 'va');
 
-    f.onsubmit = async (e) => {
-      e.preventDefault();
-      const q = i.value.trim(); if(!q) return;
-      add(q, 'us'); i.value = '';
+    async function handleSend() {
+      const q = input.value.trim();
+      if(!q) return;
+
+      append(q, 'us');
+      input.value = '';
+      input.style.height = 'auto';
 
       try {
         const res = await fetch('/.netlify/functions/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            query: q, 
-            history: conversationHistory // Enviamos la memoria
-          })
+          body: JSON.stringify({ query: q, history: history })
         });
-
         const data = await res.json();
         if(data.ok) {
-          add(data.answer, 'va');
-          // GUARDAMOS LA MEMORIA QUE NOS DEVUELVE EL BACKEND
-          conversationHistory = data.history; 
+          append(data.answer, 'va');
+          history = data.history; 
         }
-      } catch (err) { add("Error de conexión", 'va'); }
+      } catch (e) {
+        append("Error de conexión. Intenta de nuevo.", 'va');
+      }
+    }
+
+    btn.onclick = handleSend;
+
+    // Auto-crecimiento del textarea
+    input.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
+
+    // Enviar con Enter (pero Shift+Enter para nueva línea)
+    input.onkeydown = (e) => {
+      if(e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
     };
   </script>
 </body>
