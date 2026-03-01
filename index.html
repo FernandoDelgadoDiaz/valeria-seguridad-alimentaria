@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -17,15 +18,16 @@
 
     body { 
       margin: 0; 
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      font-family: 'Segoe UI', Helvetica, Arial, sans-serif; 
       background-color: var(--wa-bg); 
       display: flex; 
       flex-direction: column; 
       height: 100vh;
-      overflow: hidden; /* Evita que el cuerpo haga scroll, solo el chat */
+      height: -webkit-fill-available; /* Ajuste para móviles */
+      overflow: hidden; 
     }
 
-    /* BARRA SUPERIOR FIJA */
+    /* HEADER FIJO */
     header { 
       background: var(--wa-header); 
       color: white; 
@@ -33,17 +35,14 @@
       display: flex; 
       align-items: center; 
       gap: 12px; 
-      position: fixed;
-      top: 0;
-      width: 100%;
-      height: 60px;
+      height: 65px;
+      flex-shrink: 0;
       z-index: 1000;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
 
     .shield-icon {
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       background: white;
       border-radius: 50%;
       display: flex;
@@ -51,19 +50,20 @@
       justify-content: center;
       flex-shrink: 0;
     }
-    .shield-icon svg { fill: var(--wa-header); width: 22px; height: 22px; }
+    .shield-icon svg { fill: var(--wa-header); width: 24px; height: 24px; }
 
-    .header-info h1 { font-size: 1.05rem; margin: 0; font-weight: 600; }
-    .header-info p { font-size: 0.75rem; margin: 0; opacity: 0.8; }
+    .header-info h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
+    .header-info p { font-size: 0.75rem; margin: 0; opacity: 0.9; }
 
-    /* ÁREA DE MENSAJES */
+    /* CHAT - SCROLLABLE */
     main { 
       flex: 1; 
       overflow-y: auto; 
-      padding: 75px 15px 15px 15px; /* 75px para dejar espacio al header */
+      padding: 15px; 
       display: flex; 
       flex-direction: column; 
-      gap: 8px; 
+      gap: 10px; 
+      background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); /* Fondo sutil de WA */
     }
 
     .bubble { 
@@ -72,33 +72,21 @@
       border-radius: 8px; 
       font-size: 0.95rem; 
       line-height: 1.4; 
+      box-shadow: 0 1px 1px rgba(0,0,0,0.1);
       position: relative;
-      box-shadow: 0 1px 1px rgba(0,0,0,0.15);
-      word-wrap: break-word;
     }
 
-    /* Burbuja Recibida (Inocuo) */
-    .va { 
-      align-self: flex-start; 
-      background: var(--wa-msg-in); 
-      border-top-left-radius: 0; 
-    }
+    .va { align-self: flex-start; background: var(--wa-msg-in); border-top-left-radius: 0; }
+    .us { align-self: flex-end; background: var(--wa-msg-out); border-top-right-radius: 0; }
 
-    /* Burbuja Enviada (Usuario) */
-    .us { 
-      align-self: flex-end; 
-      background: var(--wa-msg-out); 
-      border-top-right-radius: 0; 
-    }
-
-    /* CUADRO DE ESCRITURA (FOOTER) */
+    /* FOOTER - CUADRO DE ESCRITURA */
     footer {
       background: transparent;
-      padding: 8px 10px;
+      padding: 10px;
       display: flex;
       align-items: flex-end;
       gap: 8px;
-      z-index: 1000;
+      flex-shrink: 0; /* Evita que el cuadro desaparezca */
     }
 
     .input-wrapper {
@@ -107,7 +95,7 @@
       flex: 1;
       display: flex;
       align-items: center;
-      padding: 2px 15px;
+      padding: 5px 15px;
       box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
 
@@ -115,15 +103,14 @@
       flex: 1; 
       border: none; 
       outline: none; 
-      padding: 10px 0;
+      padding: 8px 0;
       font-size: 1rem; 
       max-height: 120px;
       resize: none;
       font-family: inherit;
-      background: transparent;
     }
 
-    .send-circle { 
+    .send-btn { 
       background: var(--wa-btn); 
       color: white; 
       border: none; 
@@ -134,14 +121,11 @@
       align-items: center; 
       justify-content: center; 
       cursor: pointer;
-      flex-shrink: 0;
       box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-      transition: background 0.2s;
+      flex-shrink: 0;
     }
 
-    .send-circle:active { background: #005a4a; }
-
-    strong { color: var(--wa-header); }
+    strong { color: #075e54; }
   </style>
 </head>
 <body>
@@ -162,10 +146,8 @@
     <div class="input-wrapper">
       <textarea id="user-input" placeholder="Escribe un mensaje" rows="1"></textarea>
     </div>
-    <button class="send-circle" id="send-btn">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="white">
-        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
-      </svg>
+    <button class="send-btn" id="send-btn">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
     </button>
   </footer>
 
@@ -174,6 +156,7 @@
           input = document.getElementById('user-input'), 
           btn = document.getElementById('send-btn');
     
+    // MEMORIA DE LA CONVERSACIÓN
     let history = []; 
 
     function append(text, side) {
@@ -184,8 +167,9 @@
       box.scrollTop = box.scrollHeight;
     }
 
-    // Mensaje inicial
-    window.onload = () => append("Hola, soy **Inocuo**. Estoy aquí para asistirte en temas de seguridad alimentaria y normativas del CAA. ¿Qué consulta tienes?", 'va');
+    window.onload = () => {
+      append("Hola, soy **Inocuo**. Estoy aquí para asistirte en temas de seguridad alimentaria y normativas del CAA. ¿Qué consulta tienes?", 'va');
+    };
 
     async function handleSend() {
       const q = input.value.trim();
@@ -199,27 +183,29 @@
         const res = await fetch('/.netlify/functions/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: q, history: history })
+          body: JSON.stringify({ 
+            query: q, 
+            history: history // ENVIAMOS EL CONTEXTO
+          })
         });
+        
         const data = await res.json();
         if(data.ok) {
           append(data.answer, 'va');
-          history = data.history; 
+          history = data.history; // ACTUALIZAMOS LA MEMORIA
         }
       } catch (e) {
-        append("Error de conexión. Intenta de nuevo.", 'va');
+        append("Error de conexión. Reintenta en un momento.", 'va');
       }
     }
 
     btn.onclick = handleSend;
 
-    // Auto-crecimiento del textarea
     input.addEventListener('input', function() {
       this.style.height = 'auto';
       this.style.height = (this.scrollHeight) + 'px';
     });
 
-    // Enviar con Enter (pero Shift+Enter para nueva línea)
     input.onkeydown = (e) => {
       if(e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
