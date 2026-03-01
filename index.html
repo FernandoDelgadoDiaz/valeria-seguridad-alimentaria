@@ -3,71 +3,226 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>INOCUO · Asistente Técnico Alimentario</title>
+  <title>INOCUO · Asistente de Seguridad Alimentaria</title>
   <style>
-    :root{ --brand:#1b5e20; --accent:#2e7d32; --bg:#f4f7f6; --fg:#263238; --muted:#546e7a; --va:#ffffff; --us:#e8f5e9; }
-    *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
-    html,body{ height:100%; margin:0; font-family: 'Segoe UI', system-ui, sans-serif; background:var(--bg); color:var(--fg); }
-    body{ display:flex; flex-direction:column; }
-    header{ position:sticky; top:0; background:var(--brand); color:#fff; display:flex; gap:14px; align-items:center; padding:12px 16px; z-index:100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-    .logo-shield { width: 42px; height: 42px; background: #fff; border-radius: 10px; display: flex; align-items: center; justify-content: center; fill: var(--brand); cursor:pointer; }
-    main{ flex:1; overflow-y:auto; padding:20px 16px; display:flex; flex-direction:column; gap:14px; }
-    .msg{ max-width:85%; padding:14px 18px; border-radius:15px; line-height:1.5; font-size:15px; box-shadow:0 2px 4px rgba(0,0,0,0.05); }
-    .va{ align-self:flex-start; background:var(--va); color:var(--fg); border-top-left-radius:2px; border: 1px solid #cfd8dc; }
-    .us{ align-self:flex-end; background:var(--us); color:#1b5e20; border-top-right-radius:2px; }
-    .chips-container { padding: 10px 16px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; background: var(--bg); }
-    .chips-container::-webkit-scrollbar { display: none; }
-    .chip{ background: #fff; border: 1.5px solid var(--brand); border-radius: 8px; padding: 8px 14px; font-size: 13px; color: var(--brand); cursor: pointer; font-weight: 600; white-space: nowrap; }
-    form{ display:flex; gap:10px; padding:12px 16px; background:#fff; border-top:1px solid #cfd8dc; align-items: center; }
-    textarea{ flex:1; border: 1.5px solid #cfd8dc; border-radius:12px; padding:12px; font-size:15px; resize:none; max-height:120px; outline:none; }
-    .send{ border:0; background:var(--brand); color:#fff; border-radius:10px; width:45px; height:45px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-    .about-card{ position:fixed; top:75px; left:50%; transform:translateX(-50%); background:#fff; border-radius:15px; box-shadow:0 15px 30px rgba(0,0,0,0.2); padding:20px; display:none; z-index:200; width:90%; max-width:400px; text-align: center; border: 1px solid var(--brand); }
+    :root { 
+      --brand: #1b5e20; /* Verde Seguridad */
+      --accent: #2e7d32; 
+      --bg: #f8faf9; 
+      --fg: #2c3e50; 
+      --muted: #607d8b; 
+      --white: #ffffff; 
+      --user-msg: #e8f5e9; 
+    }
+    
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    
+    body { 
+      margin: 0; 
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+      background-color: var(--bg); 
+      color: var(--fg); 
+      height: 100vh; 
+      display: flex; 
+      flex-direction: column; 
+    }
+
+    /* Header Profesional */
+    header { 
+      background: var(--brand); 
+      color: var(--white); 
+      padding: 15px 20px; 
+      display: flex; 
+      align-items: center; 
+      gap: 15px; 
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 10;
+    }
+    
+    .logo-container svg { width: 35px; height: 35px; fill: var(--white); }
+    
+    .header-text h1 { margin: 0; font-size: 1.2rem; letter-spacing: 1px; }
+    .header-text p { margin: 0; font-size: 0.75rem; opacity: 0.9; }
+
+    /* Área de Chat */
+    main { 
+      flex: 1; 
+      overflow-y: auto; 
+      padding: 20px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 15px; 
+    }
+
+    .bubble { 
+      max-width: 85%; 
+      padding: 12px 16px; 
+      border-radius: 18px; 
+      font-size: 0.95rem; 
+      line-height: 1.5; 
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .inocuo { 
+      align-self: flex-start; 
+      background: var(--white); 
+      border: 1px solid #e0e6e4; 
+      border-bottom-left-radius: 4px; 
+    }
+
+    .user { 
+      align-self: flex-end; 
+      background: var(--user-msg); 
+      color: var(--brand); 
+      border-bottom-right-radius: 4px; 
+      font-weight: 500;
+    }
+
+    /* Sugerencias (Chips) */
+    .chips { 
+      padding: 10px 20px; 
+      display: flex; 
+      gap: 8px; 
+      overflow-x: auto; 
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    
+    .chip { 
+      background: var(--white); 
+      border: 1.5px solid var(--brand); 
+      color: var(--brand); 
+      padding: 8px 15px; 
+      border-radius: 20px; 
+      font-size: 0.85rem; 
+      font-weight: 600; 
+      cursor: pointer; 
+      transition: all 0.2s;
+    }
+    .chip:active { background: var(--brand); color: var(--white); }
+
+    /* Input Form */
+    form { 
+      background: var(--white); 
+      padding: 15px 20px; 
+      display: flex; 
+      gap: 10px; 
+      border-top: 1px solid #eee; 
+      align-items: center;
+    }
+
+    textarea { 
+      flex: 1; 
+      border: 1px solid #ddd; 
+      border-radius: 24px; 
+      padding: 12px 18px; 
+      font-size: 1rem; 
+      resize: none; 
+      outline: none; 
+      max-height: 100px;
+      font-family: inherit;
+    }
+
+    button { 
+      background: var(--brand); 
+      border: none; 
+      width: 45px; 
+      height: 45px; 
+      border-radius: 50%; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      cursor: pointer; 
+      transition: transform 0.2s;
+    }
+    button:active { transform: scale(0.9); }
+    button svg { fill: white; width: 20px; height: 20px; }
+
+    /* Markdown Simple */
+    .bubble b, .bubble strong { color: var(--brand); }
   </style>
 </head>
 <body>
+
   <header>
-    <div class="logo-shield" onclick="document.getElementById('about').style.display='block'">
+    <div class="logo-container">
       <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
     </div>
-    <div><div style="font-weight:700; font-size: 18px;">INOCUO</div><div style="font-size:11px; color: #c8e6c9;">Asistente de Seguridad Alimentaria</div></div>
+    <div class="header-text">
+      <h1>INOCUO</h1>
+      <p>Asistente Técnico de Seguridad Alimentaria</p>
+    </div>
   </header>
-  <main id="chat"></main>
-  <div class="chips-container" id="chips"></div>
-  <form id="form">
-    <textarea id="input" rows="1" placeholder="Consulta técnica..."></textarea>
-    <button class="send" type="submit">➤</button>
-  </form>
-  <div id="about" class="about-card" onclick="this.style.display='none'">
-    <h3>Inocuo</h3>
-    <p>Soporte técnico basado en <b>Buenas Prácticas</b> y el <b>CAA</b>. Sin referencias corporativas, enfocado en PyMEs.</p>
+
+  <main id="chat-box">
+    <div class="bubble inocuo">
+      Hola. Soy <strong>Inocuo</strong>, tu asistente especializado en normativas del <strong>Código Alimentario Argentino</strong> y protocolos de <strong>Buenas Prácticas (BPM)</strong>. <br><br>
+      ¿En qué proceso o normativa necesitas asistencia técnica hoy?
+    </div>
+  </main>
+
+  <div class="chips">
+    <div class="chip" onclick="sendQuick('Temperaturas críticas de carnes')">🌡️ Temperaturas Carnes</div>
+    <div class="chip" onclick="sendQuick('Protocolo de lavado de manos')">🧼 Lavado de Manos</div>
+    <div class="chip" onclick="sendQuick('Dilución de lavandina para superficies')">🧪 Desinfección</div>
+    <div class="chip" onclick="sendQuick('Recepción de mercadería perecedera')">📦 Recepción</div>
   </div>
+
+  <form id="chat-form">
+    <textarea id="user-input" rows="1" placeholder="Escribe tu consulta técnica..."></textarea>
+    <button type="submit">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </form>
+
   <script>
-    const chat = document.getElementById('chat'), form = document.getElementById('form'), input = document.getElementById('input');
-    function addMsg(html, who='va'){
-      const d=document.createElement('div'); d.className=`msg ${who}`;
-      d.innerHTML=html.replace(/\n/g,'<br>'); chat.appendChild(d);
-      chat.scrollTop = chat.scrollHeight;
+    const chatBox = document.getElementById('chat-box');
+    const chatForm = document.getElementById('chat-form');
+    const userInput = document.getElementById('user-input');
+
+    function appendMessage(text, side) {
+      const msg = document.createElement('div');
+      msg.className = `bubble ${side}`;
+      // Reemplazo simple de asteriscos por negritas
+      msg.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+      chatBox.appendChild(msg);
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
-    const SUG = ['Sanitización de carnes', 'Control de plagas', 'Temperaturas de seguridad', 'Rotulado CAA'];
-    SUG.forEach(s => {
-      const c = document.createElement('div'); c.className = 'chip'; c.textContent = s;
-      c.onclick = () => { input.value = s; form.dispatchEvent(new Event('submit')); };
-      document.getElementById('chips').appendChild(c);
-    });
-    window.onload = () => addMsg("Hola. Soy **INOCUO**. Proporciono información técnica basada en protocolos de **Buenas Prácticas** y el **CAA**.");
-    form.onsubmit = async (e) => {
-      e.preventDefault(); const q = input.value.trim(); if(!q) return;
-      addMsg(q, 'us'); input.value = '';
+
+    function sendQuick(text) {
+      userInput.value = text;
+      chatForm.dispatchEvent(new Event('submit'));
+    }
+
+    chatForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const query = userInput.value.trim();
+      if (!query) return;
+
+      appendMessage(query, 'user');
+      userInput.value = '';
+      userInput.style.height = 'auto';
+
       try {
-        const res = await fetch('/.netlify/functions/chat', {
+        const response = await fetch('/.netlify/functions/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: q })
+          body: JSON.stringify({ query })
         });
-        const data = await res.json();
-        addMsg(data.answer || "No tengo información específica sobre ese punto.");
-      } catch (err) { addMsg("Error al conectar con la base de datos de seguridad."); }
+
+        const data = await response.json();
+        appendMessage(data.answer || "Lo siento, no pude procesar la información.", 'inocuo');
+      } catch (err) {
+        appendMessage("Error de conexión. Verifica los protocolos de red.", 'inocuo');
+      }
     };
+
+    // Auto-expandir textarea
+    userInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
   </script>
 </body>
 </html>
