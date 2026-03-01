@@ -3,35 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>INOCUO</title>
+  <title>INOCUO - Seguridad Alimentaria</title>
   <style>
     :root { 
-      --wa-header: #075e54; 
+      --wa-header: #005d4b; 
       --wa-bg: #e5ddd5; 
       --wa-msg-in: #ffffff;
       --wa-msg-out: #dcf8c6;
       --wa-btn: #008069;
     }
 
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-    /* Evita el scroll elástico en iOS y asegura el alto total */
     html, body { 
-      margin: 0; 
-      padding: 0;
-      height: 100%; 
-      width: 100%;
-      overflow: hidden; 
+      margin: 0; padding: 0;
+      height: 100%; width: 100%;
+      overflow: hidden; /* Evita que la página entera rebote */
+      background-color: var(--wa-bg);
+      display: flex;
+      flex-direction: column;
     }
 
-    body { 
-      font-family: 'Segoe UI', Helvetica, Arial, sans-serif; 
-      background-color: var(--wa-bg); 
-      display: flex; 
-      flex-direction: column; 
-    }
-
-    /* HEADER FIJO */
+    /* HEADER: Posición fija real */
     header { 
       background: var(--wa-header); 
       color: white; 
@@ -40,23 +33,21 @@
       align-items: center; 
       gap: 12px; 
       height: 65px;
-      flex-shrink: 0; /* IMPIDE QUE SE ACHIQUE */
-      z-index: 1000;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      flex-shrink: 0; 
+      z-index: 9999;
     }
 
     .shield-icon {
       width: 40px; height: 40px;
       background: white; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
     }
     .shield-icon svg { fill: var(--wa-header); width: 24px; height: 24px; }
 
     .header-info h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
     .header-info p { font-size: 0.75rem; margin: 0; opacity: 0.9; }
 
-    /* ÁREA DE CHAT CON SCROLL */
+    /* CHAT: Ocupa el resto del espacio */
     main { 
       flex: 1; 
       overflow-y: auto; 
@@ -65,30 +56,26 @@
       flex-direction: column; 
       gap: 10px; 
       background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-      background-attachment: local;
+      background-attachment: scroll;
     }
 
     .bubble { 
-      max-width: 85%; 
-      padding: 8px 12px; 
-      border-radius: 8px; 
-      font-size: 0.95rem; 
-      line-height: 1.4; 
+      max-width: 85%; padding: 8px 12px; border-radius: 8px; 
+      font-size: 0.95rem; line-height: 1.4; 
       box-shadow: 0 1px 1px rgba(0,0,0,0.1);
-      position: relative;
     }
-
     .va { align-self: flex-start; background: var(--wa-msg-in); border-top-left-radius: 0; }
     .us { align-self: flex-end; background: var(--wa-msg-out); border-top-right-radius: 0; }
 
-    /* FOOTER FIJO ABAJO */
+    /* FOOTER: Bloqueado abajo */
     footer {
-      background: transparent;
+      background: #f0f0f0;
       padding: 10px;
       display: flex;
       align-items: flex-end;
       gap: 8px;
-      flex-shrink: 0; /* CLAVE: IMPIDE QUE EL CHAT LO EMPUJE FUERA */
+      flex-shrink: 0;
+      z-index: 9999;
     }
 
     .input-wrapper {
@@ -98,34 +85,19 @@
       display: flex;
       align-items: center;
       padding: 5px 15px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
     }
 
     textarea { 
-      flex: 1; 
-      border: none; 
-      outline: none; 
-      padding: 10px 0;
-      font-size: 1rem; 
-      max-height: 120px;
-      resize: none;
-      font-family: inherit;
-      background: transparent;
+      flex: 1; border: none; outline: none; padding: 10px 0;
+      font-size: 1rem; max-height: 100px; resize: none;
+      font-family: inherit; background: transparent;
     }
 
     .send-btn { 
-      background: var(--wa-btn); 
-      color: white; 
-      border: none; 
-      border-radius: 50%; 
-      width: 48px; 
-      height: 48px; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      cursor: pointer;
-      flex-shrink: 0;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      background: var(--wa-btn); color: white; border: none; 
+      border-radius: 50%; width: 48px; height: 48px; 
+      display: flex; align-items: center; justify-content: center; 
+      cursor: pointer; flex-shrink: 0;
     }
 
     strong { color: var(--wa-header); }
@@ -147,12 +119,10 @@
 
   <footer>
     <div class="input-wrapper">
-      <textarea id="user-input" placeholder="Escribe un mensaje" rows="1"></textarea>
+      <textarea id="user-input" placeholder="Escribe tu consulta técnica..." rows="1"></textarea>
     </div>
     <button class="send-btn" id="send-btn">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="white">
-        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
-      </svg>
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
     </button>
   </footer>
 
@@ -161,21 +131,18 @@
           input = document.getElementById('user-input'), 
           btn = document.getElementById('send-btn');
     
-    // MEMORIA INTACTA
     let history = []; 
 
     function append(text, side) {
       const d = document.createElement('div');
       d.className = `bubble ${side}`;
-      // Renderiza negritas y saltos de línea
       d.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
       box.appendChild(d);
       box.scrollTop = box.scrollHeight;
     }
 
-    // Mensaje de bienvenida
     window.onload = () => {
-      append("Hola, soy **Inocuo**. Estoy aquí para asistirte con normativas de **La Anónima** y el **CAA**. ¿Qué consulta tienes?", 'va');
+      append("Hola, soy **Inocuo**. Estoy aquí para asistirte exclusivamente en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**. ¿Qué consulta técnica tienes?", 'va');
     };
 
     async function handleSend() {
@@ -192,14 +159,14 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             query: q, 
-            history: history // SE ENVÍA EL CONTEXTO ACTUAL
+            history: history 
           })
         });
         
         const data = await res.json();
         if(data.ok) {
           append(data.answer, 'va');
-          history = data.history; // SE ACTUALIZA LA MEMORIA CON LA RESPUESTA
+          history = data.history; 
         }
       } catch (e) {
         append("Error de conexión. Intenta de nuevo.", 'va');
@@ -207,20 +174,11 @@
     }
 
     btn.onclick = handleSend;
-
-    // Ajuste automático de altura del área de texto
     input.addEventListener('input', function() {
       this.style.height = 'auto';
       this.style.height = (this.scrollHeight) + 'px';
     });
-
-    // Enviar con Enter
-    input.onkeydown = (e) => {
-      if(e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
-      }
-    };
+    input.onkeydown = (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
   </script>
 </body>
 </html>
