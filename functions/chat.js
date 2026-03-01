@@ -11,16 +11,17 @@ Tu conocimiento se basa en el Código Alimentario Argentino (CAA) y Buenas Prác
 
 REGLAS DE ORO:
 1. No menciones marcas de retail (ej. La Anónima). Usa "esta organización" o "el protocolo".
-2. Mantén el hilo de la conversación. Si el usuario hace una pregunta de seguimiento, usa el contexto anterior.
-3. Tono profesional, directo y preventivo.
+2. MEMORIA: Mantén el hilo de la conversación. Si el usuario pregunta "qué sería eso" o "cómo se divide", refiere a lo hablado anteriormente.
+3. Tono profesional y preventivo.
 `;
 
-const json = (o, status = 200) => ({
-  statusCode: status,
+const json = (o) => ({
+  statusCode: 200,
   headers: { "content-type": "application/json; charset=utf-8" },
   body: JSON.stringify(o),
 });
 
+// Funciones matemáticas para búsqueda semántica
 const dot = (a, b) => a.reduce((sum, v, i) => sum + v * (b[i] || 0), 0);
 const norm = (a) => Math.sqrt(dot(a, a));
 const cosSim = (a, b) => {
@@ -31,21 +32,22 @@ const cosSim = (a, b) => {
 let CACHE_DATA = null;
 
 export async function handler(event) {
-  if (event.httpMethod !== "POST") return json({ error: "Method Not Allowed" }, 405);
+  if (event.httpMethod !== "POST") return { statusCode: 405 };
 
   try {
     const { query, history = [] } = JSON.parse(event.body || "{}");
     
     if (!CACHE_DATA) {
-      if (!fs.existsSync(DATA_FILE)) return json({ answer: "Cargando base de conocimientos..." });
       CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
     }
 
-    // Buscamos contexto usando la pregunta actual + la anterior para mejor precisión
-    const lastContext = history.length > 0 ? history[history.length - 1].content : "";
+    // Unimos el historial para que la búsqueda de vectores sea contextual
+    const lastContext = history.slice(-1).map(m => m.content).join(" ");
+    const searchString = `${lastContext} ${query}`.slice(0, 1000);
+
     const qEmb = await client.embeddings.create({
       model: "text-embedding-3-small",
-      input: `${lastContext} ${query}`.slice(0, 2000),
+      input: searchString,
     });
     const qVec = qEmb.data[0].embedding;
 
@@ -58,8 +60,8 @@ export async function handler(event) {
 
     const messages = [
       { role: "system", content: INOCUO_SYSTEM_PROMPT },
-      { role: "system", content: "CONTEXTO TÉCNICO:\n" + contextText },
-      ...history.slice(-6), // Enviamos los últimos 6 mensajes para contexto
+      { role: "system", content: "CONTEXTO DE MANUALES:\n" + contextText },
+      ...history.slice(-6), // Enviamos los últimos 3 pares de mensajes
       { role: "user", content: query }
     ];
 
@@ -74,11 +76,11 @@ export async function handler(event) {
     return json({
       ok: true,
       answer: answer,
-      // Devolvemos el historial actualizado para que el frontend lo guarde
+      // Devolvemos el historial actualizado para que el navegador lo guarde
       history: [...history, { role: "user", content: query }, { role: "assistant", content: answer }]
     });
 
   } catch (err) {
-    return json({ error: "Error técnico: " + err.message }, 500);
+    return json({ error: err.message });
   }
 }
