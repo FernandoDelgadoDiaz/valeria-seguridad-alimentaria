@@ -15,17 +15,23 @@
 
     * { box-sizing: border-box; }
 
-    body { 
+    /* Evita el scroll elástico en iOS y asegura el alto total */
+    html, body { 
       margin: 0; 
+      padding: 0;
+      height: 100%; 
+      width: 100%;
+      overflow: hidden; 
+    }
+
+    body { 
       font-family: 'Segoe UI', Helvetica, Arial, sans-serif; 
       background-color: var(--wa-bg); 
       display: flex; 
       flex-direction: column; 
-      height: 100vh;
-      overflow: hidden; 
     }
 
-    /* HEADER: Siempre arriba */
+    /* HEADER FIJO */
     header { 
       background: var(--wa-header); 
       color: white; 
@@ -34,8 +40,9 @@
       align-items: center; 
       gap: 12px; 
       height: 65px;
-      flex-shrink: 0;
+      flex-shrink: 0; /* IMPIDE QUE SE ACHIQUE */
       z-index: 1000;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
 
     .shield-icon {
@@ -49,15 +56,7 @@
     .header-info h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
     .header-info p { font-size: 0.75rem; margin: 0; opacity: 0.9; }
 
-    /* CONTENEDOR CENTRAL: Chat + Sugerencias */
-    .content-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-    }
-
+    /* ÁREA DE CHAT CON SCROLL */
     main { 
       flex: 1; 
       overflow-y: auto; 
@@ -65,6 +64,8 @@
       display: flex; 
       flex-direction: column; 
       gap: 10px; 
+      background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+      background-attachment: local;
     }
 
     .bubble { 
@@ -74,38 +75,20 @@
       font-size: 0.95rem; 
       line-height: 1.4; 
       box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+      position: relative;
     }
+
     .va { align-self: flex-start; background: var(--wa-msg-in); border-top-left-radius: 0; }
     .us { align-self: flex-end; background: var(--wa-msg-out); border-top-right-radius: 0; }
 
-    /* BOTONES DE SUGERENCIA: Justo encima del input */
-    .suggestions {
-      display: flex;
-      gap: 8px;
-      padding: 10px;
-      overflow-x: auto;
-      background: rgba(229, 221, 213, 0.8);
-      flex-shrink: 0;
-    }
-    .suggestions button {
-      background: white;
-      border: 1px solid var(--wa-header);
-      color: var(--wa-header);
-      padding: 6px 12px;
-      border-radius: 20px;
-      white-space: nowrap;
-      font-size: 0.85rem;
-      cursor: pointer;
-    }
-
-    /* FOOTER: Siempre abajo */
+    /* FOOTER FIJO ABAJO */
     footer {
       background: transparent;
       padding: 10px;
       display: flex;
       align-items: flex-end;
       gap: 8px;
-      flex-shrink: 0;
+      flex-shrink: 0; /* CLAVE: IMPIDE QUE EL CHAT LO EMPUJE FUERA */
     }
 
     .input-wrapper {
@@ -119,16 +102,30 @@
     }
 
     textarea { 
-      flex: 1; border: none; outline: none; padding: 8px 0;
-      font-size: 1rem; max-height: 120px; resize: none;
+      flex: 1; 
+      border: none; 
+      outline: none; 
+      padding: 10px 0;
+      font-size: 1rem; 
+      max-height: 120px;
+      resize: none;
       font-family: inherit;
+      background: transparent;
     }
 
     .send-btn { 
-      background: var(--wa-btn); color: white; border: none; 
-      border-radius: 50%; width: 48px; height: 48px; 
-      display: flex; align-items: center; justify-content: center; 
-      cursor: pointer; flex-shrink: 0;
+      background: var(--wa-btn); 
+      color: white; 
+      border: none; 
+      border-radius: 50%; 
+      width: 48px; 
+      height: 48px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      cursor: pointer;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
 
     strong { color: var(--wa-header); }
@@ -142,26 +139,20 @@
     </div>
     <div class="header-info">
       <h1>INOCUO</h1>
-      <p>Asistente Técnico · en línea</p>
+      <p>Asistente de Seguridad Alimentaria · en línea</p>
     </div>
   </header>
 
-  <div class="content-area">
-    <main id="chat-box"></main>
-    
-    <div class="suggestions">
-      <button onclick="suggest('¿Qué es una NC?')">¿Qué es una NC?</button>
-      <button onclick="suggest('Control de plagas')">Control de plagas</button>
-      <button onclick="suggest('Temperaturas')">Temperaturas</button>
-    </div>
-  </div>
+  <main id="chat-box"></main>
 
   <footer>
     <div class="input-wrapper">
       <textarea id="user-input" placeholder="Escribe un mensaje" rows="1"></textarea>
     </div>
     <button class="send-btn" id="send-btn">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="white">
+        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+      </svg>
     </button>
   </footer>
 
@@ -170,20 +161,25 @@
           input = document.getElementById('user-input'), 
           btn = document.getElementById('send-btn');
     
+    // MEMORIA INTACTA
     let history = []; 
 
     function append(text, side) {
       const d = document.createElement('div');
       d.className = `bubble ${side}`;
+      // Renderiza negritas y saltos de línea
       d.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
       box.appendChild(d);
       box.scrollTop = box.scrollHeight;
     }
 
-    window.onload = () => append("Hola, soy **Inocuo**. Estoy aquí para asistirte con normativas del CAA. ¿Qué consulta tienes?", 'va');
+    // Mensaje de bienvenida
+    window.onload = () => {
+      append("Hola, soy **Inocuo**. Estoy aquí para asistirte con normativas de **La Anónima** y el **CAA**. ¿Qué consulta tienes?", 'va');
+    };
 
-    async function handleSend(textValue) {
-      const q = textValue || input.value.trim();
+    async function handleSend() {
+      const q = input.value.trim();
       if(!q) return;
 
       append(q, 'us');
@@ -194,21 +190,37 @@
         const res = await fetch('/.netlify/functions/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: q, history: history })
+          body: JSON.stringify({ 
+            query: q, 
+            history: history // SE ENVÍA EL CONTEXTO ACTUAL
+          })
         });
+        
         const data = await res.json();
         if(data.ok) {
           append(data.answer, 'va');
-          history = data.history; // AQUÍ SE GUARDA LA MEMORIA
+          history = data.history; // SE ACTUALIZA LA MEMORIA CON LA RESPUESTA
         }
-      } catch (e) { append("Error de conexión.", 'va'); }
+      } catch (e) {
+        append("Error de conexión. Intenta de nuevo.", 'va');
+      }
     }
 
-    function suggest(txt) { handleSend(txt); }
+    btn.onclick = handleSend;
 
-    btn.onclick = () => handleSend();
-    input.oninput = function() { this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'; };
-    input.onkeydown = (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+    // Ajuste automático de altura del área de texto
+    input.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
+
+    // Enviar con Enter
+    input.onkeydown = (e) => {
+      if(e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    };
   </script>
 </body>
 </html>
