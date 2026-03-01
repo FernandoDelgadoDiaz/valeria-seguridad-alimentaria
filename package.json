@@ -1,6 +1,13 @@
 {
+  "name": "inocuo-asistente",
+  "version": "1.0.0",
   "type": "module",
-  "engines": { "node": "20.x" },
+  "engines": { 
+    "node": "20.x" 
+  },
+  "scripts": {
+    "build": "node scripts/build-embeddings.mjs"
+  },
   "dependencies": {
     "openai": "^4.55.0",
     "pdfjs-dist": "^3.11.174"
