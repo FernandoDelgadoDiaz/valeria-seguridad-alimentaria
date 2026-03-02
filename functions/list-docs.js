@@ -13,8 +13,8 @@ export async function handler(event) {
     const rootFiles = fs.readdirSync(baseDir);
     console.log("📄 Archivos en raíz:", rootFiles);
 
-    // Intentar con la carpeta docs en la raíz
-    const docsPath = path.join(baseDir, "docs");
+    // Intentar con la carpeta docs en la raíz (usamos let para poder reasignar)
+    let docsPath = path.join(baseDir, "docs");
     console.log("🔍 Buscando docs en:", docsPath);
 
     if (!fs.existsSync(docsPath)) {
