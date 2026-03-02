@@ -31,11 +31,12 @@ export async function handler(event) {
       CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
     }
 
-    // Detectar si el usuario pide explícitamente un artículo/capítulo del CAA o menciona "CAA"
+    // Detectar intenciones del usuario
     const mencionaCAA = /caa|código alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
     const pideExacto = /texto exacto|literal|textualmente|dame el art[ií]culo|copia el art[ií]culo/i.test(query);
+    const modoAprendizaje = /^(defin[ei]|qu[eé] es|explica|concepto|significa|aprender|[/]aprender)/i.test(query.trim());
 
-    // 1. Buscamos fragmentos relevantes
+    // 1. Buscar fragmentos relevantes
     const lastMsg = history.length > 0 ? history[history.length - 1].content : "";
     const qEmb = await client.embeddings.create({
       model: "text-embedding-3-small",
@@ -47,44 +48,39 @@ export async function handler(event) {
       score: cosSim(qEmb.data[0].embedding, c.embedding || c.vec)
     }));
 
-    // Ordenar por similitud
     const sorted = allChunks.sort((a, b) => b.score - a.score);
 
-    // Separar internos (que no sean del CAA) y CAA (por nombre de archivo)
+    // Separar internos y CAA (por nombre de archivo)
     const internos = sorted.filter(c => !c.source.toLowerCase().includes("capitulo") && !c.source.toLowerCase().includes("caa"));
     const caaChunks = sorted.filter(c => c.source.toLowerCase().includes("capitulo") || c.source.toLowerCase().includes("caa"));
 
-    // Tomar los mejores de cada grupo
     const topInternos = internos.slice(0, 4);
     const topCAA = caaChunks.slice(0, 4);
 
-    // Decidir qué contexto usar según la intención del usuario
+    // Decidir qué fragmentos usar según la intención
     let contextChunks = [];
     let usarCAA = false;
 
     if (pideExacto) {
-      // Priorizar CAA
       contextChunks = topCAA.length > 0 ? topCAA : topInternos;
       usarCAA = true;
-    } else if (mencionaCAA) {
-      // Combinar internos + CAA
+    } else if (mencionaCAA || modoAprendizaje) {
+      // En modo aprendizaje combinamos, pero si hay CAA lo incluimos
       contextChunks = [...topInternos, ...topCAA].slice(0, 8);
       usarCAA = true;
     } else {
-      // Por defecto, solo internos
       contextChunks = topInternos;
     }
 
-    // Si no hay chunks de internos, usar CAA como fallback
     if (contextChunks.length === 0) {
       contextChunks = topCAA;
       usarCAA = true;
     }
 
-    // Construir el texto de contexto SIN incluir la fuente explícita
+    // Texto de contexto limpio (sin fuentes)
     const contextText = contextChunks.map(c => c.text).join("\n\n---\n\n");
 
-    // Prompt dinámico según el modo
+    // Prompt base
     let systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tienes acceso a:
 
 - Documentos internos (manuales, BPM, procedimientos)
@@ -96,18 +92,27 @@ Debes seguir esta jerarquía:
 
 2. Si el usuario menciona "CAA", "código alimentario", "artículo" o "capítulo" pero no pide el texto exacto, combina información de documentos internos y del CAA para dar una respuesta completa. Para el CAA, cita siempre el capítulo y artículo correspondientes (extrayéndolos del texto). Para los internos, no menciones la fuente.
 
-3. En caso contrario, responde principalmente con los documentos internos. Si con ellos es suficiente, no agregues CAA. Al final de la respuesta, puedes preguntar: "¿Necesitas que consulte también el Código Alimentario Argentino para ampliar?" Cuando uses internos, no hagas referencia al nombre del archivo ni a la fuente.
+3. Si el usuario activa el MODO APRENDIZAJE (preguntas como "qué es", "explica", "definición", o el comando "/aprender"), debes estructurar tu respuesta de forma pedagógica:
+   - Definición clara del concepto.
+   - Clasificación o tipos si corresponde.
+   - Ejemplos prácticos (usa los documentos internos o el CAA según corresponda).
+   - Al final, ofrece continuar: "¿Quieres que profundice en algún aspecto en particular?"
 
-4. Siempre que uses información del CAA, debes indicar el capítulo y artículo (por ejemplo, "Capítulo I, Artículo 2") basándote en el texto del fragmento. No uses el nombre del archivo.
+4. En caso contrario (consulta general sin mención a CAA ni modo aprendizaje), responde principalmente con los documentos internos. Si con ellos es suficiente, no agregues CAA. Al final de la respuesta, puedes preguntar: "¿Necesitas que consulte también el Código Alimentario Argentino para ampliar?"
 
-5. Si la pregunta no es sobre seguridad alimentaria, responde amablemente que solo puedes ayudar con temas del CAA y BPM.
+5. Siempre que uses información del CAA, debes indicar el capítulo y artículo (por ejemplo, "Capítulo I, Artículo 2") basándote en el texto del fragmento. No uses el nombre del archivo.
+
+6. Si la pregunta no es sobre seguridad alimentaria, responde amablemente que solo puedes ayudar con temas del CAA y BPM.
 
 CONTEXTO ACTUAL:
 ${contextText}`;
 
-    // Añadir instrucción extra si se requiere exactitud
     if (pideExacto) {
       systemPrompt += `\n\nIMPORTANTE: El usuario ha pedido el TEXTO EXACTO. Debes copiar el fragmento del CAA lo más literal posible, sin resumir. Asegúrate de indicar el capítulo y artículo correspondientes antes del texto.`;
+    }
+
+    if (modoAprendizaje) {
+      systemPrompt += `\n\nIMPORTANTE: Estás en MODO APRENDIZAJE. Tu respuesta debe ser didáctica, con definiciones, ejemplos y una invitación a profundizar.`;
     }
 
     // Llamada a la API
