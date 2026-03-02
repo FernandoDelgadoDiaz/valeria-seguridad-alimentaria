@@ -30,9 +30,11 @@ export async function handler(event) {
       CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
     }
 
+    // Detectar intenciones
     const mencionaCAA = /caa|código alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
     const pideExacto = /texto exacto|literal|textualmente|dame el art[ií]culo|copia el art[ií]culo/i.test(query);
 
+    // Búsqueda semántica
     const lastMsg = history.length > 0 ? history[history.length - 1].content : "";
     const qEmb = await client.embeddings.create({
       model: "text-embedding-3-small",
@@ -65,13 +67,13 @@ export async function handler(event) {
 
     // --- Lógica para test interactivo (modo Enseña) ---
     if (mode === "ensena" && incomingTestState) {
+      // Estamos en medio de un test
       const testState = incomingTestState;
       const preguntaActual = testState.preguntaActual;
       const respuestasUsuario = testState.respuestasUsuario || {};
 
       // Guardar respuesta del usuario (si viene de una pregunta anterior)
       if (query && preguntaActual > 1) {
-        // La respuesta está en query (ej: "a")
         respuestasUsuario[preguntaActual - 1] = query.trim().toLowerCase();
       }
 
@@ -120,6 +122,65 @@ export async function handler(event) {
       }
     }
 
+    // --- Si estamos en modo enseña y el usuario quiere un test (responde '2') ---
+    if (mode === "ensena" && (query.trim() === "2" || query.toLowerCase().includes("test"))) {
+      // Generar test con IA
+      const testGenPrompt = `Basado en el siguiente contexto, genera un test de 5 preguntas de opción múltiple sobre el tema tratado. Cada pregunta debe tener 3 opciones (a, b, c). Devuelve exclusivamente un objeto JSON con dos campos: "preguntas" (un array de strings, cada uno con la pregunta y las opciones en formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (un objeto con claves "1","2","3","4","5" y valores "a","b","c" correspondientes a la opción correcta). No incluyas texto adicional, solo el JSON.
+
+Contexto:
+${contextText}`;
+
+      try {
+        const testGenCompletion = await client.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: "Eres un generador de tests. Devuelve solo JSON." },
+            { role: "user", content: testGenPrompt }
+          ],
+          temperature: 0.3,
+        });
+
+        const testGenAnswer = testGenCompletion.choices[0].message.content;
+        let testData;
+        try {
+          testData = JSON.parse(testGenAnswer);
+        } catch (e) {
+          const match = testGenAnswer.match(/\{.*\}/s);
+          if (match) testData = JSON.parse(match[0]);
+          else throw new Error("No se pudo generar el test");
+        }
+
+        if (!testData.preguntas || !testData.respuestasCorrectas || testData.preguntas.length !== 5) {
+          throw new Error("Formato de test inválido");
+        }
+
+        const testState = {
+          preguntas: testData.preguntas,
+          respuestasCorrectas: testData.respuestasCorrectas,
+          preguntaActual: 1,
+          respuestasUsuario: {}
+        };
+
+        const primeraPregunta = testData.preguntas[0];
+        const mensaje = `**Pregunta 1 de 5:**\n${primeraPregunta}\n\nResponde con la letra de la opción (ej: a)`;
+        return json({
+          ok: true,
+          answer: mensaje,
+          testState: testState,
+          history: [...history, { role: "assistant", content: mensaje }]
+        });
+
+      } catch (err) {
+        console.error("Error generando test:", err);
+        return json({
+          ok: true,
+          answer: "Lo siento, tuve un problema al generar el test. ¿Puedes intentarlo de nuevo?",
+          testState: null,
+          history: [...history, { role: "assistant", content: "Lo siento, tuve un problema al generar el test. ¿Puedes intentarlo de nuevo?" }]
+        });
+      }
+    }
+
     // --- Prompt normal (sin test en curso) ---
     let systemPrompt = "";
 
@@ -147,16 +208,10 @@ Modo actual: **ENSEÑA** – Tus respuestas deben ser **didácticas, estructurad
 - Al final de tu explicación, añade siempre:
   "**Para profundizar en este tema, responde '1'. Para hacer un test de aprendizaje, responde '2'.**"
 
-**Manejo de las opciones:**
-- Si el usuario responde '1', proporciona información adicional.
-- Si el usuario responde '2', debes iniciar un test interactivo. Para ello, genera un objeto con:
-  - preguntas: array de 5 strings (cada uno con la pregunta y sus opciones a, b, c).
-  - respuestasCorrectas: objeto con las claves "1", "2", ... y valores "a", "b", etc.
-  Luego, en la respuesta, incluye un campo testState con ese objeto y preguntaActual = 1. El frontend se encargará de mostrar las preguntas una por una.
-
 **Importante:**
-- Las preguntas deben ser claras y las opciones distintas.
-- Las respuestas correctas son siempre una letra (a, b o c).
+- Si el usuario responde '1', proporciona información adicional.
+- Si el usuario responde '2', el sistema se encargará de generar el test. Tú no debes generar el test directamente, solo responder con la explicación y las opciones.
+- Siempre utiliza el CONTEXTO para basar tus explicaciones.
 
 CONTEXTO:
 ${contextText}`;
@@ -178,15 +233,6 @@ ${contextText}`;
 
     const answer = completion.choices[0].message.content;
 
-    // Si el modo es enseña y la respuesta contiene un testState generado por la IA, lo extraemos (si la IA lo devuelve en el formato)
-    let testState = null;
-    if (mode === "ensena" && answer.includes("__TEST_STATE__")) {
-      // Por si acaso, pero idealmente la IA debe devolver el testState en un campo separado. 
-      // Como no podemos controlar eso, dejamos que el frontend maneje el marcador, pero lo evitaremos.
-      // Mejor: la IA no debe incluir marcadores; el backend es el que crea el testState.
-      // Pero como es más complejo, por ahora asumimos que la IA no genera testState, solo explicaciones.
-    }
-
     return json({
       ok: true,
       answer: answer,
@@ -195,7 +241,7 @@ ${contextText}`;
     });
 
   } catch (err) {
-    console.error("Error:", err);
+    console.error("Error en handler:", err);
     return json({ error: err.message });
   }
 }
