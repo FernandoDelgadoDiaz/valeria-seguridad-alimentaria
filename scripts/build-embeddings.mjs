@@ -57,10 +57,15 @@ async function extractPdfText(pdfPath) {
       const content = await page.getTextContent();
       out += content.items.map((i) => i.str).join(" ") + "\n";
     }
+
+    // Si el texto extraído es muy corto, puede ser un PDF escaneado
+    if (out.trim().length < 100) {
+      console.warn(`⚠️  El PDF ${pdfPath} tiene muy poco texto (${out.length} caracteres). ¿Será una imagen escaneada?`);
+    }
     return out;
   } catch (err) {
-    console.error(`Error leyendo PDF ${pdfPath}:`, err);
-    return "";
+    console.error(`❌ Error leyendo PDF ${pdfPath}:`, err.message);
+    return null; // Indicar que falló
   }
 }
 
@@ -70,52 +75,90 @@ async function main() {
   }
 
   await fs.mkdir(DATA_DIR, { recursive: true });
-  
+
+  // Leemos tanto PDFs como archivos de texto
   const files = (await fs.readdir(DOCS_DIR))
-    .filter((f) => f.toLowerCase().endsWith(".pdf"))
+    .filter((f) => f.toLowerCase().endsWith(".pdf") || f.toLowerCase().endsWith(".txt"))
     .sort();
+
+  console.log(`📁 Archivos encontrados: ${files.length}`);
+  if (files.length === 0) {
+    console.warn("⚠️  No hay archivos PDF o TXT en docs/");
+    return;
+  }
 
   const finalData = [];
   let totalChunks = 0;
 
   for (const file of files) {
-    console.log(`📖 Procesando: ${file}...`);
+    console.log(`\n📖 Procesando: ${file}...`);
     const fullPath = path.join(DOCS_DIR, file);
-    const rawText = await extractPdfText(fullPath);
+    let rawText;
+
+    if (file.toLowerCase().endsWith(".pdf")) {
+      rawText = await extractPdfText(fullPath);
+    } else {
+      // Archivo de texto: leer directamente
+      try {
+        rawText = await fs.readFile(fullPath, "utf-8");
+      } catch (err) {
+        console.error(`❌ Error leyendo archivo de texto ${fullPath}:`, err.message);
+        rawText = null;
+      }
+    }
+
+    if (!rawText) {
+      console.log(`⏩ Saltando ${file} por errores de lectura.`);
+      continue;
+    }
+
     const parts = chunkText(rawText);
-    
+    console.log(`   → ${parts.length} fragmentos generados`);
+
+    if (parts.length === 0) {
+      console.log(`⏩ ${file} no generó fragmentos (texto vacío).`);
+      continue;
+    }
+
     totalChunks += parts.length;
 
     // Procesamos en lotes de 100 para optimizar llamadas a la API
     for (let i = 0; i < parts.length; i += 100) {
       const batch = parts.slice(i, i + 100);
-      const resp = await openai.embeddings.create({
-        model: "text-embedding-3-small",
-        input: batch,
-      });
-
-      resp.data.forEach((d, j) => {
-        finalData.push({
-          source: file,
-          text: batch[j], // Guardamos el texto limpio para que la IA lo lea
-          embedding: d.embedding, // El vector numérico para la búsqueda semántica
+      try {
+        const resp = await openai.embeddings.create({
+          model: "text-embedding-3-small",
+          input: batch,
         });
-      });
+
+        resp.data.forEach((d, j) => {
+          finalData.push({
+            source: file,
+            text: batch[j],
+            embedding: d.embedding,
+          });
+        });
+
+        console.log(`   → Lote ${Math.floor(i / 100) + 1} procesado (${batch.length} embeddings)`);
+      } catch (err) {
+        console.error(`   ❌ Error en lote de embeddings:`, err.message);
+        // Continuamos con el siguiente lote
+      }
 
       // Breve pausa para respetar límites de la API
       await new Promise((r) => setTimeout(r, 100));
     }
-    console.log(`✅ ${file} completado (${parts.length} fragmentos)`);
+    console.log(`✅ ${file} completado`);
   }
 
   const payload = {
     version: "inocuo-v1-2026",
     generatedAt: new Date().toISOString(),
     docsCount: files.length,
-    chunks: finalData, // IMPORTANTE: chat.js buscará en este array
+    chunks: finalData,
   };
 
-  await fs.writeFile(OUT_FILE, JSON.stringify(payload));
+  await fs.writeFile(OUT_FILE, JSON.stringify(payload, null, 2));
   console.log(`\n🚀 ¡Cerebro activado! ${finalData.length} vectores guardados en ${OUT_FILE}`);
 }
 
