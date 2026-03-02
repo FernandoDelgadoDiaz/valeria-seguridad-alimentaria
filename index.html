@@ -18,13 +18,12 @@
     html, body { 
       margin: 0; padding: 0;
       height: 100%; width: 100%;
-      overflow: hidden; /* Evita que la página entera rebote */
+      overflow: hidden;
       background-color: var(--wa-bg);
       display: flex;
       flex-direction: column;
     }
 
-    /* HEADER: Posición fija real */
     header { 
       background: var(--wa-header); 
       color: white; 
@@ -44,10 +43,36 @@
     }
     .shield-icon svg { fill: var(--wa-header); width: 24px; height: 24px; }
 
+    .header-info {
+      flex: 1;
+    }
     .header-info h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
     .header-info p { font-size: 0.75rem; margin: 0; opacity: 0.9; }
 
-    /* CHAT: Ocupa el resto del espacio */
+    /* Selector de modo */
+    .mode-selector {
+      display: flex;
+      background: rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 3px;
+      margin-left: auto;
+    }
+    .mode-btn {
+      background: transparent;
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 18px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .mode-btn.active {
+      background: white;
+      color: var(--wa-header);
+    }
+
     main { 
       flex: 1; 
       overflow-y: auto; 
@@ -67,7 +92,6 @@
     .va { align-self: flex-start; background: var(--wa-msg-in); border-top-left-radius: 0; }
     .us { align-self: flex-end; background: var(--wa-msg-out); border-top-right-radius: 0; }
 
-    /* FOOTER: Bloqueado abajo */
     footer {
       background: #f0f0f0;
       padding: 10px;
@@ -113,6 +137,10 @@
       <h1>INOCUO</h1>
       <p>Asistente de Seguridad Alimentaria · en línea</p>
     </div>
+    <div class="mode-selector">
+      <button id="mode-tecnico" class="mode-btn active">Técnico</button>
+      <button id="mode-ensena" class="mode-btn">Enseña</button>
+    </div>
   </header>
 
   <main id="chat-box"></main>
@@ -127,11 +155,31 @@
   </footer>
 
   <script>
-    const box = document.getElementById('chat-box'), 
-          input = document.getElementById('user-input'), 
-          btn = document.getElementById('send-btn');
-    
-    let history = []; 
+    const box = document.getElementById('chat-box');
+    const input = document.getElementById('user-input');
+    const btn = document.getElementById('send-btn');
+    const modeTecnico = document.getElementById('mode-tecnico');
+    const modeEnsena = document.getElementById('mode-ensena');
+
+    let history = [];
+    let currentMode = 'tecnico'; // 'tecnico' o 'ensena'
+
+    // Alternar modo activo en la UI
+    function setActiveMode(mode) {
+      currentMode = mode;
+      if (mode === 'tecnico') {
+        modeTecnico.classList.add('active');
+        modeEnsena.classList.remove('active');
+      } else {
+        modeEnsena.classList.add('active');
+        modeTecnico.classList.remove('active');
+      }
+      // Opcional: mostrar un mensaje en el chat indicando el cambio de modo
+      append(`Modo cambiado a: **INOCUO ${mode === 'tecnico' ? 'Técnico' : 'Enseña'}**.`, 'va');
+    }
+
+    modeTecnico.onclick = () => setActiveMode('tecnico');
+    modeEnsena.onclick = () => setActiveMode('ensena');
 
     function append(text, side) {
       const d = document.createElement('div');
@@ -142,7 +190,7 @@
     }
 
     window.onload = () => {
-      append("Hola, soy **Inocuo**. Estoy aquí para asistirte exclusivamente en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**. ¿Qué consulta técnica tienes?", 'va');
+      append("Hola, soy **Inocuo**. Estoy aquí para asistirte en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**. Podés elegir entre **Modo Técnico** (respuestas concisas) o **Modo Enseña** (explicaciones didácticas). ¿Qué consulta tienes?", 'va');
     };
 
     async function handleSend() {
@@ -159,7 +207,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             query: q, 
-            history: history 
+            history: history,
+            mode: currentMode   // enviamos el modo actual
           })
         });
         
