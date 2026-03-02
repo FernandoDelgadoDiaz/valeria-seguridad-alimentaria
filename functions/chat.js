@@ -30,15 +30,12 @@ const json = (o) => ({
 function validateTest(testData) {
   if (!testData || !testData.preguntas || !testData.respuestasCorrectas) return false;
   if (testData.preguntas.length !== 5) return false;
-  // Verificar que las preguntas sean distintas (ignorando mayúsculas/minúsculas y espacios)
   const preguntasNormalizadas = testData.preguntas.map(p => p.replace(/\s+/g, ' ').trim().toLowerCase());
   const unique = new Set(preguntasNormalizadas);
   if (unique.size !== 5) return false;
-  // Verificar que cada pregunta tenga las opciones a, b, c (búsqueda simple de patrones)
   for (const p of testData.preguntas) {
     if (!p.includes('a)') || !p.includes('b)') || !p.includes('c)')) return false;
   }
-  // Verificar respuestasCorrectas
   const correctas = testData.respuestasCorrectas;
   for (let i = 1; i <= 5; i++) {
     if (!correctas[i] || !['a','b','c'].includes(correctas[i])) return false;
@@ -93,18 +90,15 @@ export async function handler(event) {
 
     // --- Lógica para test interactivo (modo Enseña) ---
     if (mode === "ensena" && incomingTestState) {
-      // Estamos en medio de un test
       const testState = incomingTestState;
       const preguntaActual = testState.preguntaActual;
       const respuestasUsuario = testState.respuestasUsuario || {};
 
-      // Guardar respuesta del usuario (si viene de una pregunta anterior)
       if (query && preguntaActual > 1) {
         respuestasUsuario[preguntaActual - 1] = query.trim().toLowerCase();
       }
 
       if (preguntaActual <= testState.preguntas.length) {
-        // Enviar siguiente pregunta
         const pregunta = testState.preguntas[preguntaActual - 1];
         const mensaje = `**Pregunta ${preguntaActual} de ${testState.preguntas.length}:**\n${pregunta}\n\nResponde con la letra de la opción (ej: a)`;
         return json({
@@ -118,7 +112,6 @@ export async function handler(event) {
           history: [...history, { role: "assistant", content: mensaje }]
         });
       } else {
-        // Test finalizado, calcular puntaje
         const correctas = testState.respuestasCorrectas;
         let aciertos = 0;
         const detalles = [];
@@ -142,7 +135,7 @@ export async function handler(event) {
         return json({
           ok: true,
           answer: mensajeResultado,
-          testState: null, // Finaliza el test
+          testState: null,
           history: [...history, { role: "assistant", content: mensajeResultado }]
         });
       }
@@ -150,11 +143,9 @@ export async function handler(event) {
 
     // --- Si estamos en modo enseña y el usuario quiere un test (responde '2') ---
     if (mode === "ensena" && (query.trim() === "2" || query.toLowerCase().includes("test"))) {
-      // Obtener el último mensaje del asistente (la explicación) para saber el tema exacto
       const lastAssistantMsg = history.filter(m => m.role === "assistant").pop();
       const lastExplanation = lastAssistantMsg ? lastAssistantMsg.content : "";
 
-      // Generar test con IA, con reintentos hasta obtener uno válido
       let testData = null;
       let attempts = 0;
       const maxAttempts = 3;
@@ -176,7 +167,7 @@ ${lastExplanation}`;
               { role: "system", content: "Eres un generador de tests. Devuelve solo JSON." },
               { role: "user", content: testGenPrompt }
             ],
-            temperature: 0.3 + (attempts * 0.1), // aumenta ligeramente con cada reintento
+            temperature: 0.3 + (attempts * 0.1),
           });
 
           const testGenAnswer = testGenCompletion.choices[0].message.content;
@@ -201,7 +192,6 @@ ${lastExplanation}`;
       }
 
       if (!testData) {
-        // Si después de varios intentos no se obtiene un test válido, responder con un mensaje genérico
         return json({
           ok: true,
           answer: "Lo siento, no pude generar un test válido en este momento. ¿Puedes intentarlo de nuevo más tarde?",
@@ -210,7 +200,6 @@ ${lastExplanation}`;
         });
       }
 
-      // Crear el estado del test
       const testState = {
         preguntas: testData.preguntas,
         respuestasCorrectas: testData.respuestasCorrectas,
@@ -272,6 +261,35 @@ ${contextText}`;
       systemPrompt += `\n\nIMPORTANTE: El usuario ha pedido el TEXTO EXACTO. Debes copiar el fragmento del CAA lo más literal posible, sin resumir. Indica el capítulo y artículo correspondientes antes del texto.`;
     }
 
+    // --- Guardia de dominio ---
+    const guardCheck = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `Eres un clasificador estricto. Responde SOLO con "SI" o "NO".
+¿La siguiente consulta está relacionada con seguridad alimentaria, Buenas Prácticas de Manufactura (BPM), higiene de alimentos, conservación, contaminación, habilitaciones, Código Alimentario Argentino (CAA) o temas afines?
+Responde "SI" si tiene relación, "NO" si no la tiene.`
+        },
+        { role: "user", content: query }
+      ],
+      temperature: 0,
+      max_tokens: 5,
+    });
+
+    const esRelevante = guardCheck.choices[0].message.content.trim().toUpperCase().startsWith("SI");
+
+    if (!esRelevante) {
+      const mensajeRechazo = "¡Hola! Soy INOCUO, un asistente especializado en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Esta consulta está fuera de mi área de conocimiento. 😊 Si tenés alguna duda sobre inocuidad, normativas del CAA, manipulación de alimentos o temas relacionados, ¡con gusto te ayudo!";
+      return json({
+        ok: true,
+        answer: mensajeRechazo,
+        testState: null,
+        history: [...history, { role: "user", content: query }, { role: "assistant", content: mensajeRechazo }]
+      });
+    }
+
+    // --- Llamado principal ---
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
