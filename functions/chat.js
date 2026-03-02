@@ -5,6 +5,7 @@ import OpenAI from "openai";
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const DATA_FILE = path.resolve("/var/task/data/embeddings.json");
 
+// Funciones matemáticas para búsqueda semántica
 const dot = (a, b) => a.reduce((sum, v, i) => sum + v * (b[i] || 0), 0);
 const norm = (a) => Math.sqrt(dot(a, a));
 const cosSim = (a, b) => {
@@ -20,6 +21,31 @@ const json = (o) => ({
   body: JSON.stringify(o),
 });
 
+/**
+ * Valida que un test generado sea correcto:
+ * - 5 preguntas distintas entre sí
+ * - Cada pregunta tiene 3 opciones (a, b, c)
+ * - Las respuestasCorrectas son un objeto con claves "1".."5" y valores "a","b","c"
+ */
+function validateTest(testData) {
+  if (!testData || !testData.preguntas || !testData.respuestasCorrectas) return false;
+  if (testData.preguntas.length !== 5) return false;
+  // Verificar que las preguntas sean distintas (ignorando mayúsculas/minúsculas y espacios)
+  const preguntasNormalizadas = testData.preguntas.map(p => p.replace(/\s+/g, ' ').trim().toLowerCase());
+  const unique = new Set(preguntasNormalizadas);
+  if (unique.size !== 5) return false;
+  // Verificar que cada pregunta tenga las opciones a, b, c (búsqueda simple de patrones)
+  for (const p of testData.preguntas) {
+    if (!p.includes('a)') || !p.includes('b)') || !p.includes('c)')) return false;
+  }
+  // Verificar respuestasCorrectas
+  const correctas = testData.respuestasCorrectas;
+  for (let i = 1; i <= 5; i++) {
+    if (!correctas[i] || !['a','b','c'].includes(correctas[i])) return false;
+  }
+  return true;
+}
+
 export async function handler(event) {
   if (event.httpMethod !== "POST") return { statusCode: 405 };
 
@@ -30,11 +56,11 @@ export async function handler(event) {
       CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
     }
 
-    // Detectar intenciones
+    // Detectar intenciones del usuario
     const mencionaCAA = /caa|código alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
     const pideExacto = /texto exacto|literal|textualmente|dame el art[ií]culo|copia el art[ií]culo/i.test(query);
 
-    // Búsqueda semántica
+    // Búsqueda semántica de fragmentos relevantes
     const lastMsg = history.length > 0 ? history[history.length - 1].content : "";
     const qEmb = await client.embeddings.create({
       model: "text-embedding-3-small",
@@ -128,8 +154,14 @@ export async function handler(event) {
       const lastAssistantMsg = history.filter(m => m.role === "assistant").pop();
       const lastExplanation = lastAssistantMsg ? lastAssistantMsg.content : "";
 
-      // Generar test con IA, usando el contexto y la última explicación para mayor precisión temática
-      const testGenPrompt = `Basado en el siguiente contexto y en la explicación reciente, genera un test de 5 preguntas de opción múltiple **exclusivamente sobre el mismo tema tratado en la explicación**. No incluyas preguntas de otros temas aunque aparezcan en el contexto. Cada pregunta debe tener 3 opciones (a, b, c). Devuelve exclusivamente un objeto JSON con dos campos: "preguntas" (un array de strings, cada uno con la pregunta y las opciones en formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (un objeto con claves "1","2","3","4","5" y valores "a","b","c" correspondientes a la opción correcta). No incluyas texto adicional, solo el JSON.
+      // Generar test con IA, con reintentos hasta obtener uno válido
+      let testData = null;
+      let attempts = 0;
+      const maxAttempts = 3;
+
+      while (attempts < maxAttempts) {
+        attempts++;
+        const testGenPrompt = `Basado en el siguiente contexto y en la explicación reciente, genera un test de 5 preguntas de opción múltiple **exclusivamente sobre el mismo tema tratado en la explicación**. No incluyas preguntas de otros temas aunque aparezcan en el contexto. Cada pregunta debe tener 3 opciones (a, b, c) claramente diferenciadas y no repetidas entre preguntas. Devuelve exclusivamente un objeto JSON con dos campos: "preguntas" (un array de strings, cada uno con la pregunta y las opciones en formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (un objeto con claves "1","2","3","4","5" y valores "a","b","c" correspondientes a la opción correcta). No incluyas texto adicional, solo el JSON.
 
 Contexto general:
 ${contextText}
@@ -137,55 +169,63 @@ ${contextText}
 Explicación reciente del asistente (tema a evaluar):
 ${lastExplanation}`;
 
-      try {
-        const testGenCompletion = await client.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: "Eres un generador de tests. Devuelve solo JSON." },
-            { role: "user", content: testGenPrompt }
-          ],
-          temperature: 0.3,
-        });
-
-        const testGenAnswer = testGenCompletion.choices[0].message.content;
-        let testData;
         try {
-          testData = JSON.parse(testGenAnswer);
-        } catch (e) {
-          const match = testGenAnswer.match(/\{.*\}/s);
-          if (match) testData = JSON.parse(match[0]);
-          else throw new Error("No se pudo generar el test");
+          const testGenCompletion = await client.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: "Eres un generador de tests. Devuelve solo JSON." },
+              { role: "user", content: testGenPrompt }
+            ],
+            temperature: 0.3 + (attempts * 0.1), // aumenta ligeramente con cada reintento
+          });
+
+          const testGenAnswer = testGenCompletion.choices[0].message.content;
+          let parsed;
+          try {
+            parsed = JSON.parse(testGenAnswer);
+          } catch (e) {
+            const match = testGenAnswer.match(/\{.*\}/s);
+            if (match) parsed = JSON.parse(match[0]);
+            else throw new Error("No se pudo parsear JSON");
+          }
+
+          if (validateTest(parsed)) {
+            testData = parsed;
+            break;
+          } else {
+            console.log(`Intento ${attempts}: test inválido, reintentando...`);
+          }
+        } catch (err) {
+          console.log(`Error en intento ${attempts}:`, err.message);
         }
+      }
 
-        if (!testData.preguntas || !testData.respuestasCorrectas || testData.preguntas.length !== 5) {
-          throw new Error("Formato de test inválido");
-        }
-
-        const testState = {
-          preguntas: testData.preguntas,
-          respuestasCorrectas: testData.respuestasCorrectas,
-          preguntaActual: 1,
-          respuestasUsuario: {}
-        };
-
-        const primeraPregunta = testData.preguntas[0];
-        const mensaje = `**Pregunta 1 de 5:**\n${primeraPregunta}\n\nResponde con la letra de la opción (ej: a)`;
+      if (!testData) {
+        // Si después de varios intentos no se obtiene un test válido, responder con un mensaje genérico
         return json({
           ok: true,
-          answer: mensaje,
-          testState: testState,
-          history: [...history, { role: "assistant", content: mensaje }]
-        });
-
-      } catch (err) {
-        console.error("Error generando test:", err);
-        return json({
-          ok: true,
-          answer: "Lo siento, tuve un problema al generar el test. ¿Puedes intentarlo de nuevo?",
+          answer: "Lo siento, no pude generar un test válido en este momento. ¿Puedes intentarlo de nuevo más tarde?",
           testState: null,
-          history: [...history, { role: "assistant", content: "Lo siento, tuve un problema al generar el test. ¿Puedes intentarlo de nuevo?" }]
+          history: [...history, { role: "assistant", content: "Lo siento, no pude generar un test válido en este momento. ¿Puedes intentarlo de nuevo más tarde?" }]
         });
       }
+
+      // Crear el estado del test
+      const testState = {
+        preguntas: testData.preguntas,
+        respuestasCorrectas: testData.respuestasCorrectas,
+        preguntaActual: 1,
+        respuestasUsuario: {}
+      };
+
+      const primeraPregunta = testData.preguntas[0];
+      const mensaje = `**Pregunta 1 de 5:**\n${primeraPregunta}\n\nResponde con la letra de la opción (ej: a)`;
+      return json({
+        ok: true,
+        answer: mensaje,
+        testState: testState,
+        history: [...history, { role: "assistant", content: mensaje }]
+      });
     }
 
     // --- Prompt normal (sin test en curso) ---
@@ -217,7 +257,7 @@ Modo actual: **ENSEÑA** – Tus respuestas deben ser **didácticas, estructurad
 
 **Importante:**
 - Si el usuario responde '1', proporciona información adicional.
-- Si el usuario responde '2', el sistema se encargará de generar un test **exclusivamente sobre el tema que acabas de explicar**. Tú no debes generar el test directamente, solo responder con la explicación y las opciones.
+- Si el usuario responde '2', el sistema se encargará de generar un test **exclusivamente sobre el tema que acabas de explicar**, con preguntas variadas y sin repeticiones.
 - Siempre utiliza el CONTEXTO para basar tus explicaciones.
 
 CONTEXTO:
@@ -243,7 +283,7 @@ ${contextText}`;
     return json({
       ok: true,
       answer: answer,
-      testState: null, // Por defecto no hay test en curso
+      testState: null,
       history: [...history, { role: "user", content: query }, { role: "assistant", content: answer }]
     });
 
