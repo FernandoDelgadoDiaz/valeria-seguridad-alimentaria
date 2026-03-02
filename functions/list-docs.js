@@ -9,55 +9,64 @@ export async function handler(event) {
   console.log("📚 Función list-docs iniciada");
 
   try {
-    // Intentar diferentes rutas posibles para la carpeta docs
+    // Objeto para depuración
+    const debug = {
+      possiblePaths: [],
+      foundPath: null,
+      filesInDocs: [],
+      pdfFiles: []
+    };
+
+    // Intentar diferentes rutas posibles
     const possiblePaths = [
-      path.resolve(process.cwd(), "docs"),                // raíz del proyecto
-      path.resolve(__dirname, "..", "..", "docs"),        // desde functions hacia arriba
-      path.resolve("/var/task/docs")                       // en entorno Netlify
+      path.resolve(process.cwd(), "docs"),
+      path.resolve(__dirname, "..", "..", "docs"),
+      path.resolve("/var/task/docs")
     ];
 
-    let docsPath = null;
     for (const p of possiblePaths) {
-      console.log(`🔍 Verificando ruta: ${p}`);
-      if (fs.existsSync(p)) {
-        docsPath = p;
-        console.log(`✅ Carpeta docs encontrada en: ${docsPath}`);
-        break;
+      const exists = fs.existsSync(p);
+      debug.possiblePaths.push({ path: p, exists });
+      if (!debug.foundPath && exists) {
+        debug.foundPath = p;
       }
     }
 
-    if (!docsPath) {
-      console.error("❌ No se encontró la carpeta docs en ninguna ruta");
+    if (!debug.foundPath) {
       return {
         statusCode: 404,
-        body: JSON.stringify({ error: "La carpeta docs no existe en el servidor" })
+        body: JSON.stringify({ 
+          error: "No se encontró la carpeta docs",
+          debug 
+        })
       };
     }
 
-    // Leer archivos de la carpeta docs
-    const allFiles = fs.readdirSync(docsPath);
-    console.log(`📄 Archivos encontrados en docs: ${allFiles.length}`);
+    // Leer archivos de la carpeta encontrada
+    const allFiles = fs.readdirSync(debug.foundPath);
+    debug.filesInDocs = allFiles;
 
-    // Filtrar solo PDFs (o también TXT si querés)
-    const files = allFiles
+    const pdfFiles = allFiles
       .filter(f => f.toLowerCase().endsWith(".pdf"))
       .map(f => ({
         name: f,
         url: `/docs/${encodeURIComponent(f)}`
       }));
 
-    console.log(`📚 Archivos PDF encontrados: ${files.length}`);
+    debug.pdfFiles = pdfFiles.map(f => f.name);
 
-    if (files.length === 0) {
-      console.warn("⚠️ No hay archivos PDF en la carpeta docs");
+    if (pdfFiles.length === 0) {
       return {
         statusCode: 200,
-        body: JSON.stringify([])
+        body: JSON.stringify({ 
+          message: "No hay archivos PDF en docs",
+          debug 
+        })
       };
     }
 
-    // Ordenar por número de capítulo si es posible
-    files.sort((a, b) => {
+    // Ordenar por número de capítulo
+    pdfFiles.sort((a, b) => {
       const numA = extractChapterNumber(a.name);
       const numB = extractChapterNumber(b.name);
       return numA - numB;
@@ -65,18 +74,20 @@ export async function handler(event) {
 
     return {
       statusCode: 200,
-      headers: { 
-        "Content-Type": "application/json",
-        "Cache-Control": "no-cache"
-      },
-      body: JSON.stringify(files),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        files: pdfFiles,
+        debug 
+      }),
     };
 
   } catch (err) {
-    console.error("❌ Error en list-docs:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message })
+      body: JSON.stringify({ 
+        error: err.message,
+        stack: err.stack 
+      }),
     };
   }
 }
