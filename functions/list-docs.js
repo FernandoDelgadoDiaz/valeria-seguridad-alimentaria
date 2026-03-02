@@ -7,14 +7,14 @@ const __dirname = path.dirname(__filename);
 
 export async function handler(event) {
   try {
-    // Ruta absoluta a la carpeta docs (desde la raíz del proyecto)
-    const docsPath = path.resolve(process.cwd(), "docs");
+    // Ruta correcta a la carpeta docs (subimos dos niveles desde functions hasta la raíz)
+    const docsPath = path.resolve(__dirname, "..", "..", "docs");
 
     // Verificar si la carpeta existe
     if (!fs.existsSync(docsPath)) {
       return {
         statusCode: 404,
-        body: JSON.stringify({ error: "La carpeta docs no existe" })
+        body: JSON.stringify({ error: "La carpeta docs no existe en la raíz del proyecto" })
       };
     }
 
