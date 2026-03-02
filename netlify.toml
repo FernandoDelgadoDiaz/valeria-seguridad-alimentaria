@@ -12,8 +12,3 @@
   to = "/.netlify/functions/chat"
   status = 200
   force = true
-
-[[redirects]]
-  from = "/docs/*"
-  to = "/docs/:splat"
-  status = 200
