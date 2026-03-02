@@ -144,6 +144,14 @@
       color: #666;
       padding: 20px;
     }
+    .error-message {
+      color: #d32f2f;
+      background: #ffebee;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-top: 5px;
+      font-size: 0.9rem;
+    }
 
     footer {
       background: #f0f0f0;
@@ -181,6 +189,10 @@
       border-radius: 50%; width: 48px; height: 48px; 
       display: flex; align-items: center; justify-content: center; 
       cursor: pointer; flex-shrink: 0;
+    }
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     strong { color: var(--wa-header); }
@@ -234,6 +246,7 @@
     let historyEnsena = [];
     let currentMode = 'tecnico';
     let currentTestState = null; // Estado del test en curso
+    let isSending = false; // Para evitar dobles envíos
 
     function renderChatHistory(mode) {
       while (box.firstChild) box.removeChild(box.firstChild);
@@ -264,6 +277,16 @@
       }
     }
 
+    function showTemporaryMessage(text, isError = false) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = isError ? 'bubble va error-message' : 'bubble va';
+      msgDiv.textContent = text;
+      box.appendChild(msgDiv);
+      setTimeout(() => {
+        if (msgDiv.parentNode) msgDiv.remove();
+      }, 3000);
+    }
+
     function setActiveMode(mode) {
       if (currentMode === mode) return;
       currentMode = mode;
@@ -292,8 +315,13 @@
     async function loadLibrary() {
       try {
         const res = await fetch('/.netlify/functions/list-docs');
+        if (!res.ok) throw new Error(`Error ${res.status}`);
         const files = await res.json();
         libraryList.innerHTML = '';
+        if (files.length === 0) {
+          libraryList.innerHTML = '<li>No hay capítulos disponibles.</li>';
+          return;
+        }
         files.forEach(file => {
           const li = document.createElement('li');
           const a = document.createElement('a');
@@ -318,12 +346,26 @@
     };
 
     async function handleSend() {
+      if (isSending) return; // Evita múltiples envíos
       if (currentMode === 'biblioteca') {
         alert('Estás en modo Biblioteca. Para hacer preguntas, cambiá a modo Técnico o Enseña.');
         return;
       }
       const q = input.value.trim();
       if (!q) return;
+
+      // Validación especial durante un test: la respuesta debe ser una letra a, b o c
+      if (currentTestState) {
+        const lowerQ = q.toLowerCase();
+        if (!['a', 'b', 'c'].includes(lowerQ)) {
+          showTemporaryMessage('Por favor, responde con una letra válida: a, b o c.', true);
+          return;
+        }
+      }
+
+      // Bloquear botón
+      isSending = true;
+      btn.disabled = true;
 
       appendAndSave(q, 'us');
       input.value = '';
@@ -337,7 +379,6 @@
         mode: currentMode
       };
 
-      // Si hay un test en curso, enviamos el estado
       if (currentTestState) {
         body.testState = currentTestState;
       }
@@ -350,7 +391,6 @@
         });
         const data = await res.json();
         if (data.ok) {
-          // Actualizar el estado del test si viene en la respuesta
           if (data.testState !== undefined) {
             currentTestState = data.testState;
           }
@@ -360,6 +400,12 @@
         }
       } catch (e) {
         appendAndSave('Error de conexión. Intenta de nuevo.', 'va');
+      } finally {
+        // Desbloquear botón después de un breve retraso para evitar doble clic
+        setTimeout(() => {
+          isSending = false;
+          btn.disabled = false;
+        }, 500);
       }
     }
 
@@ -368,7 +414,12 @@
       this.style.height = 'auto';
       this.style.height = (this.scrollHeight) + 'px';
     });
-    input.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    };
   </script>
 </body>
 </html>
