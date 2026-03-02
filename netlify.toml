@@ -7,9 +7,13 @@
   node_bundler = "esbuild"
   included_files = ["docs/**", "data/**"]
 
-# 🔽 esta regla es la clave para /api/*
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/chat"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/docs/*"
+  to = "/docs/:splat"
+  status = 200
