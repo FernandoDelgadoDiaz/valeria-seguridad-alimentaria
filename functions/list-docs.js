@@ -6,24 +6,55 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function handler(event) {
-  try {
-    // Ruta correcta a la carpeta docs (subimos dos niveles desde functions hasta la raíz)
-    const docsPath = path.resolve(__dirname, "..", "..", "docs");
+  console.log("📚 Función list-docs iniciada");
 
-    // Verificar si la carpeta existe
-    if (!fs.existsSync(docsPath)) {
+  try {
+    // Intentar diferentes rutas posibles para la carpeta docs
+    const possiblePaths = [
+      path.resolve(process.cwd(), "docs"),                // raíz del proyecto
+      path.resolve(__dirname, "..", "..", "docs"),        // desde functions hacia arriba
+      path.resolve("/var/task/docs")                       // en entorno Netlify
+    ];
+
+    let docsPath = null;
+    for (const p of possiblePaths) {
+      console.log(`🔍 Verificando ruta: ${p}`);
+      if (fs.existsSync(p)) {
+        docsPath = p;
+        console.log(`✅ Carpeta docs encontrada en: ${docsPath}`);
+        break;
+      }
+    }
+
+    if (!docsPath) {
+      console.error("❌ No se encontró la carpeta docs en ninguna ruta");
       return {
         statusCode: 404,
-        body: JSON.stringify({ error: "La carpeta docs no existe en la raíz del proyecto" })
+        body: JSON.stringify({ error: "La carpeta docs no existe en el servidor" })
       };
     }
 
-    const files = fs.readdirSync(docsPath)
+    // Leer archivos de la carpeta docs
+    const allFiles = fs.readdirSync(docsPath);
+    console.log(`📄 Archivos encontrados en docs: ${allFiles.length}`);
+
+    // Filtrar solo PDFs (o también TXT si querés)
+    const files = allFiles
       .filter(f => f.toLowerCase().endsWith(".pdf"))
       .map(f => ({
         name: f,
         url: `/docs/${encodeURIComponent(f)}`
       }));
+
+    console.log(`📚 Archivos PDF encontrados: ${files.length}`);
+
+    if (files.length === 0) {
+      console.warn("⚠️ No hay archivos PDF en la carpeta docs");
+      return {
+        statusCode: 200,
+        body: JSON.stringify([])
+      };
+    }
 
     // Ordenar por número de capítulo si es posible
     files.sort((a, b) => {
@@ -34,13 +65,18 @@ export async function handler(event) {
 
     return {
       statusCode: 200,
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache"
+      },
       body: JSON.stringify(files),
     };
+
   } catch (err) {
+    console.error("❌ Error en list-docs:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: err.message })
     };
   }
 }
