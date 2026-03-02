@@ -1,9 +1,23 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export async function handler(event) {
   try {
-    const docsPath = path.resolve(process.cwd(), "docs");
+    // Ruta correcta a la carpeta docs (desde la función hacia la raíz)
+    const docsPath = path.resolve(__dirname, "..", "..", "docs");
+    
+    // Verificar si la carpeta existe
+    if (!fs.existsSync(docsPath)) {
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ error: "La carpeta docs no existe" })
+      };
+    }
+
     const files = fs.readdirSync(docsPath)
       .filter(f => f.toLowerCase().endsWith(".pdf"))
       .map(f => ({
