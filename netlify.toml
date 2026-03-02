@@ -5,10 +5,11 @@
 
 [functions]
   node_bundler = "esbuild"
-  included_files = ["docs/**", "data/**"]
+  included_files = ["data/**"]
 
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/chat"
   status = 200
   force = true
+
