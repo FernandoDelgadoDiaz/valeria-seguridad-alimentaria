@@ -25,16 +25,15 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") return { statusCode: 405 };
 
   try {
-    const { query, history = [] } = JSON.parse(event.body || "{}");
+    const { query, history = [], mode = "tecnico" } = JSON.parse(event.body || "{}");
 
     if (!CACHE_DATA) {
       CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
     }
 
-    // Detectar intenciones del usuario
+    // Detectar intenciones del usuario (independientes del modo)
     const mencionaCAA = /caa|código alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
     const pideExacto = /texto exacto|literal|textualmente|dame el art[ií]culo|copia el art[ií]culo/i.test(query);
-    const modoAprendizaje = /^(defin[ei]|qu[eé] es|explica|concepto|significa|aprender|[/]aprender)/i.test(query.trim());
 
     // 1. Buscar fragmentos relevantes
     const lastMsg = history.length > 0 ? history[history.length - 1].content : "";
@@ -64,8 +63,7 @@ export async function handler(event) {
     if (pideExacto) {
       contextChunks = topCAA.length > 0 ? topCAA : topInternos;
       usarCAA = true;
-    } else if (mencionaCAA || modoAprendizaje) {
-      // En modo aprendizaje combinamos, pero si hay CAA lo incluimos
+    } else if (mencionaCAA) {
       contextChunks = [...topInternos, ...topCAA].slice(0, 8);
       usarCAA = true;
     } else {
@@ -80,39 +78,39 @@ export async function handler(event) {
     // Texto de contexto limpio (sin fuentes)
     const contextText = contextChunks.map(c => c.text).join("\n\n---\n\n");
 
-    // Prompt base
-    let systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tienes acceso a:
+    // Prompt base según el modo
+    let systemPrompt = "";
 
-- Documentos internos (manuales, BPM, procedimientos)
-- Código Alimentario Argentino (CAA)
+    if (mode === "tecnico") {
+      systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tienes acceso a documentos internos y al Código Alimentario Argentino (CAA).
 
-Debes seguir esta jerarquía:
+Modo actual: **TÉCNICO** – Tus respuestas deben ser **concisas, directas y técnicas**. Prioriza la información esencial. Si la respuesta proviene de documentos internos, no menciones la fuente. Si proviene del CAA, cita el capítulo y artículo (extrayéndolos del texto). No agregues explicaciones extensas ni ejemplos a menos que el usuario los pida explícitamente.
 
-1. Si el usuario pide EXPLÍCITAMENTE un artículo o capítulo del CAA (ej: "dame el artículo 5 del capítulo 1"), responde con el TEXTO EXACTO del fragmento del CAA, citando la fuente de manera natural: extrae del propio texto el capítulo y artículo (por ejemplo, "Según el Capítulo I, Artículo 2 del CAA: ..."). No uses el nombre del archivo.
+Jerarquía:
+- Si el usuario pide un artículo exacto del CAA, dale el texto literal con la cita.
+- Si menciona el CAA, combina internos + CAA con citas.
+- En caso contrario, responde solo con internos y al final podés ofrecer: "¿Necesitas que consulte también el CAA para ampliar?"
 
-2. Si el usuario menciona "CAA", "código alimentario", "artículo" o "capítulo" pero no pide el texto exacto, combina información de documentos internos y del CAA para dar una respuesta completa. Para el CAA, cita siempre el capítulo y artículo correspondientes (extrayéndolos del texto). Para los internos, no menciones la fuente.
-
-3. Si el usuario activa el MODO APRENDIZAJE (preguntas como "qué es", "explica", "definición", o el comando "/aprender"), debes estructurar tu respuesta de forma pedagógica:
-   - Definición clara del concepto.
-   - Clasificación o tipos si corresponde.
-   - Ejemplos prácticos (usa los documentos internos o el CAA según corresponda).
-   - Al final, ofrece continuar: "¿Quieres que profundice en algún aspecto en particular?"
-
-4. En caso contrario (consulta general sin mención a CAA ni modo aprendizaje), responde principalmente con los documentos internos. Si con ellos es suficiente, no agregues CAA. Al final de la respuesta, puedes preguntar: "¿Necesitas que consulte también el Código Alimentario Argentino para ampliar?"
-
-5. Siempre que uses información del CAA, debes indicar el capítulo y artículo (por ejemplo, "Capítulo I, Artículo 2") basándote en el texto del fragmento. No uses el nombre del archivo.
-
-6. Si la pregunta no es sobre seguridad alimentaria, responde amablemente que solo puedes ayudar con temas del CAA y BPM.
-
-CONTEXTO ACTUAL:
+CONTEXTO:
 ${contextText}`;
+    } else { // modo "ensena"
+      systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tienes acceso a documentos internos y al Código Alimentario Argentino (CAA).
 
-    if (pideExacto) {
-      systemPrompt += `\n\nIMPORTANTE: El usuario ha pedido el TEXTO EXACTO. Debes copiar el fragmento del CAA lo más literal posible, sin resumir. Asegúrate de indicar el capítulo y artículo correspondientes antes del texto.`;
+Modo actual: **ENSEÑA** – Tus respuestas deben ser **didácticas, estructuradas y pedagógicas**. Incluye:
+- Una definición clara del concepto.
+- Clasificación o tipos si corresponde.
+- Ejemplos prácticos (usa los documentos disponibles).
+- Al final, ofrece continuar: "¿Quieres que profundice en algún aspecto en particular?"
+
+Si el usuario pide un artículo exacto del CAA, dale el texto literal con la cita (capítulo y artículo). Si menciona el CAA, combina internos + CAA con citas. Para información de internos, no menciones la fuente.
+
+CONTEXTO:
+${contextText}`;
     }
 
-    if (modoAprendizaje) {
-      systemPrompt += `\n\nIMPORTANTE: Estás en MODO APRENDIZAJE. Tu respuesta debe ser didáctica, con definiciones, ejemplos y una invitación a profundizar.`;
+    // Añadir instrucciones comunes para casos especiales
+    if (pideExacto) {
+      systemPrompt += `\n\nIMPORTANTE: El usuario ha pedido el TEXTO EXACTO. Debes copiar el fragmento del CAA lo más literal posible, sin resumir. Indica el capítulo y artículo correspondientes antes del texto.`;
     }
 
     // Llamada a la API
