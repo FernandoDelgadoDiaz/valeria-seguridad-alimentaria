@@ -124,11 +124,18 @@ export async function handler(event) {
 
     // --- Si estamos en modo enseña y el usuario quiere un test (responde '2') ---
     if (mode === "ensena" && (query.trim() === "2" || query.toLowerCase().includes("test"))) {
-      // Generar test con IA
-      const testGenPrompt = `Basado en el siguiente contexto, genera un test de 5 preguntas de opción múltiple sobre el tema tratado. Cada pregunta debe tener 3 opciones (a, b, c). Devuelve exclusivamente un objeto JSON con dos campos: "preguntas" (un array de strings, cada uno con la pregunta y las opciones en formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (un objeto con claves "1","2","3","4","5" y valores "a","b","c" correspondientes a la opción correcta). No incluyas texto adicional, solo el JSON.
+      // Obtener el último mensaje del asistente (la explicación) para saber el tema exacto
+      const lastAssistantMsg = history.filter(m => m.role === "assistant").pop();
+      const lastExplanation = lastAssistantMsg ? lastAssistantMsg.content : "";
 
-Contexto:
-${contextText}`;
+      // Generar test con IA, usando el contexto y la última explicación para mayor precisión temática
+      const testGenPrompt = `Basado en el siguiente contexto y en la explicación reciente, genera un test de 5 preguntas de opción múltiple **exclusivamente sobre el mismo tema tratado en la explicación**. No incluyas preguntas de otros temas aunque aparezcan en el contexto. Cada pregunta debe tener 3 opciones (a, b, c). Devuelve exclusivamente un objeto JSON con dos campos: "preguntas" (un array de strings, cada uno con la pregunta y las opciones en formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (un objeto con claves "1","2","3","4","5" y valores "a","b","c" correspondientes a la opción correcta). No incluyas texto adicional, solo el JSON.
+
+Contexto general:
+${contextText}
+
+Explicación reciente del asistente (tema a evaluar):
+${lastExplanation}`;
 
       try {
         const testGenCompletion = await client.chat.completions.create({
@@ -210,7 +217,7 @@ Modo actual: **ENSEÑA** – Tus respuestas deben ser **didácticas, estructurad
 
 **Importante:**
 - Si el usuario responde '1', proporciona información adicional.
-- Si el usuario responde '2', el sistema se encargará de generar el test. Tú no debes generar el test directamente, solo responder con la explicación y las opciones.
+- Si el usuario responde '2', el sistema se encargará de generar un test **exclusivamente sobre el tema que acabas de explicar**. Tú no debes generar el test directamente, solo responder con la explicación y las opciones.
 - Siempre utiliza el CONTEXTO para basar tus explicaciones.
 
 CONTEXTO:
