@@ -67,12 +67,13 @@
       background: transparent;
       border: none;
       color: white;
-      padding: 6px 12px;
+      padding: 6px 10px;
       border-radius: 18px;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-weight: 500;
       cursor: pointer;
       transition: background 0.2s;
+      white-space: nowrap;
     }
     .mode-btn.active {
       background: white;
@@ -101,6 +102,48 @@
     }
     .va { align-self: flex-start; background: var(--wa-msg-in); border-top-left-radius: 0; }
     .us { align-self: flex-end; background: var(--wa-msg-out); border-top-right-radius: 0; }
+
+    #library-view {
+      position: fixed;
+      top: 65px;
+      bottom: 70px;
+      left: 0;
+      right: 0;
+      overflow-y: auto;
+      padding: 20px;
+      background: white;
+      display: none;
+    }
+    #library-view h2 {
+      margin-top: 0;
+      color: var(--wa-header);
+      font-size: 1.2rem;
+    }
+    #library-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    #library-list li {
+      margin-bottom: 10px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 8px;
+    }
+    #library-list a {
+      text-decoration: none;
+      color: #005d4b;
+      font-weight: 500;
+      display: block;
+      padding: 5px 0;
+    }
+    #library-list a:hover {
+      text-decoration: underline;
+    }
+    .loading {
+      text-align: center;
+      color: #666;
+      padding: 20px;
+    }
 
     footer {
       background: #f0f0f0;
@@ -156,10 +199,16 @@
       <div class="mode-selector">
         <button id="mode-tecnico" class="mode-btn active">Técnico</button>
         <button id="mode-ensena" class="mode-btn">Enseña</button>
+        <button id="mode-biblioteca" class="mode-btn">Biblioteca</button>
       </div>
     </header>
 
     <main id="chat-box"></main>
+
+    <div id="library-view">
+      <h2>Capítulos del CAA</h2>
+      <div id="library-list" class="loading">Cargando capítulos...</div>
+    </div>
 
     <footer>
       <div class="input-wrapper">
@@ -173,116 +222,144 @@
 
   <script>
     const box = document.getElementById('chat-box');
+    const libraryView = document.getElementById('library-view');
+    const libraryList = document.getElementById('library-list');
     const input = document.getElementById('user-input');
     const btn = document.getElementById('send-btn');
     const modeTecnico = document.getElementById('mode-tecnico');
     const modeEnsena = document.getElementById('mode-ensena');
+    const modeBiblioteca = document.getElementById('mode-biblioteca');
 
-    // Historiales separados por modo
     let historyTecnico = [];
     let historyEnsena = [];
-    let currentMode = 'tecnico'; // 'tecnico' o 'ensena'
+    let currentMode = 'tecnico';
+    let currentTestState = null; // Estado del test en curso
 
-    // Función para renderizar el historial de un modo en el DOM
-    function renderModeHistory(mode) {
-      // Limpiar el chat
-      while (box.firstChild) {
-        box.removeChild(box.firstChild);
-      }
-      // Obtener el historial correspondiente
+    function renderChatHistory(mode) {
+      while (box.firstChild) box.removeChild(box.firstChild);
+      if (mode === 'biblioteca') return;
       const hist = mode === 'tecnico' ? historyTecnico : historyEnsena;
-      // Renderizar cada mensaje
       hist.forEach(msg => {
         const side = msg.role === 'user' ? 'us' : 'va';
-        append(msg.content, side, false); // false para no guardar de nuevo
+        appendToDOM(msg.content, side);
       });
-      // Hacer scroll al final
       box.scrollTop = box.scrollHeight;
     }
 
-    // Alternar modo activo y restaurar historial
-    function setActiveMode(mode) {
-      if (currentMode === mode) return;
-      
-      // Guardar el historial actual antes de cambiar
-      if (currentMode === 'tecnico') {
-        // No necesitamos hacer nada, ya se actualiza en cada mensaje
-      } else {
-        // El historial de enseña ya se mantiene
-      }
-      
-      currentMode = mode;
-      
-      // Actualizar clases de los botones
-      if (mode === 'tecnico') {
-        modeTecnico.classList.add('active');
-        modeEnsena.classList.remove('active');
-      } else {
-        modeEnsena.classList.add('active');
-        modeTecnico.classList.remove('active');
-      }
-      
-      // Renderizar el historial del nuevo modo
-      renderModeHistory(mode);
-    }
-
-    modeTecnico.onclick = () => setActiveMode('tecnico');
-    modeEnsena.onclick = () => setActiveMode('ensena');
-
-    // Función para agregar mensaje al DOM y opcionalmente al historial
-    function append(text, side, saveToHistory = true) {
+    function appendToDOM(text, side) {
       const d = document.createElement('div');
       d.className = `bubble ${side}`;
       d.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
       box.appendChild(d);
-      box.scrollTop = box.scrollHeight;
-      
-      if (saveToHistory) {
-        const role = side === 'us' ? 'user' : 'assistant';
-        const msg = { role, content: text };
-        // Guardar en el historial del modo actual
-        if (currentMode === 'tecnico') {
-          historyTecnico.push(msg);
-        } else {
-          historyEnsena.push(msg);
-        }
+    }
+
+    function appendAndSave(text, side) {
+      appendToDOM(text, side);
+      const role = side === 'us' ? 'user' : 'assistant';
+      const msg = { role, content: text };
+      if (currentMode === 'tecnico') {
+        historyTecnico.push(msg);
+      } else if (currentMode === 'ensena') {
+        historyEnsena.push(msg);
       }
     }
 
+    function setActiveMode(mode) {
+      if (currentMode === mode) return;
+      currentMode = mode;
+      currentTestState = null; // Al cambiar modo, se cancela cualquier test en curso
+
+      modeTecnico.classList.remove('active');
+      modeEnsena.classList.remove('active');
+      modeBiblioteca.classList.remove('active');
+      if (mode === 'tecnico') modeTecnico.classList.add('active');
+      else if (mode === 'ensena') modeEnsena.classList.add('active');
+      else modeBiblioteca.classList.add('active');
+
+      if (mode === 'biblioteca') {
+        box.style.display = 'none';
+        libraryView.style.display = 'block';
+        if (libraryList.children.length === 1 && libraryList.children[0].className === 'loading') {
+          loadLibrary();
+        }
+      } else {
+        box.style.display = 'flex';
+        libraryView.style.display = 'none';
+        renderChatHistory(mode);
+      }
+    }
+
+    async function loadLibrary() {
+      try {
+        const res = await fetch('/.netlify/functions/list-docs');
+        const files = await res.json();
+        libraryList.innerHTML = '';
+        files.forEach(file => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = file.url;
+          a.target = '_blank';
+          a.textContent = file.name.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+          li.appendChild(a);
+          libraryList.appendChild(li);
+        });
+      } catch (err) {
+        libraryList.innerHTML = `<li class="error">Error al cargar: ${err.message}</li>`;
+      }
+    }
+
+    modeTecnico.onclick = () => setActiveMode('tecnico');
+    modeEnsena.onclick = () => setActiveMode('ensena');
+    modeBiblioteca.onclick = () => setActiveMode('biblioteca');
+
     window.onload = () => {
-      // Mensaje inicial en modo técnico (por defecto)
-      const msg = "Hola, soy **Inocuo**. Estoy aquí para asistirte en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**. Podés elegir entre **Modo Técnico** (respuestas concisas) o **Modo Enseña** (explicaciones didácticas). ¿Qué consulta tienes?";
-      append(msg, 'va', true); // guardar en historial
+      const msg = "Hola, soy **Inocuo**. Estoy aquí para asistirte en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**. Podés elegir entre **Modo Técnico** (respuestas concisas), **Modo Enseña** (explicaciones didácticas) o **Biblioteca** (acceso a los capítulos del CAA).";
+      appendAndSave(msg, 'va');
     };
 
     async function handleSend() {
+      if (currentMode === 'biblioteca') {
+        alert('Estás en modo Biblioteca. Para hacer preguntas, cambiá a modo Técnico o Enseña.');
+        return;
+      }
       const q = input.value.trim();
-      if(!q) return;
+      if (!q) return;
 
-      append(q, 'us', true); // guarda en historial del modo actual
+      appendAndSave(q, 'us');
       input.value = '';
       input.style.height = 'auto';
 
-      // Obtener el historial correspondiente para enviar al backend
       const historyToSend = currentMode === 'tecnico' ? historyTecnico : historyEnsena;
+
+      const body = {
+        query: q,
+        history: historyToSend,
+        mode: currentMode
+      };
+
+      // Si hay un test en curso, enviamos el estado
+      if (currentTestState) {
+        body.testState = currentTestState;
+      }
 
       try {
         const res = await fetch('/.netlify/functions/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            query: q, 
-            history: historyToSend,  // enviamos solo el historial del modo actual
-            mode: currentMode
-          })
+          body: JSON.stringify(body)
         });
-        
         const data = await res.json();
-        if(data.ok) {
-          append(data.answer, 'va', true); // guarda en historial del modo actual
+        if (data.ok) {
+          // Actualizar el estado del test si viene en la respuesta
+          if (data.testState !== undefined) {
+            currentTestState = data.testState;
+          }
+          appendAndSave(data.answer, 'va');
+        } else {
+          appendAndSave('Error en la respuesta.', 'va');
         }
       } catch (e) {
-        append("Error de conexión. Intenta de nuevo.", 'va', true);
+        appendAndSave('Error de conexión. Intenta de nuevo.', 'va');
       }
     }
 
@@ -291,7 +368,7 @@
       this.style.height = 'auto';
       this.style.height = (this.scrollHeight) + 'px';
     });
-    input.onkeydown = (e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
+    input.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
   </script>
 </body>
 </html>
