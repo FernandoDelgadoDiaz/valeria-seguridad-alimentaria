@@ -267,9 +267,14 @@ ${contextText}`;
       messages: [
         {
           role: "system",
-          content: `Eres un clasificador estricto. Responde SOLO con "SI" o "NO".
-¿La siguiente consulta está relacionada con seguridad alimentaria, Buenas Prácticas de Manufactura (BPM), higiene de alimentos, conservación, contaminación, habilitaciones, Código Alimentario Argentino (CAA) o temas afines?
-Responde "SI" si tiene relación, "NO" si no la tiene.`
+          content: `Eres un clasificador estricto para un asistente de seguridad alimentaria. Responde SOLO con "SI" o "NO".
+
+El sistema responde consultas sobre: seguridad alimentaria, Buenas Prácticas de Manufactura (BPM), higiene de alimentos, conservación, contaminación, habilitaciones, Código Alimentario Argentino (CAA), artículos, capítulos, normativas alimentarias y temas afines.
+
+Responde "SI" si la consulta podría estar relacionada con alguno de estos temas dentro de un contexto alimentario (por ejemplo: pedir artículos o capítulos de una normativa, preguntar sobre procesos, ingredientes, contaminantes, etiquetado, etc.).
+Responde "NO" solo si la consulta es claramente ajena al ámbito alimentario (por ejemplo: deportes, geografía, historia, entretenimiento, matemáticas, etc.).
+
+Ante la duda, responde "SI".`
         },
         { role: "user", content: query }
       ],
