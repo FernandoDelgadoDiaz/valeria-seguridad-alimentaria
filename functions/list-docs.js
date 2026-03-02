@@ -5,35 +5,23 @@ export async function handler(event) {
   console.log("📚 Función list-docs iniciada");
 
   try {
-    // Usamos process.cwd() que en Netlify debería ser /var/task
-    const baseDir = process.cwd();
-    console.log("📂 Directorio actual (cwd):", baseDir);
-
-    // Listar archivos en la raíz para ver qué hay
-    const rootFiles = fs.readdirSync(baseDir);
-    console.log("📄 Archivos en raíz:", rootFiles);
-
-    // Intentar con la carpeta docs en la raíz (usamos let para poder reasignar)
-    let docsPath = path.join(baseDir, "docs");
-    console.log("🔍 Buscando docs en:", docsPath);
+    const docsPath = path.join(process.cwd(), "docs");
+    console.log("🔍 Buscando PDFs en:", docsPath);
 
     if (!fs.existsSync(docsPath)) {
       console.log("❌ No existe la carpeta docs en:", docsPath);
-      // Intentar también con ../docs por si acaso
-      const altPath = path.join(baseDir, "..", "docs");
-      console.log("🔍 Buscando en ruta alternativa:", altPath);
-      if (fs.existsSync(altPath)) {
-        docsPath = altPath;
-        console.log("✅ Encontrada en:", docsPath);
-      } else {
-        return {
-          statusCode: 404,
-          body: JSON.stringify({ error: "No se encontró la carpeta docs", rootFiles, docsPath, altPath })
-        };
-      }
-    } else {
-      console.log("✅ Carpeta docs encontrada en:", docsPath);
+      return {
+        statusCode: 404,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          error: "No se encontró la carpeta docs",
+          cwd: process.cwd(),
+          cwdFiles: fs.readdirSync(process.cwd())
+        })
+      };
     }
+
+    console.log("✅ Carpeta docs encontrada en:", docsPath);
 
     const files = fs.readdirSync(docsPath)
       .filter(f => f.toLowerCase().endsWith(".pdf"))
@@ -44,22 +32,19 @@ export async function handler(event) {
 
     console.log(`📚 Archivos PDF encontrados: ${files.length}`);
 
-    // Ordenar por número de capítulo si es posible
-    files.sort((a, b) => {
-      const numA = extractChapterNumber(a.name);
-      const numB = extractChapterNumber(b.name);
-      return numA - numB;
-    });
+    files.sort((a, b) => extractChapterNumber(a.name) - extractChapterNumber(b.name));
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(files),
     };
+
   } catch (err) {
     console.error("❌ Error en list-docs:", err);
     return {
       statusCode: 500,
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ error: err.message, stack: err.stack })
     };
   }
