@@ -32,8 +32,9 @@ function cleanAndAnonymize(text) {
 
 /**
  * Divide el texto en fragmentos manejables con solapamiento para no perder contexto
+ * Aumentamos maxLen a 2500 para reducir la cantidad de fragmentos y el tamaño final.
  */
-function chunkText(text, maxLen = 1200, overlap = 200) {
+function chunkText(text, maxLen = 2500, overlap = 300) {
   const chunks = [];
   const sanitized = cleanAndAnonymize(text);
   for (let i = 0; i < sanitized.length; i += (maxLen - overlap)) {
