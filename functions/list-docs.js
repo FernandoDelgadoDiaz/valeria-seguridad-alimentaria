@@ -1,72 +1,51 @@
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export async function handler(event) {
   console.log("📚 Función list-docs iniciada");
 
   try {
-    // Objeto para depuración
-    const debug = {
-      possiblePaths: [],
-      foundPath: null,
-      filesInDocs: [],
-      pdfFiles: []
-    };
+    // Usamos process.cwd() que en Netlify debería ser /var/task
+    const baseDir = process.cwd();
+    console.log("📂 Directorio actual (cwd):", baseDir);
 
-    // Intentar diferentes rutas posibles
-    const possiblePaths = [
-      path.resolve(process.cwd(), "docs"),
-      path.resolve(__dirname, "..", "..", "docs"),
-      path.resolve("/var/task/docs")
-    ];
+    // Listar archivos en la raíz para ver qué hay
+    const rootFiles = fs.readdirSync(baseDir);
+    console.log("📄 Archivos en raíz:", rootFiles);
 
-    for (const p of possiblePaths) {
-      const exists = fs.existsSync(p);
-      debug.possiblePaths.push({ path: p, exists });
-      if (!debug.foundPath && exists) {
-        debug.foundPath = p;
+    // Intentar con la carpeta docs en la raíz
+    const docsPath = path.join(baseDir, "docs");
+    console.log("🔍 Buscando docs en:", docsPath);
+
+    if (!fs.existsSync(docsPath)) {
+      console.log("❌ No existe la carpeta docs en:", docsPath);
+      // Intentar también con ../docs por si acaso
+      const altPath = path.join(baseDir, "..", "docs");
+      console.log("🔍 Buscando en ruta alternativa:", altPath);
+      if (fs.existsSync(altPath)) {
+        docsPath = altPath;
+        console.log("✅ Encontrada en:", docsPath);
+      } else {
+        return {
+          statusCode: 404,
+          body: JSON.stringify({ error: "No se encontró la carpeta docs", rootFiles, docsPath, altPath })
+        };
       }
+    } else {
+      console.log("✅ Carpeta docs encontrada en:", docsPath);
     }
 
-    if (!debug.foundPath) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ 
-          error: "No se encontró la carpeta docs",
-          debug 
-        })
-      };
-    }
-
-    // Leer archivos de la carpeta encontrada
-    const allFiles = fs.readdirSync(debug.foundPath);
-    debug.filesInDocs = allFiles;
-
-    const pdfFiles = allFiles
+    const files = fs.readdirSync(docsPath)
       .filter(f => f.toLowerCase().endsWith(".pdf"))
       .map(f => ({
         name: f,
         url: `/docs/${encodeURIComponent(f)}`
       }));
 
-    debug.pdfFiles = pdfFiles.map(f => f.name);
+    console.log(`📚 Archivos PDF encontrados: ${files.length}`);
 
-    if (pdfFiles.length === 0) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ 
-          message: "No hay archivos PDF en docs",
-          debug 
-        })
-      };
-    }
-
-    // Ordenar por número de capítulo
-    pdfFiles.sort((a, b) => {
+    // Ordenar por número de capítulo si es posible
+    files.sort((a, b) => {
       const numA = extractChapterNumber(a.name);
       const numB = extractChapterNumber(b.name);
       return numA - numB;
@@ -75,19 +54,13 @@ export async function handler(event) {
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        files: pdfFiles,
-        debug 
-      }),
+      body: JSON.stringify(files),
     };
-
   } catch (err) {
+    console.error("❌ Error en list-docs:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ 
-        error: err.message,
-        stack: err.stack 
-      }),
+      body: JSON.stringify({ error: err.message, stack: err.stack })
     };
   }
 }
