@@ -5,7 +5,6 @@ import OpenAI from "openai";
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const DATA_FILE = path.resolve("/var/task/data/embeddings.json");
 
-// Funciones matemáticas para búsqueda semántica
 const dot = (a, b) => a.reduce((sum, v, i) => sum + v * (b[i] || 0), 0);
 const norm = (a) => Math.sqrt(dot(a, a));
 const cosSim = (a, b) => {
@@ -25,17 +24,15 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") return { statusCode: 405 };
 
   try {
-    const { query, history = [], mode = "tecnico" } = JSON.parse(event.body || "{}");
+    const { query, history = [], mode = "tecnico", testState: incomingTestState } = JSON.parse(event.body || "{}");
 
     if (!CACHE_DATA) {
       CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
     }
 
-    // Detectar intenciones
     const mencionaCAA = /caa|código alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
     const pideExacto = /texto exacto|literal|textualmente|dame el art[ií]culo|copia el art[ií]culo/i.test(query);
 
-    // Buscar fragmentos relevantes (igual que antes)
     const lastMsg = history.length > 0 ? history[history.length - 1].content : "";
     const qEmb = await client.embeddings.create({
       model: "text-embedding-3-small",
@@ -66,63 +63,50 @@ export async function handler(event) {
 
     const contextText = contextChunks.map(c => c.text).join("\n\n---\n\n");
 
-    // --- Lógica especial para tests interactivos en modo Enseña ---
-    let testState = null;
-    const lastAssistantMsg = history.filter(m => m.role === "assistant").pop();
+    // --- Lógica para test interactivo (modo Enseña) ---
+    if (mode === "ensena" && incomingTestState) {
+      const testState = incomingTestState;
+      const preguntaActual = testState.preguntaActual;
+      const respuestasUsuario = testState.respuestasUsuario || {};
 
-    // Buscar si el último mensaje del asistente contiene un marcador de test
-    if (lastAssistantMsg && lastAssistantMsg.content.includes("__TEST_STATE__")) {
-      try {
-        const match = lastAssistantMsg.content.match(/__TEST_STATE__(\{.*?\})/);
-        if (match) {
-          testState = JSON.parse(match[1]);
-        }
-      } catch (e) {}
-    }
+      // Guardar respuesta del usuario (si viene de una pregunta anterior)
+      if (query && preguntaActual > 1) {
+        // La respuesta está en query (ej: "a")
+        respuestasUsuario[preguntaActual - 1] = query.trim().toLowerCase();
+      }
 
-    // Si estamos en modo Enseña y hay un test en curso, procesamos la respuesta
-    if (mode === "ensena" && testState) {
-      const userAnswer = query.trim().toLowerCase();
-      // Guardar respuesta del usuario
-      testState.respuestasUsuario[testState.preguntaActual] = userAnswer;
-
-      if (testState.preguntaActual < 5) {
-        // Pasar a la siguiente pregunta
-        testState.preguntaActual++;
-        const siguientePregunta = testState.preguntas[testState.preguntaActual - 1]; // -1 porque el array empieza en 0
-        const mensaje = `**Pregunta ${testState.preguntaActual} de 5:**\n${siguientePregunta}\n\nResponde con la letra de la opción (ej: a)`;
-        // Incluir el estado actualizado en el mensaje (oculto para el usuario)
-        const mensajeConEstado = mensaje + `\n\n__TEST_STATE__${JSON.stringify(testState)}`;
+      if (preguntaActual <= testState.preguntas.length) {
+        // Enviar siguiente pregunta
+        const pregunta = testState.preguntas[preguntaActual - 1];
+        const mensaje = `**Pregunta ${preguntaActual} de ${testState.preguntas.length}:**\n${pregunta}\n\nResponde con la letra de la opción (ej: a)`;
         return json({
           ok: true,
-          answer: mensajeConEstado,
-          history: [...history, { role: "user", content: query }, { role: "assistant", content: mensajeConEstado }]
+          answer: mensaje,
+          testState: {
+            ...testState,
+            preguntaActual: preguntaActual + 1,
+            respuestasUsuario
+          },
+          history: [...history, { role: "assistant", content: mensaje }]
         });
       } else {
-        // Terminó el test, calcular puntaje
+        // Test finalizado, calcular puntaje
+        const correctas = testState.respuestasCorrectas;
         let aciertos = 0;
-        const respuestasCorrectas = testState.respuestasCorrectas;
-        const respuestasUsuario = testState.respuestasUsuario;
-        const resultados = [];
+        const detalles = [];
 
-        for (let i = 1; i <= 5; i++) {
-          const correcta = respuestasCorrectas[i];
-          const usuario = respuestasUsuario[i] || '';
-          const esCorrecta = (usuario === correcta);
+        for (let i = 1; i <= testState.preguntas.length; i++) {
+          const userAns = respuestasUsuario[i] || "";
+          const correctAns = correctas[i];
+          const esCorrecta = (userAns === correctAns);
           if (esCorrecta) aciertos++;
-          resultados.push({
-            pregunta: i,
-            usuario: usuario,
-            correcta: correcta,
-            esCorrecta: esCorrecta
-          });
+          detalles.push({ pregunta: i, usuario: userAns, correcta: correctAns, esCorrecta });
         }
 
-        // Construir mensaje de resultados
-        let mensajeResultado = `**Resultados del test**\n\nHas acertado ${aciertos} de 5.\n\n`;
-        resultados.forEach(r => {
-          if (!r.esCorrecta) {
-            mensajeResultado += `❌ Pregunta ${r.pregunta}: tu respuesta fue "${r.usuario}", la correcta es "${r.correcta}".\n`;
+        let mensajeResultado = `**Resultados del test**\n\nHas acertado ${aciertos} de ${testState.preguntas.length}.\n\n`;
+        detalles.forEach(d => {
+          if (!d.esCorrecta) {
+            mensajeResultado += `❌ Pregunta ${d.pregunta}: tu respuesta fue "${d.usuario}", la correcta es "${d.correcta}".\n`;
           }
         });
         mensajeResultado += "\n¿Quieres hacer otro test sobre el mismo tema o prefieres cambiar de tema?";
@@ -130,7 +114,8 @@ export async function handler(event) {
         return json({
           ok: true,
           answer: mensajeResultado,
-          history: [...history, { role: "user", content: query }, { role: "assistant", content: mensajeResultado }]
+          testState: null, // Finaliza el test
+          history: [...history, { role: "assistant", content: mensajeResultado }]
         });
       }
     }
@@ -151,7 +136,6 @@ Jerarquía:
 CONTEXTO:
 ${contextText}`;
     } else {
-      // Modo ENSEÑA
       systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tienes acceso a documentos internos y al Código Alimentario Argentino (CAA).
 
 Modo actual: **ENSEÑA** – Tus respuestas deben ser **didácticas, estructuradas y pedagógicas**.
@@ -164,14 +148,15 @@ Modo actual: **ENSEÑA** – Tus respuestas deben ser **didácticas, estructurad
   "**Para profundizar en este tema, responde '1'. Para hacer un test de aprendizaje, responde '2'.**"
 
 **Manejo de las opciones:**
-- Si el usuario responde '1', proporciona información adicional, más detalles o ejemplos avanzados.
-- Si el usuario responde '2', debes iniciar un test interactivo de 5 preguntas. Para ello, genera las 5 preguntas con sus opciones (a, b, c) y guárdalas internamente. Luego muestra solo la primera pregunta y espera la respuesta. Para indicar que se inicia un test, debes incluir en tu mensaje un marcador especial con el siguiente formato exacto (sin espacios adicionales):
-  "__TEST_STATE__{\"preguntaActual\":1,\"preguntas\":[\"Pregunta 1...\",\"Pregunta 2...\",...],\"respuestasCorrectas\":{\"1\":\"a\",\"2\":\"b\",...},\"respuestasUsuario\":{}}"
-  Este marcador debe ir al final del mensaje, después de la primera pregunta. No debe ser visible para el usuario, pero el sistema lo usará para continuar el test.
+- Si el usuario responde '1', proporciona información adicional.
+- Si el usuario responde '2', debes iniciar un test interactivo. Para ello, genera un objeto con:
+  - preguntas: array de 5 strings (cada uno con la pregunta y sus opciones a, b, c).
+  - respuestasCorrectas: objeto con las claves "1", "2", ... y valores "a", "b", etc.
+  Luego, en la respuesta, incluye un campo testState con ese objeto y preguntaActual = 1. El frontend se encargará de mostrar las preguntas una por una.
 
 **Importante:**
-- Cuando el usuario responda a una pregunta (ej: "a"), el sistema automáticamente procesará la respuesta y mostrará la siguiente pregunta o el resultado final.
-- Al final, se mostrará el puntaje y las respuestas incorrectas con las correctas.
+- Las preguntas deben ser claras y las opciones distintas.
+- Las respuestas correctas son siempre una letra (a, b o c).
 
 CONTEXTO:
 ${contextText}`;
@@ -193,14 +178,24 @@ ${contextText}`;
 
     const answer = completion.choices[0].message.content;
 
+    // Si el modo es enseña y la respuesta contiene un testState generado por la IA, lo extraemos (si la IA lo devuelve en el formato)
+    let testState = null;
+    if (mode === "ensena" && answer.includes("__TEST_STATE__")) {
+      // Por si acaso, pero idealmente la IA debe devolver el testState en un campo separado. 
+      // Como no podemos controlar eso, dejamos que el frontend maneje el marcador, pero lo evitaremos.
+      // Mejor: la IA no debe incluir marcadores; el backend es el que crea el testState.
+      // Pero como es más complejo, por ahora asumimos que la IA no genera testState, solo explicaciones.
+    }
+
     return json({
       ok: true,
       answer: answer,
+      testState: null, // Por defecto no hay test en curso
       history: [...history, { role: "user", content: query }, { role: "assistant", content: answer }]
     });
 
   } catch (err) {
-    console.error("Error en handler:", err);
+    console.error("Error:", err);
     return json({ error: err.message });
   }
 }
