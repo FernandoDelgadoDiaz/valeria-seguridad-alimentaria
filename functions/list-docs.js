@@ -1,33 +1,40 @@
-import fs from "fs";
-import path from "path";
-
 export async function handler(event) {
   console.log("📚 Función list-docs iniciada");
 
   try {
-    const docsPath = path.join(process.cwd(), "docs");
-    console.log("🔍 Buscando PDFs en:", docsPath);
+    const GITHUB_USER = "FernandoDelgadoDiaz";
+    const GITHUB_REPO = "valeria-seguridad-alimentaria";
+    const GITHUB_FOLDER = "docs";
 
-    if (!fs.existsSync(docsPath)) {
-      console.log("❌ No existe la carpeta docs en:", docsPath);
+    const apiUrl = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${GITHUB_FOLDER}`;
+
+    console.log("🔍 Consultando GitHub API:", apiUrl);
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        "User-Agent": "INOCUO-App",
+        "Accept": "application/vnd.github.v3+json"
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ Error GitHub API:", response.status, errorText);
       return {
-        statusCode: 404,
+        statusCode: response.status,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          error: "No se encontró la carpeta docs",
-          cwd: process.cwd(),
-          cwdFiles: fs.readdirSync(process.cwd())
-        })
+        body: JSON.stringify({ error: `GitHub API error: ${response.status}`, detail: errorText })
       };
     }
 
-    console.log("✅ Carpeta docs encontrada en:", docsPath);
+    const contents = await response.json();
 
-    const files = fs.readdirSync(docsPath)
-      .filter(f => f.toLowerCase().endsWith(".pdf"))
+    const files = contents
+      .filter(f => f.type === "file" && f.name.toLowerCase().endsWith(".pdf"))
       .map(f => ({
-        name: f,
-        url: `/docs/${encodeURIComponent(f)}`
+        name: f.name,
+        // URL directa al PDF en GitHub para descarga/visualización
+        url: `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${GITHUB_FOLDER}/${encodeURIComponent(f.name)}`
       }));
 
     console.log(`📚 Archivos PDF encontrados: ${files.length}`);
