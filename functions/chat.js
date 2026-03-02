@@ -5,7 +5,6 @@ import OpenAI from "openai";
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const DATA_FILE = path.resolve("/var/task/data/embeddings.json");
 
-// Funciones matemáticas para búsqueda semántica
 const dot = (a, b) => a.reduce((sum, v, i) => sum + v * (b[i] || 0), 0);
 const norm = (a) => Math.sqrt(dot(a, a));
 const cosSim = (a, b) => {
@@ -21,12 +20,6 @@ const json = (o) => ({
   body: JSON.stringify(o),
 });
 
-/**
- * Valida que un test generado sea correcto:
- * - 5 preguntas distintas entre sí
- * - Cada pregunta tiene 3 opciones (a, b, c)
- * - Las respuestasCorrectas son un objeto con claves "1".."5" y valores "a","b","c"
- */
 function validateTest(testData) {
   if (!testData || !testData.preguntas || !testData.respuestasCorrectas) return false;
   if (testData.preguntas.length !== 5) return false;
@@ -53,11 +46,9 @@ export async function handler(event) {
       CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
     }
 
-    // Detectar intenciones del usuario
     const mencionaCAA = /caa|código alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
     const pideExacto = /texto exacto|literal|textualmente|dame el art[ií]culo|copia el art[ií]culo/i.test(query);
 
-    // Búsqueda semántica de fragmentos relevantes
     const lastMsg = history.length > 0 ? history[history.length - 1].content : "";
     const qEmb = await client.embeddings.create({
       model: "text-embedding-3-small",
@@ -262,12 +253,18 @@ ${contextText}`;
     }
 
     // --- Guardia de dominio ---
-    const guardCheck = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `Eres un clasificador estricto para un asistente de seguridad alimentaria. Responde SOLO con "SI" o "NO".
+    // Saltear la guardia para respuestas cortas o afirmaciones/negaciones
+    // que claramente son continuación de la conversación
+    const esContinuacion = query.trim().length <= 3 ||
+      /^(si|sí|no|ok|yes|dale|bueno|claro|1|2|a|b|c|gracias)$/i.test(query.trim());
+
+    if (!esContinuacion) {
+      const guardCheck = await client.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Eres un clasificador estricto para un asistente de seguridad alimentaria. Responde SOLO con "SI" o "NO".
 
 El sistema responde consultas sobre: seguridad alimentaria, Buenas Prácticas de Manufactura (BPM), higiene de alimentos, conservación, contaminación, habilitaciones, Código Alimentario Argentino (CAA), artículos, capítulos, normativas alimentarias y temas afines.
 
@@ -275,23 +272,24 @@ Responde "SI" si la consulta podría estar relacionada con alguno de estos temas
 Responde "NO" solo si la consulta es claramente ajena al ámbito alimentario (por ejemplo: deportes, geografía, historia, entretenimiento, matemáticas, etc.).
 
 Ante la duda, responde "SI".`
-        },
-        { role: "user", content: query }
-      ],
-      temperature: 0,
-      max_tokens: 5,
-    });
-
-    const esRelevante = guardCheck.choices[0].message.content.trim().toUpperCase().startsWith("SI");
-
-    if (!esRelevante) {
-      const mensajeRechazo = "¡Hola! Soy INOCUO, un asistente especializado en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Esta consulta está fuera de mi área de conocimiento. 😊 Si tenés alguna duda sobre inocuidad, normativas del CAA, manipulación de alimentos o temas relacionados, ¡con gusto te ayudo!";
-      return json({
-        ok: true,
-        answer: mensajeRechazo,
-        testState: null,
-        history: [...history, { role: "user", content: query }, { role: "assistant", content: mensajeRechazo }]
+          },
+          { role: "user", content: query }
+        ],
+        temperature: 0,
+        max_tokens: 5,
       });
+
+      const esRelevante = guardCheck.choices[0].message.content.trim().toUpperCase().startsWith("SI");
+
+      if (!esRelevante) {
+        const mensajeRechazo = "¡Hola! Soy INOCUO, un asistente especializado en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Esta consulta está fuera de mi área de conocimiento. 😊 Si tenés alguna duda sobre inocuidad, normativas del CAA, manipulación de alimentos o temas relacionados, ¡con gusto te ayudo!";
+        return json({
+          ok: true,
+          answer: mensajeRechazo,
+          testState: null,
+          history: [...history, { role: "user", content: query }, { role: "assistant", content: mensajeRechazo }]
+        });
+      }
     }
 
     // --- Llamado principal ---
