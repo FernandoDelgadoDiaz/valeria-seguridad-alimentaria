@@ -18,10 +18,15 @@
     html, body { 
       margin: 0; padding: 0;
       height: 100%; width: 100%;
-      overflow: hidden;
       background-color: var(--wa-bg);
+    }
+
+    /* Estructura con posiciones fijas */
+    .app {
       display: flex;
       flex-direction: column;
+      height: 100%;
+      position: relative;
     }
 
     header { 
@@ -32,7 +37,10 @@
       align-items: center; 
       gap: 12px; 
       height: 65px;
-      flex-shrink: 0; 
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
       z-index: 9999;
     }
 
@@ -73,8 +81,13 @@
       color: var(--wa-header);
     }
 
+    /* Área de chat con padding para no solaparse con header y footer */
     main { 
-      flex: 1; 
+      position: fixed;
+      top: 65px;
+      bottom: 70px;
+      left: 0;
+      right: 0;
       overflow-y: auto; 
       padding: 15px; 
       display: flex; 
@@ -92,13 +105,18 @@
     .va { align-self: flex-start; background: var(--wa-msg-in); border-top-left-radius: 0; }
     .us { align-self: flex-end; background: var(--wa-msg-out); border-top-right-radius: 0; }
 
+    /* Footer fijo abajo */
     footer {
       background: #f0f0f0;
       padding: 10px;
       display: flex;
       align-items: flex-end;
       gap: 8px;
-      flex-shrink: 0;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 70px;
       z-index: 9999;
     }
 
@@ -109,12 +127,14 @@
       display: flex;
       align-items: center;
       padding: 5px 15px;
+      height: 50px;
     }
 
     textarea { 
       flex: 1; border: none; outline: none; padding: 10px 0;
       font-size: 1rem; max-height: 100px; resize: none;
       font-family: inherit; background: transparent;
+      height: auto;
     }
 
     .send-btn { 
@@ -128,31 +148,32 @@
   </style>
 </head>
 <body>
+  <div class="app">
+    <header>
+      <div class="shield-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+      </div>
+      <div class="header-info">
+        <h1>INOCUO</h1>
+        <p>Asistente de Seguridad Alimentaria · en línea</p>
+      </div>
+      <div class="mode-selector">
+        <button id="mode-tecnico" class="mode-btn active">Técnico</button>
+        <button id="mode-ensena" class="mode-btn">Enseña</button>
+      </div>
+    </header>
 
-  <header>
-    <div class="shield-icon">
-      <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
-    </div>
-    <div class="header-info">
-      <h1>INOCUO</h1>
-      <p>Asistente de Seguridad Alimentaria · en línea</p>
-    </div>
-    <div class="mode-selector">
-      <button id="mode-tecnico" class="mode-btn active">Técnico</button>
-      <button id="mode-ensena" class="mode-btn">Enseña</button>
-    </div>
-  </header>
+    <main id="chat-box"></main>
 
-  <main id="chat-box"></main>
-
-  <footer>
-    <div class="input-wrapper">
-      <textarea id="user-input" placeholder="Escribe tu consulta técnica..." rows="1"></textarea>
-    </div>
-    <button class="send-btn" id="send-btn">
-      <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-    </button>
-  </footer>
+    <footer>
+      <div class="input-wrapper">
+        <textarea id="user-input" placeholder="Escribe tu consulta técnica..." rows="1"></textarea>
+      </div>
+      <button class="send-btn" id="send-btn">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </footer>
+  </div>
 
   <script>
     const box = document.getElementById('chat-box');
@@ -163,9 +184,11 @@
 
     let history = [];
     let currentMode = 'tecnico'; // 'tecnico' o 'ensena'
+    let lastModeMessage = ''; // para evitar spam de cambios de modo
 
     // Alternar modo activo en la UI
     function setActiveMode(mode) {
+      if (currentMode === mode) return; // no hacer nada si ya está en ese modo
       currentMode = mode;
       if (mode === 'tecnico') {
         modeTecnico.classList.add('active');
@@ -174,8 +197,12 @@
         modeEnsena.classList.add('active');
         modeTecnico.classList.remove('active');
       }
-      // Opcional: mostrar un mensaje en el chat indicando el cambio de modo
-      append(`Modo cambiado a: **INOCUO ${mode === 'tecnico' ? 'Técnico' : 'Enseña'}**.`, 'va');
+      // Mostrar un solo mensaje de cambio (evitar acumulación)
+      const msg = `Modo cambiado a: **INOCUO ${mode === 'tecnico' ? 'Técnico' : 'Enseña'}**.`;
+      if (lastModeMessage !== msg) {
+        append(msg, 'va');
+        lastModeMessage = msg;
+      }
     }
 
     modeTecnico.onclick = () => setActiveMode('tecnico');
@@ -208,7 +235,7 @@
           body: JSON.stringify({ 
             query: q, 
             history: history,
-            mode: currentMode   // enviamos el modo actual
+            mode: currentMode
           })
         });
         
