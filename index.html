@@ -21,7 +21,6 @@
       background-color: var(--wa-bg);
     }
 
-    /* Estructura con posiciones fijas */
     .app {
       display: flex;
       flex-direction: column;
@@ -57,7 +56,6 @@
     .header-info h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
     .header-info p { font-size: 0.75rem; margin: 0; opacity: 0.9; }
 
-    /* Selector de modo */
     .mode-selector {
       display: flex;
       background: rgba(255,255,255,0.2);
@@ -81,7 +79,6 @@
       color: var(--wa-header);
     }
 
-    /* Área de chat con padding para no solaparse con header y footer */
     main { 
       position: fixed;
       top: 65px;
@@ -105,7 +102,6 @@
     .va { align-self: flex-start; background: var(--wa-msg-in); border-top-left-radius: 0; }
     .us { align-self: flex-end; background: var(--wa-msg-out); border-top-right-radius: 0; }
 
-    /* Footer fijo abajo */
     footer {
       background: #f0f0f0;
       padding: 10px;
@@ -182,14 +178,42 @@
     const modeTecnico = document.getElementById('mode-tecnico');
     const modeEnsena = document.getElementById('mode-ensena');
 
-    let history = [];
+    // Historiales separados por modo
+    let historyTecnico = [];
+    let historyEnsena = [];
     let currentMode = 'tecnico'; // 'tecnico' o 'ensena'
-    let lastModeMessage = ''; // para evitar spam de cambios de modo
 
-    // Alternar modo activo en la UI
+    // Función para renderizar el historial de un modo en el DOM
+    function renderModeHistory(mode) {
+      // Limpiar el chat
+      while (box.firstChild) {
+        box.removeChild(box.firstChild);
+      }
+      // Obtener el historial correspondiente
+      const hist = mode === 'tecnico' ? historyTecnico : historyEnsena;
+      // Renderizar cada mensaje
+      hist.forEach(msg => {
+        const side = msg.role === 'user' ? 'us' : 'va';
+        append(msg.content, side, false); // false para no guardar de nuevo
+      });
+      // Hacer scroll al final
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // Alternar modo activo y restaurar historial
     function setActiveMode(mode) {
-      if (currentMode === mode) return; // no hacer nada si ya está en ese modo
+      if (currentMode === mode) return;
+      
+      // Guardar el historial actual antes de cambiar
+      if (currentMode === 'tecnico') {
+        // No necesitamos hacer nada, ya se actualiza en cada mensaje
+      } else {
+        // El historial de enseña ya se mantiene
+      }
+      
       currentMode = mode;
+      
+      // Actualizar clases de los botones
       if (mode === 'tecnico') {
         modeTecnico.classList.add('active');
         modeEnsena.classList.remove('active');
@@ -197,36 +221,50 @@
         modeEnsena.classList.add('active');
         modeTecnico.classList.remove('active');
       }
-      // Mostrar un solo mensaje de cambio (evitar acumulación)
-      const msg = `Modo cambiado a: **INOCUO ${mode === 'tecnico' ? 'Técnico' : 'Enseña'}**.`;
-      if (lastModeMessage !== msg) {
-        append(msg, 'va');
-        lastModeMessage = msg;
-      }
+      
+      // Renderizar el historial del nuevo modo
+      renderModeHistory(mode);
     }
 
     modeTecnico.onclick = () => setActiveMode('tecnico');
     modeEnsena.onclick = () => setActiveMode('ensena');
 
-    function append(text, side) {
+    // Función para agregar mensaje al DOM y opcionalmente al historial
+    function append(text, side, saveToHistory = true) {
       const d = document.createElement('div');
       d.className = `bubble ${side}`;
       d.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
       box.appendChild(d);
       box.scrollTop = box.scrollHeight;
+      
+      if (saveToHistory) {
+        const role = side === 'us' ? 'user' : 'assistant';
+        const msg = { role, content: text };
+        // Guardar en el historial del modo actual
+        if (currentMode === 'tecnico') {
+          historyTecnico.push(msg);
+        } else {
+          historyEnsena.push(msg);
+        }
+      }
     }
 
     window.onload = () => {
-      append("Hola, soy **Inocuo**. Estoy aquí para asistirte en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**. Podés elegir entre **Modo Técnico** (respuestas concisas) o **Modo Enseña** (explicaciones didácticas). ¿Qué consulta tienes?", 'va');
+      // Mensaje inicial en modo técnico (por defecto)
+      const msg = "Hola, soy **Inocuo**. Estoy aquí para asistirte en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**. Podés elegir entre **Modo Técnico** (respuestas concisas) o **Modo Enseña** (explicaciones didácticas). ¿Qué consulta tienes?";
+      append(msg, 'va', true); // guardar en historial
     };
 
     async function handleSend() {
       const q = input.value.trim();
       if(!q) return;
 
-      append(q, 'us');
+      append(q, 'us', true); // guarda en historial del modo actual
       input.value = '';
       input.style.height = 'auto';
+
+      // Obtener el historial correspondiente para enviar al backend
+      const historyToSend = currentMode === 'tecnico' ? historyTecnico : historyEnsena;
 
       try {
         const res = await fetch('/.netlify/functions/chat', {
@@ -234,18 +272,17 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             query: q, 
-            history: history,
+            history: historyToSend,  // enviamos solo el historial del modo actual
             mode: currentMode
           })
         });
         
         const data = await res.json();
         if(data.ok) {
-          append(data.answer, 'va');
-          history = data.history; 
+          append(data.answer, 'va', true); // guarda en historial del modo actual
         }
       } catch (e) {
-        append("Error de conexión. Intenta de nuevo.", 'va');
+        append("Error de conexión. Intenta de nuevo.", 'va', true);
       }
     }
 
