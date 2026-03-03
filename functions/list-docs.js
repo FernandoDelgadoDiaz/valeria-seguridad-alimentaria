@@ -10,12 +10,15 @@ export async function handler(event) {
 
     console.log("🔍 Consultando GitHub API:", apiUrl);
 
-    const response = await fetch(apiUrl, {
-      headers: {
-        "User-Agent": "INOCUO-App",
-        "Accept": "application/vnd.github.v3+json"
-      }
-    });
+    const headers = {
+      "User-Agent": "INOCUO-App",
+      "Accept": "application/vnd.github.v3+json"
+    };
+    if (process.env.GITHUB_TOKEN) {
+      headers["Authorization"] = `token ${process.env.GITHUB_TOKEN}`;
+    }
+
+    const response = await fetch(apiUrl, { headers });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -61,7 +64,7 @@ export async function handler(event) {
     return {
       statusCode: 500,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ error: err.message, stack: err.stack })
+      body: JSON.stringify({ error: "Error interno del servidor. Intenta más tarde." })
     };
   }
 }
