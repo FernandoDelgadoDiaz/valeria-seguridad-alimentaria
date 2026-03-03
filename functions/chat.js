@@ -23,15 +23,13 @@ const json = (o) => ({
 function validateTest(testData) {
   if (!testData || !testData.preguntas || !testData.respuestasCorrectas) return false;
   if (testData.preguntas.length !== 5) return false;
-  const preguntasNormalizadas = testData.preguntas.map(p => p.replace(/\s+/g, ' ').trim().toLowerCase());
-  const unique = new Set(preguntasNormalizadas);
-  if (unique.size !== 5) return false;
+  const norm2 = testData.preguntas.map(p => p.replace(/\s+/g, ' ').trim().toLowerCase());
+  if (new Set(norm2).size !== 5) return false;
   for (const p of testData.preguntas) {
     if (!p.includes('a)') || !p.includes('b)') || !p.includes('c)')) return false;
   }
-  const correctas = testData.respuestasCorrectas;
   for (let i = 1; i <= 5; i++) {
-    if (!correctas[i] || !['a','b','c'].includes(correctas[i])) return false;
+    if (!testData.respuestasCorrectas[i] || !['a','b','c'].includes(testData.respuestasCorrectas[i])) return false;
   }
   return true;
 }
@@ -59,8 +57,17 @@ export async function handler(event) {
       }
     }
 
-    const mencionaCAA = /caa|código alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
-    const pideExacto = /texto exacto|literal|textualmente|dame el art[ií]culo|copia el art[ií]culo/i.test(query);
+    const q = query.toLowerCase();
+
+    // FIX: detectar pedidos de texto exacto del CAA — regex ampliado
+    // Antes solo matcheaba "texto exacto", "literal", "dame el artículo"
+    // Ahora también matchea "textual", "artículo X del capítulo Y", etc.
+    const pideExacto =
+      /texto exacto|textual|literal|textualmente/i.test(query) ||
+      /dame el art[ií]culo|copia el art[ií]culo|transcrib/i.test(query) ||
+      (/art[ií]culo\s*\d+/.test(q) && /cap[ií]tulo\s*\d+/.test(q));
+
+    const mencionaCAA = /caa|c[oó]digo alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
 
     const lastMsg = history.length > 0 ? history[history.length - 1].content : "";
     const qEmb = await client.embeddings.create({
@@ -86,14 +93,15 @@ export async function handler(event) {
     const topInternos = internos.slice(0, 4);
     const topCAA = caaChunks.slice(0, 4);
 
+    // Jerarquía: documentos internos siempre primero
     let contextChunks = [];
     if (pideExacto) {
       contextChunks = topCAA.length > 0 ? topCAA : topInternos;
     } else if (mencionaCAA) {
       contextChunks = [...topInternos, ...topCAA];
     } else {
-      const internosRelevantes = topInternos.filter(c => c.score > 0.3);
-      if (internosRelevantes.length >= 2) {
+      const relevantes = topInternos.filter(c => c.score > 0.3);
+      if (relevantes.length >= 2) {
         contextChunks = topInternos;
       } else {
         contextChunks = [...topInternos, ...topCAA.slice(0, 4 - topInternos.length)];
@@ -103,7 +111,7 @@ export async function handler(event) {
 
     const contextText = contextChunks.map(c => c.text).join("\n\n---\n\n");
 
-    // Test interactivo en curso
+    // ── Test interactivo en curso ──
     if (mode === "ensena" && incomingTestState) {
       const testState = incomingTestState;
       const preguntaActual = testState.preguntaActual;
@@ -119,11 +127,7 @@ export async function handler(event) {
         return json({
           ok: true,
           answer: mensaje,
-          testState: {
-            ...testState,
-            preguntaActual: preguntaActual + 1,
-            respuestasUsuario
-          },
+          testState: { ...testState, preguntaActual: preguntaActual + 1, respuestasUsuario },
           history: [...history, { role: "assistant", content: mensaje }]
         });
       } else {
@@ -133,70 +137,52 @@ export async function handler(event) {
         for (let i = 1; i <= testState.preguntas.length; i++) {
           const userAns = respuestasUsuario[i] || "";
           const correctAns = correctas[i];
-          const esCorrecta = (userAns === correctAns);
-          if (esCorrecta) aciertos++;
-          detalles.push({ pregunta: i, usuario: userAns, correcta: correctAns, esCorrecta });
+          const ok2 = userAns === correctAns;
+          if (ok2) aciertos++;
+          detalles.push({ pregunta: i, usuario: userAns, correcta: correctAns, esCorrecta: ok2 });
         }
-        let mensajeResultado = `**Resultados del test**\n\nAcertaste ${aciertos} de ${testState.preguntas.length}.\n\n`;
+        let resultado = `**Resultados del test**\n\nAcertaste ${aciertos} de ${testState.preguntas.length}.\n\n`;
         detalles.forEach(d => {
           if (!d.esCorrecta) {
-            mensajeResultado += `Pregunta ${d.pregunta}: respondiste "${d.usuario || '(sin respuesta)'}", la correcta era "${d.correcta}".\n`;
+            resultado += `❌ Pregunta ${d.pregunta}: respondiste "${d.usuario || '(sin respuesta)'}", la correcta era "${d.correcta}".\n`;
           }
         });
-        mensajeResultado += "\n¿Querés hacer otro test sobre el mismo tema o preferís cambiar de tema?";
+        resultado += "\n¿Querés hacer otro test o cambiar de tema?";
         return json({
-          ok: true, answer: mensajeResultado, testState: null,
-          history: [...history, { role: "assistant", content: mensajeResultado }]
+          ok: true, answer: resultado, testState: null,
+          history: [...history, { role: "assistant", content: resultado }]
         });
       }
     }
 
-    // Generar test
+    // ── Generar test ──
     if (mode === "ensena" && (query.trim() === "2" || query.toLowerCase().includes("test"))) {
-      const lastAssistantMsg = history.filter(m => m.role === "assistant").pop();
-      const lastExplanation = lastAssistantMsg ? lastAssistantMsg.content : "";
+      const lastAI = history.filter(m => m.role === "assistant").pop();
+      const lastExplanation = lastAI ? lastAI.content : "";
       let testData = null;
-      let attempts = 0;
 
-      while (attempts < 3) {
-        attempts++;
-        const testGenPrompt = `Basado en el siguiente contexto y en la explicación reciente, genera un test de 5 preguntas de opción múltiple **exclusivamente sobre el mismo tema tratado en la explicación**. Cada pregunta con 3 opciones (a, b, c) diferenciadas. Devuelve solo JSON con: "preguntas" (array de strings, formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (objeto con claves "1" a "5", valores "a","b","c"). Sin texto adicional.
-
-Contexto:
-${contextText}
-
-Explicación del asistente (tema a evaluar):
-${lastExplanation}`;
-
+      for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           const res = await client.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
-              { role: "system", content: "Generador de tests. Devuelve solo JSON válido." },
-              { role: "user", content: testGenPrompt }
+              { role: "system", content: "Generador de tests. Devuelve solo JSON válido sin markdown." },
+              { role: "user", content: `Genera un test de 5 preguntas de opción múltiple exclusivamente sobre el tema de la siguiente explicación. Cada pregunta con 3 opciones (a, b, c). Devuelve solo JSON con: "preguntas" (array de strings, formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (objeto con claves "1" a "5", valores "a","b","c").\n\nContexto:\n${contextText}\n\nExplicación:\n${lastExplanation}` }
             ],
-            temperature: 0.3 + (attempts * 0.1),
+            temperature: 0.3 + (attempt * 0.1),
           });
           const raw = res.choices[0].message.content;
-          let parsedTest;
-          try { parsedTest = JSON.parse(raw); }
-          catch (e) {
-            const m = raw.match(/\{.*\}/s);
-            if (m) parsedTest = JSON.parse(m[0]);
-            else throw new Error("JSON inválido");
-          }
-          if (validateTest(parsedTest)) { testData = parsedTest; break; }
-          else console.log(`Intento ${attempts}: test inválido, reintentando...`);
-        } catch (err) {
-          console.log(`Error intento ${attempts}:`, err.message);
-        }
+          let parsed2;
+          try { parsed2 = JSON.parse(raw); }
+          catch { const m = raw.match(/\{[\s\S]*\}/); if (m) parsed2 = JSON.parse(m[0]); else throw new Error("no JSON"); }
+          if (validateTest(parsed2)) { testData = parsed2; break; }
+        } catch (e) { console.log(`Test attempt ${attempt}:`, e.message); }
       }
 
       if (!testData) {
-        return json({ ok: true, answer: "No pude generar un test válido. ¿Podés intentarlo de nuevo?", testState: null, history });
+        return json({ ok: true, answer: "No pude generar el test. Intentá de nuevo.", testState: null, history });
       }
 
-      // preguntaActual = 2: la pregunta 1 ya se muestra en este response
       const testState = {
         preguntas: testData.preguntas,
         respuestasCorrectas: testData.respuestasCorrectas,
@@ -210,57 +196,51 @@ ${lastExplanation}`;
       });
     }
 
-    // Respuesta normal
+    // ── Respuesta normal ──
     let systemPrompt = "";
-
     if (mode === "tecnico") {
-      systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tenés acceso a documentos internos (procedimientos, manuales, instructivos) y al Código Alimentario Argentino (CAA).
+      systemPrompt = `Eres INOCUO, asistente experto en seguridad alimentaria y BPM. Tenés acceso a documentos internos (procedimientos, manuales) y al Código Alimentario Argentino (CAA).
 
-Modo actual: **TÉCNICO** — Respuestas concisas, directas y técnicas.
+Modo TÉCNICO — respuestas concisas, directas, técnicas.
 
-**JERARQUÍA DE FUENTES (seguir estrictamente):**
-1. Los documentos internos son tu PRIMERA fuente. Respondé desde ahí cuando estén disponibles en el CONTEXTO.
-2. Incorporás el CAA solo cuando: el usuario lo pide explícitamente, o los internos no tienen la respuesta.
-3. No menciones la fuente interna. Si citás el CAA, indicá capítulo y artículo.
-4. Al terminar respuestas basadas en internos, podés ofrecer: "¿Necesitás que consulte también el CAA para ampliar?"
+JERARQUÍA DE FUENTES:
+1. Documentos internos son tu PRIMERA fuente. Respondé desde ahí cuando estén en el CONTEXTO.
+2. El CAA solo cuando el usuario lo pide explícitamente o los internos no alcanzan.
+3. No menciones la fuente interna. Si citás CAA, indicá capítulo y artículo.
+4. Podés ofrecer: "¿Necesitás que consulte también el CAA para ampliar?"
 
-**SEGUIMIENTO DE CONVERSACIÓN:**
-- Leé el historial completo antes de responder. No repitas información ya dada.
-- Si el usuario valida o comenta algo sobre lo que dijiste, reconocelo y avanzá desde ahí.
-- Si pide aclaraciones, profundizá en el mismo tema sin resetear la conversación.
-- Si el usuario dice "eso es lo que dice el procedimiento" u otra afirmación sobre el contexto, procesala y respondé en consecuencia.
+SEGUIMIENTO DE CONVERSACIÓN:
+- Leé el historial antes de responder. No repitas información ya dada.
+- Si el usuario valida o comenta algo, reconocelo y avanzá desde ahí.
 
-**RESTRICCIÓN:** Solo respondés sobre seguridad alimentaria, BPM y CAA.
+RESTRICCIÓN: Solo seguridad alimentaria, BPM y CAA.
 
 CONTEXTO:
 ${contextText}`;
     } else {
-      systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tenés acceso a documentos internos y al Código Alimentario Argentino (CAA).
+      systemPrompt = `Eres INOCUO, asistente experto en seguridad alimentaria y BPM.
 
-Modo actual: **ENSEÑA** — Respuestas didácticas, estructuradas y pedagógicas.
+Modo ENSEÑA — respuestas didácticas, estructuradas.
 
-**Estructura de tus respuestas:**
-- Primero, definición clara del concepto.
-- Luego, clasificación o tipos si corresponde.
-- Ejemplos prácticos tomados de los documentos.
-- Al final, siempre: "**Para profundizar en este tema, respondé '1'. Para hacer un test de aprendizaje, respondé '2'.**"
+Estructura: definición → clasificación → ejemplos prácticos → al final siempre: "**Para profundizar respondé '1'. Para hacer un test respondé '2'.**"
 
-**Importante:**
-- Los documentos internos tienen prioridad como fuente.
-- Si responde '1', profundizá. Si responde '2', el sistema genera el test.
-
-**RESTRICCIÓN:** Solo respondés sobre seguridad alimentaria, BPM y CAA.
+Los documentos internos tienen prioridad. RESTRICCIÓN: solo seguridad alimentaria, BPM y CAA.
 
 CONTEXTO:
 ${contextText}`;
     }
 
     if (pideExacto) {
-      systemPrompt += `\n\nIMPORTANTE: El usuario pidió el TEXTO EXACTO del CAA. Copialo lo más literal posible, sin resumir. Indicá capítulo y artículo antes del texto.`;
+      systemPrompt += `\n\nIMPORTANTE: El usuario pidió el TEXTO EXACTO o TEXTUAL del CAA. Buscá en el CONTEXTO el artículo mencionado y copialo de forma literal, sin resumir ni parafrasear. Indicá capítulo y artículo antes del texto. Si el fragmento exacto no está en el CONTEXTO disponible, indicalo claramente.`;
     }
 
-    const esContinuacion = query.trim().length <= 3 ||
-      /^(si|sí|no|ok|yes|dale|bueno|claro|1|2|a|b|c|gracias|entendido|correcto)$/i.test(query.trim());
+    // Guardia de dominio
+    // FIX: bypass ampliado — cualquier mensaje que mencione artículo+capítulo es claramente del dominio
+    const esContinuacion =
+      query.trim().length <= 3 ||
+      /^(si|sí|no|ok|yes|dale|bueno|claro|1|2|a|b|c|gracias|entendido|correcto)$/i.test(query.trim()) ||
+      pideExacto ||  // FIX: si pideExacto ya sabemos que es del dominio, no llamar a la guardia
+      mencionaCAA;   // FIX: si menciona CAA/artículo/capítulo, saltar guardia directamente
 
     if (!esContinuacion) {
       const guardCheck = await client.chat.completions.create({
@@ -269,8 +249,8 @@ ${contextText}`;
           {
             role: "system",
             content: `Clasificador para asistente de seguridad alimentaria. Responde SOLO "SI" o "NO".
-SI si está relacionado con: seguridad alimentaria, BPM, higiene, conservación, contaminación, CAA, normativas, etiquetado, procesos o ingredientes alimentarios.
-NO solo si es claramente ajeno: deportes, geografía, entretenimiento, matemáticas.
+SI si está relacionado con: seguridad alimentaria, BPM, higiene, conservación, contaminación, CAA, normativas, etiquetado, procesos, ingredientes alimentarios, habilitaciones.
+NO solo si es claramente ajeno: deportes, geografía, entretenimiento, matemáticas, política.
 Ante la duda: "SI".`
           },
           { role: "user", content: query }
