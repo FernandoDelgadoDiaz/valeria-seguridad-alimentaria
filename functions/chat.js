@@ -238,9 +238,10 @@ ${contextText}`;
     // FIX: bypass ampliado — cualquier mensaje que mencione artículo+capítulo es claramente del dominio
     const esContinuacion =
       query.trim().length <= 3 ||
-      /^(si|sí|no|ok|yes|dale|bueno|claro|1|2|a|b|c|gracias|entendido|correcto)$/i.test(query.trim()) ||
-      pideExacto ||  // FIX: si pideExacto ya sabemos que es del dominio, no llamar a la guardia
-      mencionaCAA;   // FIX: si menciona CAA/artículo/capítulo, saltar guardia directamente
+      history.length > 2 ||  // FIX: con historial activo es continuacion de sesion
+      /^(si|sí|no|ok|yes|dale|bueno|claro|1|2|a|b|c|gracias|entendido|correcto|otro tema|mismo tema|otro|cambiar|continuar|seguir)$/i.test(query.trim()) ||
+      pideExacto ||
+      mencionaCAA;
 
     if (!esContinuacion) {
       const guardCheck = await client.chat.completions.create({
@@ -273,7 +274,7 @@ Ante la duda: "SI".`
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        ...history.slice(-8),
+        ...history.slice(-12),
         { role: "user", content: query }
       ],
       temperature: pideExacto ? 0.1 : 0.3,
