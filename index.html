@@ -466,14 +466,25 @@
   }
 
   // ── Library ────────────────────────────────────
-  const romanMap = { i:'I',ii:'II',iii:'III',iv:'IV',v:'V',vi:'VI',vii:'VII',viii:'VIII',ix:'IX',x:'X',xi:'XI',xii:'XII',xiii:'XIII',xiv:'XIV',xv:'XV',xvi:'XVI',xvii:'XVII',xviii:'XVIII',xix:'XIX',xx:'XX',xxi:'XXI',xxii:'XXII' };
-  const topicMap = { 'disp_grales':'Disposiciones Generales','establec':'Establecimientos','prod_alimenticios':'Productos Alimenticios','envases':'Envases','rotulacion':'Rotulación','carneos':'Productos Cárneos','lacteos':'Productos Lácteos','harinas':'Harinas y Derivados','azucarados':'Productos Azucarados','vegetales':'Vegetales','aguas':'Aguas','beb_fermentadas':'Bebidas Fermentadas','alimentos_grasos':'Alimentos Grasos','estimulantes':'Estimulantes','correctivos':'Correctivos','dieteticos':'Dietéticos','aditivos':'Aditivos','aislados_prot':'Aislados Proteicos','metodologia':'Metodología','procedimientos':'Procedimientos','miscelaneos':'Misceláneos' };
+  const ROMAN_ORDER = ['xxii','xxi','xx','xix','xviii','xvii','xvi','xv','xiv','xiii','xii','xi','ix','viii','vii','vi','iv','iii','ii','x','v','i'];
+  const ROMAN_DISPLAY = {xxii:'XXII',xxi:'XXI',xx:'XX',xix:'XIX',xviii:'XVIII',xvii:'XVII',xvi:'XVI',xv:'XV',xiv:'XIV',xiii:'XIII',xii:'XII',xi:'XI',ix:'IX',viii:'VIII',vii:'VII',vi:'VI',iv:'IV',iii:'III',ii:'II',x:'X',v:'V',i:'I'};
+  const topicMap = { 'disp_grales':'Disposiciones Generales','establec':'Establecimientos','prod_alimenticios':'Productos Alimenticios','envases':'Envases','rotulacion':'Rotulación','carneos':'Productos Cárneos','lacteos':'Productos Lácteos','harinas':'Harinas y Derivados','azucarados':'Productos Azucarados','vegetales':'Vegetales','aguas':'Aguas','beb_fermentadas':'Bebidas Fermentadas','alimentos_grasos':'Alimentos Grasos','estimulantes':'Estimulantes','correctivos':'Correctivos','dieteticos':'Dietéticos','aditivos':'Aditivos','aislados_prot':'Aislados Proteícos','metodologia':'Metodología','procedimientos':'Procedimientos','miscelaneos':'Misceláneos' };
 
   function parseChapter(fn) {
-    const m = fn.toLowerCase().match(/capitulo[_\s]*(i{1,3}|iv|vi{0,3}|ix|xi{0,3}|xiv|xvi{0,3}|xix|xx{0,2}i{0,3})/);
-    const roman = m ? (romanMap[m[1]] || m[1].toUpperCase()) : null;
+    const lower = fn.toLowerCase();
+    const capMatch = lower.match(/capitulo[_\s]*/);
+    let roman = null;
+    if (capMatch) {
+      const rest = lower.slice(capMatch.index + capMatch[0].length);
+      for (const r of ROMAN_ORDER) {
+        if (rest.startsWith(r)) {
+          const nx = rest[r.length];
+          if (!nx || /[^a-z]/.test(nx)) { roman = ROMAN_DISPLAY[r]; break; }
+        }
+      }
+    }
     let topic = null;
-    for (const k of Object.keys(topicMap)) { if (fn.toLowerCase().includes(k)) { topic = topicMap[k]; break; } }
+    for (const k of Object.keys(topicMap)) { if (lower.includes(k)) { topic = topicMap[k]; break; } }
     return { roman, topic };
   }
 
