@@ -40,10 +40,23 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") return { statusCode: 405 };
 
   try {
-    const { query, history = [], mode = "tecnico", testState: incomingTestState } = JSON.parse(event.body || "{}");
+    const parsed = JSON.parse(event.body || "{}");
+    const query = (parsed.query || "").slice(0, 2000);
+    const history = (Array.isArray(parsed.history) ? parsed.history : []).slice(-20);
+    const mode = parsed.mode || "tecnico";
+    const incomingTestState = parsed.testState || null;
 
     if (!CACHE_DATA) {
-      CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+      try {
+        CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+      } catch (e) {
+        console.error("Error cargando embeddings.json:", e.message);
+        return json({ ok: false, error: "Base de conocimiento no disponible. Intentá más tarde." });
+      }
+      if (!CACHE_DATA?.chunks?.length) {
+        CACHE_DATA = null;
+        return json({ ok: false, error: "Base de conocimiento vacía. Contactá al administrador." });
+      }
     }
 
     const mencionaCAA = /caa|código alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
@@ -52,7 +65,7 @@ export async function handler(event) {
     const lastMsg = history.length > 0 ? history[history.length - 1].content : "";
     const qEmb = await client.embeddings.create({
       model: "text-embedding-3-small",
-      input: `${lastMsg} ${query}`.slice(0, 1000),
+      input: `${query} ${lastMsg}`.slice(0, 1000),
     });
 
     const allChunks = CACHE_DATA.chunks.map(c => ({
@@ -61,8 +74,14 @@ export async function handler(event) {
     }));
 
     const sorted = allChunks.sort((a, b) => b.score - a.score);
-    const internos = sorted.filter(c => !c.source.toLowerCase().includes("capitulo") && !c.source.toLowerCase().includes("caa"));
-    const caaChunks = sorted.filter(c => c.source.toLowerCase().includes("capitulo") || c.source.toLowerCase().includes("caa"));
+    const internos = sorted.filter(c =>
+      !c.source.toLowerCase().includes("capitulo") &&
+      !c.source.toLowerCase().includes("caa")
+    );
+    const caaChunks = sorted.filter(c =>
+      c.source.toLowerCase().includes("capitulo") ||
+      c.source.toLowerCase().includes("caa")
+    );
 
     const topInternos = internos.slice(0, 4);
     const topCAA = caaChunks.slice(0, 4);
@@ -71,22 +90,26 @@ export async function handler(event) {
     if (pideExacto) {
       contextChunks = topCAA.length > 0 ? topCAA : topInternos;
     } else if (mencionaCAA) {
-      contextChunks = [...topInternos, ...topCAA].slice(0, 8);
+      contextChunks = [...topInternos, ...topCAA];
     } else {
-      contextChunks = topInternos; // Prioridad internos
+      const internosRelevantes = topInternos.filter(c => c.score > 0.3);
+      if (internosRelevantes.length >= 2) {
+        contextChunks = topInternos;
+      } else {
+        contextChunks = [...topInternos, ...topCAA.slice(0, 4 - topInternos.length)];
+      }
     }
     if (contextChunks.length === 0) contextChunks = topCAA;
 
     const contextText = contextChunks.map(c => c.text).join("\n\n---\n\n");
 
-    // --- Lógica para test interactivo (modo Enseña) ---
+    // Test interactivo en curso
     if (mode === "ensena" && incomingTestState) {
       const testState = incomingTestState;
       const preguntaActual = testState.preguntaActual;
       const respuestasUsuario = testState.respuestasUsuario || {};
 
-      // Guardar respuesta actual (si corresponde)
-      if (query && preguntaActual > 1) {
+      if (query && preguntaActual >= 2) {
         respuestasUsuario[preguntaActual - 1] = query.trim().toLowerCase();
       }
 
@@ -104,11 +127,9 @@ export async function handler(event) {
           history: [...history, { role: "assistant", content: mensaje }]
         });
       } else {
-        // Test finalizado
         const correctas = testState.respuestasCorrectas;
         let aciertos = 0;
         const detalles = [];
-
         for (let i = 1; i <= testState.preguntas.length; i++) {
           const userAns = respuestasUsuario[i] || "";
           const correctAns = correctas[i];
@@ -116,166 +137,176 @@ export async function handler(event) {
           if (esCorrecta) aciertos++;
           detalles.push({ pregunta: i, usuario: userAns, correcta: correctAns, esCorrecta });
         }
-
-        let mensajeResultado = `**Resultados del test**\n\nHas acertado ${aciertos} de ${testState.preguntas.length}.\n\n`;
+        let mensajeResultado = `**Resultados del test**\n\nAcertaste ${aciertos} de ${testState.preguntas.length}.\n\n`;
         detalles.forEach(d => {
           if (!d.esCorrecta) {
-            mensajeResultado += `❌ Pregunta ${d.pregunta}: tu respuesta fue "${d.usuario}", la correcta es "${d.correcta}".\n`;
+            mensajeResultado += `Pregunta ${d.pregunta}: respondiste "${d.usuario || '(sin respuesta)'}", la correcta era "${d.correcta}".\n`;
           }
         });
-        mensajeResultado += "\n¿Quieres hacer otro test sobre el mismo tema o prefieres cambiar de tema?";
-
+        mensajeResultado += "\n¿Querés hacer otro test sobre el mismo tema o preferís cambiar de tema?";
         return json({
-          ok: true,
-          answer: mensajeResultado,
-          testState: null,
+          ok: true, answer: mensajeResultado, testState: null,
           history: [...history, { role: "assistant", content: mensajeResultado }]
         });
       }
     }
 
-    // --- Iniciar test (respuesta '2') ---
+    // Generar test
     if (mode === "ensena" && (query.trim() === "2" || query.toLowerCase().includes("test"))) {
       const lastAssistantMsg = history.filter(m => m.role === "assistant").pop();
       const lastExplanation = lastAssistantMsg ? lastAssistantMsg.content : "";
-
       let testData = null;
       let attempts = 0;
-      const maxAttempts = 3;
 
-      while (attempts < maxAttempts) {
+      while (attempts < 3) {
         attempts++;
-        const testGenPrompt = `Basado en el siguiente contexto y en la explicación reciente, genera un test de 5 preguntas de opción múltiple **exclusivamente sobre el mismo tema tratado en la explicación**. No incluyas preguntas de otros temas aunque aparezcan en el contexto. Cada pregunta debe tener 3 opciones (a, b, c) claramente diferenciadas y no repetidas entre preguntas. Devuelve exclusivamente un objeto JSON con dos campos: "preguntas" (un array de strings, cada uno con la pregunta y las opciones en formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (un objeto con claves "1","2","3","4","5" y valores "a","b","c" correspondientes a la opción correcta). No incluyas texto adicional, solo el JSON.
+        const testGenPrompt = `Basado en el siguiente contexto y en la explicación reciente, genera un test de 5 preguntas de opción múltiple **exclusivamente sobre el mismo tema tratado en la explicación**. Cada pregunta con 3 opciones (a, b, c) diferenciadas. Devuelve solo JSON con: "preguntas" (array de strings, formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (objeto con claves "1" a "5", valores "a","b","c"). Sin texto adicional.
 
-Contexto general:
+Contexto:
 ${contextText}
 
-Explicación reciente del asistente (tema a evaluar):
+Explicación del asistente (tema a evaluar):
 ${lastExplanation}`;
 
         try {
-          const testGenCompletion = await client.chat.completions.create({
+          const res = await client.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
-              { role: "system", content: "Eres un generador de tests. Devuelve solo JSON." },
+              { role: "system", content: "Generador de tests. Devuelve solo JSON válido." },
               { role: "user", content: testGenPrompt }
             ],
             temperature: 0.3 + (attempts * 0.1),
           });
-
-          const testGenAnswer = testGenCompletion.choices[0].message.content;
-          let parsed;
-          try {
-            parsed = JSON.parse(testGenAnswer);
-          } catch (e) {
-            const match = testGenAnswer.match(/\{.*\}/s);
-            if (match) parsed = JSON.parse(match[0]);
-            else throw new Error("No se pudo parsear JSON");
+          const raw = res.choices[0].message.content;
+          let parsedTest;
+          try { parsedTest = JSON.parse(raw); }
+          catch (e) {
+            const m = raw.match(/\{.*\}/s);
+            if (m) parsedTest = JSON.parse(m[0]);
+            else throw new Error("JSON inválido");
           }
-
-          if (validateTest(parsed)) {
-            testData = parsed;
-            break;
-          }
+          if (validateTest(parsedTest)) { testData = parsedTest; break; }
+          else console.log(`Intento ${attempts}: test inválido, reintentando...`);
         } catch (err) {
-          console.log(`Error en intento ${attempts}:`, err.message);
+          console.log(`Error intento ${attempts}:`, err.message);
         }
       }
 
       if (!testData) {
-        return json({
-          ok: true,
-          answer: "Lo siento, no pude generar un test válido en este momento. ¿Puedes intentarlo de nuevo más tarde?",
-          testState: null,
-          history: [...history, { role: "assistant", content: "Lo siento, no pude generar un test válido en este momento. ¿Puedes intentarlo de nuevo más tarde?" }]
-        });
+        return json({ ok: true, answer: "No pude generar un test válido. ¿Podés intentarlo de nuevo?", testState: null, history });
       }
 
+      // preguntaActual = 2: la pregunta 1 ya se muestra en este response
       const testState = {
         preguntas: testData.preguntas,
         respuestasCorrectas: testData.respuestasCorrectas,
-        preguntaActual: 1,
+        preguntaActual: 2,
         respuestasUsuario: {}
       };
-
-      const primeraPregunta = testData.preguntas[0];
-      const mensaje = `**Pregunta 1 de 5:**\n${primeraPregunta}\n\nResponde con la letra de la opción (ej: a)`;
+      const mensaje = `**Pregunta 1 de 5:**\n${testData.preguntas[0]}\n\nResponde con la letra de la opción (ej: a)`;
       return json({
-        ok: true,
-        answer: mensaje,
-        testState: testState,
+        ok: true, answer: mensaje, testState,
         history: [...history, { role: "assistant", content: mensaje }]
       });
     }
 
-    // --- Prompt normal (sin test) ---
+    // Respuesta normal
     let systemPrompt = "";
 
     if (mode === "tecnico") {
-      systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tienes acceso a documentos internos y al Código Alimentario Argentino (CAA).
+      systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tenés acceso a documentos internos (procedimientos, manuales, instructivos) y al Código Alimentario Argentino (CAA).
 
-Modo actual: **TÉCNICO** – Tus respuestas deben ser **concisas, directas y técnicas**. 
+Modo actual: **TÉCNICO** — Respuestas concisas, directas y técnicas.
 
-**Reglas estrictas:**
-1. **Prioridad absoluta**: Siempre debes basar tu respuesta en los documentos internos (manuales, BPM) que se te proporcionan en el CONTEXTO. Si hay información relevante en los internos, úsala primero.
-2. Si el usuario menciona "CAA", "código", "artículo" o "capítulo", puedes complementar con información del CAA.
-3. Si el usuario pide un artículo exacto, dale el texto literal con la cita.
-4. Si no hay información en internos, puedes usar el CAA.
-5. **Mantén el hilo de la conversación**: Ten en cuenta los mensajes anteriores del historial para responder coherentemente.
-6. Al final, si solo usaste internos, ofrece: "¿Necesitas que consulte también el CAA para ampliar?"
-7. **Restricción de dominio**: Solo responde sobre seguridad alimentaria, BPM o CAA. Si la pregunta es fuera de tema, recházala amablemente.
+**JERARQUÍA DE FUENTES (seguir estrictamente):**
+1. Los documentos internos son tu PRIMERA fuente. Respondé desde ahí cuando estén disponibles en el CONTEXTO.
+2. Incorporás el CAA solo cuando: el usuario lo pide explícitamente, o los internos no tienen la respuesta.
+3. No menciones la fuente interna. Si citás el CAA, indicá capítulo y artículo.
+4. Al terminar respuestas basadas en internos, podés ofrecer: "¿Necesitás que consulte también el CAA para ampliar?"
+
+**SEGUIMIENTO DE CONVERSACIÓN:**
+- Leé el historial completo antes de responder. No repitas información ya dada.
+- Si el usuario valida o comenta algo sobre lo que dijiste, reconocelo y avanzá desde ahí.
+- Si pide aclaraciones, profundizá en el mismo tema sin resetear la conversación.
+- Si el usuario dice "eso es lo que dice el procedimiento" u otra afirmación sobre el contexto, procesala y respondé en consecuencia.
+
+**RESTRICCIÓN:** Solo respondés sobre seguridad alimentaria, BPM y CAA.
 
 CONTEXTO:
-${contextText}
-
-Historial reciente (para mantener coherencia): ${history.slice(-3).map(m => m.content).join(' | ')}`;
+${contextText}`;
     } else {
-      systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tienes acceso a documentos internos y al Código Alimentario Argentino (CAA).
+      systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tenés acceso a documentos internos y al Código Alimentario Argentino (CAA).
 
-Modo actual: **ENSEÑA** – Tus respuestas deben ser **didácticas, estructuradas y pedagógicas**.
+Modo actual: **ENSEÑA** — Respuestas didácticas, estructuradas y pedagógicas.
 
-**Estructura:**
-- Definición clara del concepto.
-- Clasificación o tipos si corresponde.
-- Ejemplos prácticos (usa los documentos).
-- Al final, añade: "**Para profundizar, responde '1'. Para hacer un test, responde '2'.**"
+**Estructura de tus respuestas:**
+- Primero, definición clara del concepto.
+- Luego, clasificación o tipos si corresponde.
+- Ejemplos prácticos tomados de los documentos.
+- Al final, siempre: "**Para profundizar en este tema, respondé '1'. Para hacer un test de aprendizaje, respondé '2'.**"
 
 **Importante:**
-- Siempre usa el CONTEXTO para basar tus explicaciones.
-- Mantén el hilo de la conversación.
-- Restricción de dominio: solo temas de seguridad alimentaria.
+- Los documentos internos tienen prioridad como fuente.
+- Si responde '1', profundizá. Si responde '2', el sistema genera el test.
+
+**RESTRICCIÓN:** Solo respondés sobre seguridad alimentaria, BPM y CAA.
 
 CONTEXTO:
-${contextText}
-
-Historial reciente: ${history.slice(-3).map(m => m.content).join(' | ')}`;
+${contextText}`;
     }
 
     if (pideExacto) {
-      systemPrompt += `\n\nIMPORTANTE: El usuario pide texto exacto. Dale el fragmento del CAA literal con cita.`;
+      systemPrompt += `\n\nIMPORTANTE: El usuario pidió el TEXTO EXACTO del CAA. Copialo lo más literal posible, sin resumir. Indicá capítulo y artículo antes del texto.`;
+    }
+
+    const esContinuacion = query.trim().length <= 3 ||
+      /^(si|sí|no|ok|yes|dale|bueno|claro|1|2|a|b|c|gracias|entendido|correcto)$/i.test(query.trim());
+
+    if (!esContinuacion) {
+      const guardCheck = await client.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `Clasificador para asistente de seguridad alimentaria. Responde SOLO "SI" o "NO".
+SI si está relacionado con: seguridad alimentaria, BPM, higiene, conservación, contaminación, CAA, normativas, etiquetado, procesos o ingredientes alimentarios.
+NO solo si es claramente ajeno: deportes, geografía, entretenimiento, matemáticas.
+Ante la duda: "SI".`
+          },
+          { role: "user", content: query }
+        ],
+        temperature: 0,
+        max_tokens: 5,
+      });
+
+      const esRelevante = guardCheck.choices[0].message.content.trim().toUpperCase().startsWith("SI");
+      if (!esRelevante) {
+        const rechazo = "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área. Si tenés dudas sobre inocuidad, normativas del CAA o manipulación de alimentos, ¡con gusto te ayudo!";
+        return json({
+          ok: true, answer: rechazo, testState: null,
+          history: [...history, { role: "user", content: query }, { role: "assistant", content: rechazo }]
+        });
+      }
     }
 
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt },
-        ...history.slice(-6),
+        ...history.slice(-8),
         { role: "user", content: query }
       ],
       temperature: pideExacto ? 0.1 : 0.3,
     });
 
     const answer = completion.choices[0].message.content;
-
     return json({
-      ok: true,
-      answer: answer,
-      testState: null,
+      ok: true, answer, testState: null,
       history: [...history, { role: "user", content: query }, { role: "assistant", content: answer }]
     });
 
   } catch (err) {
-    console.error("Error:", err);
-    return json({ error: err.message });
+    console.error("Error en handler:", err);
+    return json({ ok: false, error: "Error interno. Intentá de nuevo." });
   }
 }
