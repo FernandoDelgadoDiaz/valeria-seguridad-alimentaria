@@ -40,10 +40,23 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") return { statusCode: 405 };
 
   try {
-    const { query, history = [], mode = "tecnico", testState: incomingTestState } = JSON.parse(event.body || "{}");
+    const parsed = JSON.parse(event.body || "{}");
+    const query = (parsed.query || "").slice(0, 2000);
+    const history = (Array.isArray(parsed.history) ? parsed.history : []).slice(-20);
+    const mode = parsed.mode || "tecnico";
+    const incomingTestState = parsed.testState || null;
 
     if (!CACHE_DATA) {
-      CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+      try {
+        CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+      } catch (e) {
+        console.error("Error cargando embeddings.json:", e.message);
+        return json({ ok: false, error: "Base de conocimiento no disponible. Intenta más tarde." });
+      }
+      if (!CACHE_DATA?.chunks?.length) {
+        CACHE_DATA = null;
+        return json({ ok: false, error: "Base de conocimiento vacía. Contactá al administrador." });
+      }
     }
 
     const mencionaCAA = /caa|código alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
@@ -85,8 +98,14 @@ export async function handler(event) {
       const preguntaActual = testState.preguntaActual;
       const respuestasUsuario = testState.respuestasUsuario || {};
 
-      if (query && preguntaActual > 1) {
-        respuestasUsuario[preguntaActual - 1] = query.trim().toLowerCase();
+      // Guardar la respuesta del usuario para la pregunta anterior (o la última si ya terminó)
+      if (query) {
+        const idxRespuesta = preguntaActual <= testState.preguntas.length
+          ? preguntaActual - 1   // respondiendo pregunta N, guardamos N-1
+          : testState.preguntas.length; // llegamos al final, guardamos la última
+        if (idxRespuesta >= 1) {
+          respuestasUsuario[idxRespuesta] = query.trim().toLowerCase();
+        }
       }
 
       if (preguntaActual <= testState.preguntas.length) {
