@@ -287,6 +287,54 @@
       }, 3000);
     }
 
+    function formatChapterName(filename) {
+      const romanMap = {
+        i: 'I', ii: 'II', iii: 'III', iv: 'IV', v: 'V', vi: 'VI',
+        vii: 'VII', viii: 'VIII', ix: 'IX', x: 'X', xi: 'XI', xii: 'XII',
+        xiii: 'XIII', xiv: 'XIV', xv: 'XV', xvi: 'XVI', xvii: 'XVII',
+        xviii: 'XVIII', xix: 'XIX', xx: 'XX', xxi: 'XXI', xxii: 'XXII'
+      };
+
+      const topicMap = {
+        'disp_grales': 'Disposiciones Generales',
+        'establec': 'Establecimientos',
+        'prod_alimenticios': 'Productos Alimenticios',
+        'envases': 'Envases',
+        'rotulacion': 'Rotulación',
+        'carneos': 'Productos Cárneos',
+        'lacteos': 'Productos Lácteos',
+        'harinas': 'Harinas y Derivados',
+        'azucarados': 'Productos Azucarados',
+        'vegetales': 'Vegetales',
+        'aguas': 'Aguas',
+        'beb_fermentadas': 'Bebidas Fermentadas',
+        'alimentos_grasos': 'Alimentos Grasos',
+        'estimulantes': 'Estimulantes',
+        'correctivos': 'Correctivos',
+        'dieteticos': 'Dietéticos',
+        'aditivos': 'Aditivos',
+        'aislados_prot': 'Aislados Proteicos',
+        'metodologia': 'Metodología',
+        'procedimientos': 'Procedimientos',
+        'miscelaneos': 'Misceláneos'
+      };
+
+      const match = filename.toLowerCase().match(/capitulo[_\s]*(i{1,3}|iv|vi{0,3}|ix|xi{0,3}|xiv|xvi{0,3}|xix|xx{0,2}i{0,3})/);
+      const roman = match ? romanMap[match[1]] || match[1].toUpperCase() : null;
+
+      let topic = null;
+      for (const key of Object.keys(topicMap)) {
+        if (filename.toLowerCase().includes(key)) {
+          topic = topicMap[key];
+          break;
+        }
+      }
+
+      if (roman && topic) return `Capítulo ${roman} - ${topic}`;
+      if (roman) return `Capítulo ${roman}`;
+      return filename.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+    }
+
     function setActiveMode(mode) {
       if (currentMode === mode) return;
       currentMode = mode;
@@ -302,7 +350,6 @@
       if (mode === 'biblioteca') {
         box.style.display = 'none';
         libraryView.style.display = 'block';
-        // Cargar solo si no fue cargado antes
         if (!libraryList.dataset.loaded) {
           loadLibrary();
           libraryList.dataset.loaded = 'true';
@@ -330,7 +377,7 @@
           const a = document.createElement('a');
           a.href = file.url;
           a.target = '_blank';
-          a.textContent = file.name.replace(/\.pdf$/i, '').replace(/_/g, ' ');
+          a.textContent = formatChapterName(file.name);
           li.appendChild(a);
           libraryList.appendChild(li);
         });
