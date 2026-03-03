@@ -469,7 +469,16 @@
   const romanMap = { i:'I',ii:'II',iii:'III',iv:'IV',v:'V',vi:'VI',vii:'VII',viii:'VIII',ix:'IX',x:'X',xi:'XI',xii:'XII',xiii:'XIII',xiv:'XIV',xv:'XV',xvi:'XVI',xvii:'XVII',xviii:'XVIII',xix:'XIX',xx:'XX',xxi:'XXI',xxii:'XXII' };
   const topicMap = { 'disp_grales':'Disposiciones Generales','establec':'Establecimientos','prod_alimenticios':'Productos Alimenticios','envases':'Envases','rotulacion':'Rotulación','carneos':'Productos Cárneos','lacteos':'Productos Lácteos','harinas':'Harinas y Derivados','azucarados':'Productos Azucarados','vegetales':'Vegetales','aguas':'Aguas','beb_fermentadas':'Bebidas Fermentadas','alimentos_grasos':'Alimentos Grasos','estimulantes':'Estimulantes','correctivos':'Correctivos','dieteticos':'Dietéticos','aditivos':'Aditivos','aislados_prot':'Aislados Proteicos','metodologia':'Metodología','procedimientos':'Procedimientos','miscelaneos':'Misceláneos' };
 
+  // Títulos especiales para archivos que no coinciden con topicMap
+  const filenameOverrides = [
+    { match: /anmat_caa_capitulo_xiv/i, roman: 'XIV', title: 'Alimentos Especiales' },
+  ];
+
   function parseChapter(fn) {
+    // Verificar overrides primero
+    for (const ov of filenameOverrides) {
+      if (ov.match.test(fn)) return { roman: ov.roman, topic: ov.title };
+    }
     const m = fn.toLowerCase().match(/capitulo[_\s]*(i{1,3}|iv|vi{0,3}|ix|xi{0,3}|xiv|xvi{0,3}|xix|xx{0,2}i{0,3})/);
     const roman = m ? (romanMap[m[1]] || m[1].toUpperCase()) : null;
     let topic = null;
