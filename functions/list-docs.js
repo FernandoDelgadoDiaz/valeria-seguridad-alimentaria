@@ -29,15 +29,24 @@ export async function handler(event) {
 
     const contents = await response.json();
 
+    // Filtrar solo los capítulos del CAA
+    const esCAAChapter = (nombre) => {
+      const n = nombre.toLowerCase();
+      return (
+        n.includes("capitulo") ||
+        n.startsWith("anmat_caa") ||
+        n.startsWith("caa_cap")
+      );
+    };
+
     const files = contents
-      .filter(f => f.type === "file" && f.name.toLowerCase().endsWith(".pdf"))
+      .filter(f => f.type === "file" && f.name.toLowerCase().endsWith(".pdf") && esCAAChapter(f.name))
       .map(f => ({
         name: f.name,
-        // URL directa al PDF en GitHub para descarga/visualización
         url: `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${GITHUB_FOLDER}/${encodeURIComponent(f.name)}`
       }));
 
-    console.log(`📚 Archivos PDF encontrados: ${files.length}`);
+    console.log(`📚 Capítulos CAA encontrados: ${files.length}`);
 
     files.sort((a, b) => extractChapterNumber(a.name) - extractChapterNumber(b.name));
 
