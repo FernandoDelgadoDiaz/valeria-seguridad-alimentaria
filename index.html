@@ -445,4 +445,147 @@
 
   function showTyping() {
     const d = document.createElement('div');
-    d.className = 'typing
+    d.className = 'typing-wrap'; d.id = 'typing';
+    d.innerHTML = '<div class="dots"><span></span><span></span><span></span></div>';
+    box.appendChild(d); scrollEnd();
+  }
+  function hideTyping() { document.getElementById('typing')?.remove(); }
+
+  function showErr(msg, temporary = false) {
+    const d = document.createElement('div');
+    d.className = 'err-inline'; d.textContent = msg;
+    box.appendChild(d); scrollEnd();
+    if (temporary) setTimeout(() => d.remove(), 3000);
+  }
+
+  function renderHistory(mode) {
+    while (box.firstChild) box.removeChild(box.firstChild);
+    if (mode === 'biblioteca') return;
+    const hist = mode === 'tecnico' ? historyTecnico : historyEnsena;
+    hist.forEach(m => appendToDOM(m.content, m.role === 'user' ? 'us' : 'va'));
+  }
+
+  // ── Library ────────────────────────────────────
+  const romanMap = { i:'I',ii:'II',iii:'III',iv:'IV',v:'V',vi:'VI',vii:'VII',viii:'VIII',ix:'IX',x:'X',xi:'XI',xii:'XII',xiii:'XIII',xiv:'XIV',xv:'XV',xvi:'XVI',xvii:'XVII',xviii:'XVIII',xix:'XIX',xx:'XX',xxi:'XXI',xxii:'XXII' };
+  const topicMap = { 'disp_grales':'Disposiciones Generales','establec':'Establecimientos','prod_alimenticios':'Productos Alimenticios','envases':'Envases','rotulacion':'Rotulación','carneos':'Productos Cárneos','lacteos':'Productos Lácteos','harinas':'Harinas y Derivados','azucarados':'Productos Azucarados','vegetales':'Vegetales','aguas':'Aguas','beb_fermentadas':'Bebidas Fermentadas','alimentos_grasos':'Alimentos Grasos','estimulantes':'Estimulantes','correctivos':'Correctivos','dieteticos':'Dietéticos','aditivos':'Aditivos','aislados_prot':'Aislados Proteicos','metodologia':'Metodología','procedimientos':'Procedimientos','miscelaneos':'Misceláneos' };
+
+  function parseChapter(fn) {
+    const m = fn.toLowerCase().match(/capitulo[_\s]*(i{1,3}|iv|vi{0,3}|ix|xi{0,3}|xiv|xvi{0,3}|xix|xx{0,2}i{0,3})/);
+    const roman = m ? (romanMap[m[1]] || m[1].toUpperCase()) : null;
+    let topic = null;
+    for (const k of Object.keys(topicMap)) { if (fn.toLowerCase().includes(k)) { topic = topicMap[k]; break; } }
+    return { roman, topic };
+  }
+
+  async function loadLibrary() {
+    libList.innerHTML = '<li class="lib-loading">Cargando capítulos del CAA...</li>';
+    try {
+      const res = await fetch('/.netlify/functions/list-docs');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const files = await res.json();
+      libList.innerHTML = '';
+      if (!files.length) {
+        libList.innerHTML = '<li style="padding:16px;font-family:var(--mono);font-size:0.78rem;color:var(--text-muted)">Sin capítulos disponibles.</li>';
+        return;
+      }
+      files.forEach((file, i) => {
+        const { roman, topic } = parseChapter(file.name);
+        const li = document.createElement('li');
+        li.style.cssText = `animation: fadeUp 0.28s ${i*35}ms ease both`;
+        li.innerHTML = `<a href="${file.url}" target="_blank" rel="noopener">
+          <span class="ch-num">CAP. ${roman || '—'}</span>
+          <span class="ch-title">${topic || file.name.replace(/\.pdf$/i,'').replace(/_/g,' ')}</span>
+          <span class="ch-arrow">↗</span>
+        </a>`;
+        libList.appendChild(li);
+      });
+      libList.dataset.loaded = 'true';
+    } catch (e) {
+      libList.innerHTML = `<li style="padding:14px;font-family:var(--mono);font-size:0.75rem;color:var(--danger)">Error: ${e.message}</li>`;
+    }
+  }
+
+  // ── Mode switching ──────────────────────────────
+  const modeNames = { tecnico:'MODO TÉCNICO', ensena:'MODO ENSEÑA', biblioteca:'BIBLIOTECA CAA' };
+  const placeholders = { tecnico:'Escribe tu consulta técnica...', ensena:'Preguntá sobre cualquier tema alimentario...' };
+
+  function setMode(mode) {
+    if (currentMode === mode) return;
+    currentMode = mode; currentTestState = null;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`mode-${mode}`).classList.add('active');
+
+    if (mode === 'biblioteca') {
+      box.style.display = 'none';
+      libView.style.display = 'block';
+      input.placeholder = '';
+      if (!libList.dataset.loaded) loadLibrary();
+    } else {
+      box.style.display = 'flex';
+      libView.style.display = 'none';
+      input.placeholder = placeholders[mode];
+      renderHistory(mode);
+    }
+  }
+
+  document.getElementById('mode-tecnico').onclick    = () => setMode('tecnico');
+  document.getElementById('mode-ensena').onclick     = () => setMode('ensena');
+  document.getElementById('mode-biblioteca').onclick = () => setMode('biblioteca');
+
+  // ── Welcome ────────────────────────────────────
+  window.onload = () => {
+    const sep = document.createElement('div');
+    sep.className = 'sep';
+    sep.innerHTML = '<span>SESIÓN INICIADA</span>';
+    box.appendChild(sep);
+    appendToDOM("Hola, soy **INOCUO**. Estoy aquí para asistirte en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**.\n\nElegí entre **Modo Técnico** (respuestas concisas), **Modo Enseña** (explicaciones didácticas) o **Biblioteca** (capítulos del CAA).", 'va');
+  };
+
+  // ── Send ───────────────────────────────────────
+  async function handleSend() {
+    if (isSending || currentMode === 'biblioteca') return;
+    const q = input.value.trim();
+    if (!q) return;
+
+    if (currentTestState && !['a','b','c'].includes(q.toLowerCase())) {
+      showErr('Respondé con a, b o c', true); return;
+    }
+
+    isSending = true; btn.disabled = true;
+    appendAndSave(q, 'us');
+    input.value = ''; input.style.height = 'auto';
+    showTyping();
+
+    const hist = currentMode === 'tecnico' ? historyTecnico : historyEnsena;
+    const body = { query: q, history: hist, mode: currentMode };
+    if (currentTestState) body.testState = currentTestState;
+
+    try {
+      const res  = await fetch('/.netlify/functions/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      hideTyping();
+      if (data.ok) {
+        if (data.testState !== undefined) currentTestState = data.testState;
+        appendAndSave(data.answer, 'va');
+      } else {
+        showErr(data.error || 'Error en la respuesta.');
+      }
+    } catch(e) {
+      hideTyping();
+      showErr('Error de conexión. Intentá de nuevo.');
+    } finally {
+      setTimeout(() => { isSending = false; btn.disabled = false; }, 500);
+    }
+  }
+
+  btn.onclick = handleSend;
+  input.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
+  });
+  input.onkeydown = e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+</script>
+</body>
+</html>
