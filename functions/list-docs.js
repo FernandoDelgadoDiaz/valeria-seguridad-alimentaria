@@ -39,12 +39,26 @@ export async function handler(event) {
         url: `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main/${GITHUB_FOLDER}/${encodeURIComponent(f.name)}`
       }));
 
-    files.sort((a, b) => extractChapterNumber(a.name) - extractChapterNumber(b.name));
+    // Deduplicate: keep only one file per chapter number (prefer longer/newer filename)
+    const chapterMap = new Map();
+    for (const f of files) {
+      const num = extractChapterNumber(f.name);
+      if (!chapterMap.has(num)) {
+        chapterMap.set(num, f);
+      } else {
+        // Prefer the file with a longer name (more specific/updated version)
+        if (f.name.length > chapterMap.get(num).name.length) {
+          chapterMap.set(num, f);
+        }
+      }
+    }
+    const deduped = Array.from(chapterMap.values());
+    deduped.sort((a, b) => extractChapterNumber(a.name) - extractChapterNumber(b.name));
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(files),
+      body: JSON.stringify(deduped),
     };
 
   } catch (err) {
