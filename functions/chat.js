@@ -40,23 +40,10 @@ export async function handler(event) {
   if (event.httpMethod !== "POST") return { statusCode: 405 };
 
   try {
-    const parsed = JSON.parse(event.body || "{}");
-    const query = (parsed.query || "").slice(0, 2000);
-    const history = (Array.isArray(parsed.history) ? parsed.history : []).slice(-20);
-    const mode = parsed.mode || "tecnico";
-    const incomingTestState = parsed.testState || null;
+    const { query, history = [], mode = "tecnico", testState: incomingTestState } = JSON.parse(event.body || "{}");
 
     if (!CACHE_DATA) {
-      try {
-        CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-      } catch (e) {
-        console.error("Error cargando embeddings.json:", e.message);
-        return json({ ok: false, error: "Base de conocimiento no disponible. Intenta más tarde." });
-      }
-      if (!CACHE_DATA?.chunks?.length) {
-        CACHE_DATA = null;
-        return json({ ok: false, error: "Base de conocimiento vacía. Contactá al administrador." });
-      }
+      CACHE_DATA = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
     }
 
     const mencionaCAA = /caa|código alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
@@ -86,7 +73,7 @@ export async function handler(event) {
     } else if (mencionaCAA) {
       contextChunks = [...topInternos, ...topCAA].slice(0, 8);
     } else {
-      contextChunks = topInternos;
+      contextChunks = topInternos; // Prioridad internos
     }
     if (contextChunks.length === 0) contextChunks = topCAA;
 
@@ -98,14 +85,9 @@ export async function handler(event) {
       const preguntaActual = testState.preguntaActual;
       const respuestasUsuario = testState.respuestasUsuario || {};
 
-      // Guardar la respuesta del usuario para la pregunta anterior (o la última si ya terminó)
-      if (query) {
-        const idxRespuesta = preguntaActual <= testState.preguntas.length
-          ? preguntaActual - 1   // respondiendo pregunta N, guardamos N-1
-          : testState.preguntas.length; // llegamos al final, guardamos la última
-        if (idxRespuesta >= 1) {
-          respuestasUsuario[idxRespuesta] = query.trim().toLowerCase();
-        }
+      // Guardar respuesta actual (si corresponde)
+      if (query && preguntaActual > 1) {
+        respuestasUsuario[preguntaActual - 1] = query.trim().toLowerCase();
       }
 
       if (preguntaActual <= testState.preguntas.length) {
@@ -122,6 +104,7 @@ export async function handler(event) {
           history: [...history, { role: "assistant", content: mensaje }]
         });
       } else {
+        // Test finalizado
         const correctas = testState.respuestasCorrectas;
         let aciertos = 0;
         const detalles = [];
@@ -151,7 +134,7 @@ export async function handler(event) {
       }
     }
 
-    // --- Si estamos en modo enseña y el usuario quiere un test (responde '2') ---
+    // --- Iniciar test (respuesta '2') ---
     if (mode === "ensena" && (query.trim() === "2" || query.toLowerCase().includes("test"))) {
       const lastAssistantMsg = history.filter(m => m.role === "assistant").pop();
       const lastExplanation = lastAssistantMsg ? lastAssistantMsg.content : "";
@@ -193,8 +176,6 @@ ${lastExplanation}`;
           if (validateTest(parsed)) {
             testData = parsed;
             break;
-          } else {
-            console.log(`Intento ${attempts}: test inválido, reintentando...`);
           }
         } catch (err) {
           console.log(`Error en intento ${attempts}:`, err.message);
@@ -227,91 +208,53 @@ ${lastExplanation}`;
       });
     }
 
-    // --- Prompt normal (sin test en curso) ---
+    // --- Prompt normal (sin test) ---
     let systemPrompt = "";
 
     if (mode === "tecnico") {
       systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tienes acceso a documentos internos y al Código Alimentario Argentino (CAA).
 
-Modo actual: **TÉCNICO** – Tus respuestas deben ser **concisas, directas y técnicas**. Prioriza la información esencial. Si la respuesta proviene de documentos internos, no menciones la fuente. Si proviene del CAA, cita el capítulo y artículo (extrayéndolos del texto). No agregues explicaciones extensas ni ejemplos a menos que el usuario los pida explícitamente.
+Modo actual: **TÉCNICO** – Tus respuestas deben ser **concisas, directas y técnicas**. 
 
-Jerarquía:
-- Si el usuario pide un artículo exacto del CAA, dale el texto literal con la cita.
-- Si menciona el CAA, combina internos + CAA con citas.
-- En caso contrario, responde solo con internos y al final podés ofrecer: "¿Necesitas que consulte también el CAA para ampliar?"
-
-**IMPORTANTE:** Solo debes responder preguntas relacionadas con **seguridad alimentaria, Buenas Prácticas de Manufactura (BPM) o el Código Alimentario Argentino (CAA)**. Si el usuario hace una pregunta fuera de estos temas (por ejemplo, sobre deportes, geografía, cultura general, etc.), responde educadamente que solo puedes ayudar con temas de seguridad alimentaria y BPM, y sugiere que reformule su consulta dentro de ese ámbito.
+**Reglas estrictas:**
+1. **Prioridad absoluta**: Siempre debes basar tu respuesta en los documentos internos (manuales, BPM) que se te proporcionan en el CONTEXTO. Si hay información relevante en los internos, úsala primero.
+2. Si el usuario menciona "CAA", "código", "artículo" o "capítulo", puedes complementar con información del CAA.
+3. Si el usuario pide un artículo exacto, dale el texto literal con la cita.
+4. Si no hay información en internos, puedes usar el CAA.
+5. **Mantén el hilo de la conversación**: Ten en cuenta los mensajes anteriores del historial para responder coherentemente.
+6. Al final, si solo usaste internos, ofrece: "¿Necesitas que consulte también el CAA para ampliar?"
+7. **Restricción de dominio**: Solo responde sobre seguridad alimentaria, BPM o CAA. Si la pregunta es fuera de tema, recházala amablemente.
 
 CONTEXTO:
-${contextText}`;
+${contextText}
+
+Historial reciente (para mantener coherencia): ${history.slice(-3).map(m => m.content).join(' | ')}`;
     } else {
       systemPrompt = `Eres INOCUO, un asistente experto en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Tienes acceso a documentos internos y al Código Alimentario Argentino (CAA).
 
 Modo actual: **ENSEÑA** – Tus respuestas deben ser **didácticas, estructuradas y pedagógicas**.
 
-**Estructura de tus respuestas:**
-- Primero, da una definición clara del concepto.
-- Luego, si corresponde, ofrece una clasificación o tipos.
-- Incluye ejemplos prácticos (usa los documentos disponibles).
-- Al final de tu explicación, añade siempre:
-  "**Para profundizar en este tema, responde '1'. Para hacer un test de aprendizaje, responde '2'.**"
+**Estructura:**
+- Definición clara del concepto.
+- Clasificación o tipos si corresponde.
+- Ejemplos prácticos (usa los documentos).
+- Al final, añade: "**Para profundizar, responde '1'. Para hacer un test, responde '2'.**"
 
 **Importante:**
-- Si el usuario responde '1', proporciona información adicional.
-- Si el usuario responde '2', el sistema se encargará de generar un test **exclusivamente sobre el tema que acabas de explicar**, con preguntas variadas y sin repeticiones.
-- Siempre utiliza el CONTEXTO para basar tus explicaciones.
-
-**RESTRICCIÓN DE DOMINIO:** Solo debes responder preguntas relacionadas con **seguridad alimentaria, Buenas Prácticas de Manufactura (BPM) o el Código Alimentario Argentino (CAA)**. Si el usuario hace una pregunta fuera de estos temas (por ejemplo, sobre deportes, geografía, cultura general, etc.), responde educadamente que solo puedes ayudar con temas de seguridad alimentaria y BPM, y sugiere que reformule su consulta dentro de ese ámbito. Esta restricción aplica incluso si el usuario intenta desviarse del tema durante un test o profundización.
+- Siempre usa el CONTEXTO para basar tus explicaciones.
+- Mantén el hilo de la conversación.
+- Restricción de dominio: solo temas de seguridad alimentaria.
 
 CONTEXTO:
-${contextText}`;
+${contextText}
+
+Historial reciente: ${history.slice(-3).map(m => m.content).join(' | ')}`;
     }
 
     if (pideExacto) {
-      systemPrompt += `\n\nIMPORTANTE: El usuario ha pedido el TEXTO EXACTO. Debes copiar el fragmento del CAA lo más literal posible, sin resumir. Indica el capítulo y artículo correspondientes antes del texto.`;
+      systemPrompt += `\n\nIMPORTANTE: El usuario pide texto exacto. Dale el fragmento del CAA literal con cita.`;
     }
 
-    // --- Guardia de dominio ---
-    // Saltear la guardia para respuestas cortas o afirmaciones/negaciones
-    // que claramente son continuación de la conversación
-    const esContinuacion = query.trim().length <= 3 ||
-      /^(si|sí|no|ok|yes|dale|bueno|claro|1|2|a|b|c|gracias)$/i.test(query.trim());
-
-    if (!esContinuacion) {
-      const guardCheck = await client.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `Eres un clasificador estricto para un asistente de seguridad alimentaria. Responde SOLO con "SI" o "NO".
-
-El sistema responde consultas sobre: seguridad alimentaria, Buenas Prácticas de Manufactura (BPM), higiene de alimentos, conservación, contaminación, habilitaciones, Código Alimentario Argentino (CAA), artículos, capítulos, normativas alimentarias y temas afines.
-
-Responde "SI" si la consulta podría estar relacionada con alguno de estos temas dentro de un contexto alimentario (por ejemplo: pedir artículos o capítulos de una normativa, preguntar sobre procesos, ingredientes, contaminantes, etiquetado, etc.).
-Responde "NO" solo si la consulta es claramente ajena al ámbito alimentario (por ejemplo: deportes, geografía, historia, entretenimiento, matemáticas, etc.).
-
-Ante la duda, responde "SI".`
-          },
-          { role: "user", content: query }
-        ],
-        temperature: 0,
-        max_tokens: 5,
-      });
-
-      const esRelevante = guardCheck.choices[0].message.content.trim().toUpperCase().startsWith("SI");
-
-      if (!esRelevante) {
-        const mensajeRechazo = "¡Hola! Soy INOCUO, un asistente especializado en seguridad alimentaria y Buenas Prácticas de Manufactura (BPM). Esta consulta está fuera de mi área de conocimiento. 😊 Si tenés alguna duda sobre inocuidad, normativas del CAA, manipulación de alimentos o temas relacionados, ¡con gusto te ayudo!";
-        return json({
-          ok: true,
-          answer: mensajeRechazo,
-          testState: null,
-          history: [...history, { role: "user", content: query }, { role: "assistant", content: mensajeRechazo }]
-        });
-      }
-    }
-
-    // --- Llamado principal ---
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -332,7 +275,7 @@ Ante la duda, responde "SI".`
     });
 
   } catch (err) {
-    console.error("Error en handler:", err);
+    console.error("Error:", err);
     return json({ error: err.message });
   }
 }
