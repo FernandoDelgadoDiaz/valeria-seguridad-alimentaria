@@ -219,7 +219,7 @@
 
     <div id="library-view">
       <h2>Capítulos del CAA</h2>
-      <div id="library-list" class="loading">Cargando capítulos...</div>
+      <div id="library-list"></div>
     </div>
 
     <footer>
@@ -245,8 +245,8 @@
     let historyTecnico = [];
     let historyEnsena = [];
     let currentMode = 'tecnico';
-    let currentTestState = null; // Estado del test en curso
-    let isSending = false; // Para evitar dobles envíos
+    let currentTestState = null;
+    let isSending = false;
 
     function renderChatHistory(mode) {
       while (box.firstChild) box.removeChild(box.firstChild);
@@ -290,7 +290,7 @@
     function setActiveMode(mode) {
       if (currentMode === mode) return;
       currentMode = mode;
-      currentTestState = null; // Al cambiar modo, se cancela cualquier test en curso
+      currentTestState = null;
 
       modeTecnico.classList.remove('active');
       modeEnsena.classList.remove('active');
@@ -302,8 +302,10 @@
       if (mode === 'biblioteca') {
         box.style.display = 'none';
         libraryView.style.display = 'block';
-        if (libraryList.children.length === 1 && libraryList.children[0].className === 'loading') {
+        // Cargar solo si no fue cargado antes
+        if (!libraryList.dataset.loaded) {
           loadLibrary();
+          libraryList.dataset.loaded = 'true';
         }
       } else {
         box.style.display = 'flex';
@@ -313,6 +315,7 @@
     }
 
     async function loadLibrary() {
+      libraryList.innerHTML = '<p class="loading">Cargando capítulos...</p>';
       try {
         const res = await fetch('/.netlify/functions/list-docs');
         if (!res.ok) throw new Error(`Error ${res.status}`);
@@ -332,7 +335,7 @@
           libraryList.appendChild(li);
         });
       } catch (err) {
-        libraryList.innerHTML = `<li class="error">Error al cargar: ${err.message}</li>`;
+        libraryList.innerHTML = `<p class="error-message">Error al cargar: ${err.message}</p>`;
       }
     }
 
@@ -346,7 +349,7 @@
     };
 
     async function handleSend() {
-      if (isSending) return; // Evita múltiples envíos
+      if (isSending) return;
       if (currentMode === 'biblioteca') {
         alert('Estás en modo Biblioteca. Para hacer preguntas, cambiá a modo Técnico o Enseña.');
         return;
@@ -354,7 +357,6 @@
       const q = input.value.trim();
       if (!q) return;
 
-      // Validación especial durante un test: la respuesta debe ser una letra a, b o c
       if (currentTestState) {
         const lowerQ = q.toLowerCase();
         if (!['a', 'b', 'c'].includes(lowerQ)) {
@@ -363,7 +365,6 @@
         }
       }
 
-      // Bloquear botón
       isSending = true;
       btn.disabled = true;
 
@@ -401,7 +402,6 @@
       } catch (e) {
         appendAndSave('Error de conexión. Intenta de nuevo.', 'va');
       } finally {
-        // Desbloquear botón después de un breve retraso para evitar doble clic
         setTimeout(() => {
           isSending = false;
           btn.disabled = false;
