@@ -470,8 +470,32 @@
   const ROMAN_DISPLAY = {xxii:'XXII',xxi:'XXI',xx:'XX',xix:'XIX',xviii:'XVIII',xvii:'XVII',xvi:'XVI',xv:'XV',xiv:'XIV',xiii:'XIII',xii:'XII',xi:'XI',ix:'IX',viii:'VIII',vii:'VII',vi:'VI',iv:'IV',iii:'III',ii:'II',x:'X',v:'V',i:'I'};
   const topicMap = { 'disp_grales':'Disposiciones Generales','establec':'Establecimientos','prod_alimenticios':'Productos Alimenticios','envases':'Envases','rotulacion':'Rotulación','carneos':'Productos Cárneos','lacteos':'Productos Lácteos','harinas':'Harinas y Derivados','azucarados':'Productos Azucarados','vegetales':'Vegetales','aguas':'Aguas','beb_fermentadas':'Bebidas Fermentadas','alimentos_grasos':'Alimentos Grasos','estimulantes':'Estimulantes','correctivos':'Correctivos','dieteticos':'Dietéticos','aditivos':'Aditivos','aislados_prot':'Aislados Proteícos','metodologia':'Metodología','procedimientos':'Procedimientos','miscelaneos':'Misceláneos' };
 
+  // Special filename → title overrides (for files that don't match topicMap keys)
+  const filenameOverrides = [
+    { match: /anmat_caa_capitulo_xiv/i, title: 'Alimentos Especiales' },
+    { match: /capitulo_1_disposiciones/i, title: 'Disposiciones Generales' },
+  ];
+
   function parseChapter(fn) {
     const lower = fn.toLowerCase();
+    // Check explicit overrides first
+    for (const ov of filenameOverrides) {
+      if (ov.match.test(fn)) {
+        // Still try to extract roman numeral
+        const capMatch = lower.match(/capitulo[_\s]*/);
+        let roman = null;
+        if (capMatch) {
+          const rest = lower.slice(capMatch.index + capMatch[0].length);
+          for (const r of ROMAN_ORDER) {
+            if (rest.startsWith(r)) {
+              const nx = rest[r.length];
+              if (!nx || /[^a-z]/.test(nx)) { roman = ROMAN_DISPLAY[r]; break; }
+            }
+          }
+        }
+        return { roman, topic: ov.title };
+      }
+    }
     const capMatch = lower.match(/capitulo[_\s]*/);
     let roman = null;
     if (capMatch) {
@@ -555,48 +579,4 @@
   // ── Send ───────────────────────────────────────
   async function handleSend() {
     if (isSending || currentMode === 'biblioteca') return;
-    const q = input.value.trim();
-    if (!q) return;
-
-    if (currentTestState && !['a','b','c'].includes(q.toLowerCase())) {
-      showErr('Respondé con a, b o c', true); return;
-    }
-
-    isSending = true; btn.disabled = true;
-    appendAndSave(q, 'us');
-    input.value = ''; input.style.height = 'auto';
-    showTyping();
-
-    const hist = currentMode === 'tecnico' ? historyTecnico : historyEnsena;
-    const body = { query: q, history: hist, mode: currentMode };
-    if (currentTestState) body.testState = currentTestState;
-
-    try {
-      const res  = await fetch('/.netlify/functions/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-      const data = await res.json();
-      hideTyping();
-      if (data.ok) {
-        if (data.testState !== undefined) currentTestState = data.testState;
-        appendAndSave(data.answer, 'va');
-      } else {
-        showErr(data.error || 'Error en la respuesta.');
-      }
-    } catch(e) {
-      hideTyping();
-      showErr('Error de conexión. Intentá de nuevo.');
-    } finally {
-      setTimeout(() => { isSending = false; btn.disabled = false; }, 500);
-    }
-  }
-
-  btn.onclick = handleSend;
-  input.addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = this.scrollHeight + 'px';
-  });
-  input.onkeydown = e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-  };
-</script>
-</body>
-</html>
+  
