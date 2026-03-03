@@ -3,470 +3,572 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>INOCUO - Seguridad Alimentaria</title>
+  <title>INOCUO — Seguridad Alimentaria</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Barlow+Condensed:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
-    :root { 
-      --wa-header: #005d4b; 
-      --wa-bg: #e5ddd5; 
-      --wa-msg-in: #ffffff;
-      --wa-msg-out: #dcf8c6;
-      --wa-btn: #008069;
+    :root {
+      --bg:              #0d1117;
+      --surface:         #161b22;
+      --surface2:        #1c2128;
+      --border:          #30363d;
+      --accent:          #3fb950;
+      --accent2:         #2ea043;
+      --text:            #e6edf3;
+      --text-muted:      #8b949e;
+      --msg-in:          #1c2128;
+      --msg-out:         #1a2e1a;
+      --msg-out-border:  rgba(46,160,67,0.25);
+      --danger:          #f85149;
+      --mono:            'DM Mono', monospace;
+      --sans:            'DM Sans', sans-serif;
+      --cond:            'Barlow Condensed', sans-serif;
     }
 
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
 
-    html, body { 
-      margin: 0; padding: 0;
+    html, body {
       height: 100%; width: 100%;
-      background-color: var(--wa-bg);
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      overflow: hidden;
     }
 
-    .app {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      position: relative;
+    /* Grain texture */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9998;
+      opacity: 0.5;
     }
 
-    header { 
-      background: var(--wa-header); 
-      color: white; 
-      padding: 10px 15px; 
-      display: flex; 
-      align-items: center; 
-      gap: 12px; 
-      height: 65px;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 9999;
+    .app { display: flex; flex-direction: column; height: 100%; }
+
+    /* ═══════════════ HEADER ═══════════════ */
+    header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      height: 58px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 14px; gap: 12px;
+      animation: slideDown 0.35s ease;
+    }
+    @keyframes slideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to   { transform: translateY(0);     opacity: 1; }
     }
 
-    .shield-icon {
-      width: 40px; height: 40px;
-      background: white; border-radius: 50%;
+    .logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+    .logo-badge {
+      width: 32px; height: 32px;
+      background: var(--accent);
+      border-radius: 7px;
       display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 12px rgba(63,185,80,0.3);
+      flex-shrink: 0;
     }
-    .shield-icon svg { fill: var(--wa-header); width: 24px; height: 24px; }
+    .logo-badge svg { fill: #0d1117; width: 16px; height: 16px; }
 
-    .header-info {
-      flex: 1;
+    .logo-text .name {
+      font-family: var(--cond);
+      font-weight: 700; font-size: 1.25rem;
+      letter-spacing: 0.06em; color: var(--text);
+      line-height: 1;
     }
-    .header-info h1 { font-size: 1.1rem; margin: 0; font-weight: 600; }
-    .header-info p { font-size: 0.75rem; margin: 0; opacity: 0.9; }
+    .logo-text .sub {
+      font-family: var(--mono);
+      font-size: 0.58rem; color: var(--text-muted);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .status {
+      display: flex; align-items: center; gap: 5px;
+      flex-shrink: 0;
+    }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent);
+      animation: blink 2.5s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(63,185,80,0.5); }
+      50%      { box-shadow: 0 0 0 4px rgba(63,185,80,0); }
+    }
+    .status-label {
+      font-family: var(--mono); font-size: 0.6rem;
+      color: var(--accent); letter-spacing: 0.08em;
+    }
 
     .mode-selector {
-      display: flex;
-      background: rgba(255,255,255,0.2);
-      border-radius: 20px;
-      padding: 3px;
       margin-left: auto;
+      display: flex; gap: 3px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 3px;
+      flex-shrink: 0;
     }
     .mode-btn {
-      background: transparent;
-      border: none;
-      color: white;
-      padding: 6px 10px;
-      border-radius: 18px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s;
+      font-family: var(--cond);
+      font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      background: transparent; border: none;
+      color: var(--text-muted);
+      padding: 5px 11px; border-radius: 6px;
+      cursor: pointer; transition: all 0.18s ease;
       white-space: nowrap;
     }
-    .mode-btn.active {
-      background: white;
-      color: var(--wa-header);
-    }
+    .mode-btn:hover:not(.active) { color: var(--text); background: var(--surface2); }
+    .mode-btn.active { background: var(--accent); color: #0d1117; font-weight: 700; }
 
-    main { 
+    /* ═══════════════ CHAT ═══════════════ */
+    main {
       position: fixed;
-      top: 65px;
-      bottom: 70px;
-      left: 0;
-      right: 0;
-      overflow-y: auto; 
-      padding: 15px; 
-      display: flex; 
-      flex-direction: column; 
-      gap: 10px; 
-      background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-      background-attachment: scroll;
+      top: 58px; bottom: 68px; left: 0; right: 0;
+      overflow-y: auto;
+      padding: 16px 14px 8px;
+      display: flex; flex-direction: column; gap: 6px;
+      scroll-behavior: smooth;
+    }
+    main::-webkit-scrollbar { width: 3px; }
+    main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .sep {
+      display: flex; align-items: center; gap: 10px;
+      margin: 4px 0 8px;
+    }
+    .sep::before, .sep::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .sep span {
+      font-family: var(--mono); font-size: 0.6rem;
+      color: var(--text-muted); letter-spacing: 0.1em;
     }
 
-    .bubble { 
-      max-width: 85%; padding: 8px 12px; border-radius: 8px; 
-      font-size: 0.95rem; line-height: 1.4; 
-      box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    .bubble {
+      max-width: 80%;
+      padding: 10px 13px;
+      border-radius: 10px;
+      font-size: 0.88rem; line-height: 1.55;
+      animation: fadeUp 0.22s ease;
     }
-    .va { align-self: flex-start; background: var(--wa-msg-in); border-top-left-radius: 0; }
-    .us { align-self: flex-end; background: var(--wa-msg-out); border-top-right-radius: 0; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
 
+    .va {
+      align-self: flex-start;
+      background: var(--msg-in);
+      border: 1px solid var(--border);
+      border-top-left-radius: 2px;
+    }
+    .va::before {
+      content: 'INOCUO';
+      display: block;
+      font-family: var(--mono); font-size: 0.58rem;
+      color: var(--accent); letter-spacing: 0.12em;
+      margin-bottom: 5px;
+    }
+    .us {
+      align-self: flex-end;
+      background: var(--msg-out);
+      border: 1px solid var(--msg-out-border);
+      border-top-right-radius: 2px;
+    }
+    .bubble strong { color: var(--accent); font-weight: 500; }
+
+    /* Typing */
+    .typing-wrap {
+      align-self: flex-start;
+      background: var(--msg-in);
+      border: 1px solid var(--border);
+      border-radius: 10px; border-top-left-radius: 2px;
+      padding: 13px 16px;
+      animation: fadeUp 0.22s ease;
+    }
+    .dots { display: flex; gap: 4px; align-items: center; }
+    .dots span {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--text-muted);
+      animation: dotPulse 1.2s ease-in-out infinite;
+    }
+    .dots span:nth-child(2) { animation-delay: 0.2s; }
+    .dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotPulse {
+      0%,100% { transform: scale(0.75); opacity: 0.35; }
+      50%      { transform: scale(1.1);  opacity: 1;    }
+    }
+
+    .err-inline {
+      align-self: center;
+      background: rgba(248,81,73,0.08);
+      border: 1px solid rgba(248,81,73,0.25);
+      color: var(--danger);
+      font-family: var(--mono); font-size: 0.75rem;
+      padding: 7px 12px; border-radius: 6px;
+      letter-spacing: 0.03em;
+      animation: fadeUp 0.22s ease;
+    }
+
+    /* ═══════════════ LIBRARY ═══════════════ */
     #library-view {
       position: fixed;
-      top: 65px;
-      bottom: 70px;
-      left: 0;
-      right: 0;
+      top: 58px; bottom: 68px; left: 0; right: 0;
+      background: var(--bg);
       overflow-y: auto;
-      padding: 20px;
-      background: white;
+      padding: 18px 14px;
       display: none;
     }
-    #library-view h2 {
-      margin-top: 0;
-      color: var(--wa-header);
-      font-size: 1.2rem;
+    #library-view::-webkit-scrollbar { width: 3px; }
+    #library-view::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .lib-header { margin-bottom: 16px; }
+    .lib-header h2 {
+      font-family: var(--cond); font-weight: 700;
+      font-size: 1.35rem; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--text);
     }
-    #library-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
+    .lib-header p {
+      font-family: var(--mono); font-size: 0.62rem;
+      color: var(--text-muted); letter-spacing: 0.08em;
+      margin-top: 3px;
     }
+
+    #library-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+
     #library-list li {
-      margin-bottom: 10px;
-      border-bottom: 1px solid #eee;
-      padding-bottom: 8px;
-    }
-    #library-list a {
-      text-decoration: none;
-      color: #005d4b;
-      font-weight: 500;
-      display: block;
-      padding: 5px 0;
-    }
-    #library-list a:hover {
-      text-decoration: underline;
-    }
-    .loading {
-      text-align: center;
-      color: #666;
-      padding: 20px;
-    }
-    .error-message {
-      color: #d32f2f;
-      background: #ffebee;
-      padding: 8px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      margin-top: 5px;
-      font-size: 0.9rem;
+      overflow: hidden;
+      transition: border-color 0.18s, transform 0.18s;
+    }
+    #library-list li:hover {
+      border-color: var(--accent);
+      transform: translateX(4px);
     }
 
-    footer {
-      background: #f0f0f0;
-      padding: 10px;
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 70px;
-      z-index: 9999;
+    #library-list a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 13px;
+      text-decoration: none; color: var(--text);
     }
 
-    .input-wrapper {
-      background: white;
-      border-radius: 25px;
+    .ch-num {
+      font-family: var(--mono); font-size: 0.62rem;
+      color: var(--accent);
+      background: rgba(63,185,80,0.08);
+      border: 1px solid rgba(63,185,80,0.18);
+      padding: 2px 7px; border-radius: 4px;
+      white-space: nowrap; letter-spacing: 0.06em;
+      flex-shrink: 0;
+    }
+    .ch-title {
+      font-family: var(--cond); font-size: 0.92rem;
+      font-weight: 500; letter-spacing: 0.02em;
       flex: 1;
-      display: flex;
-      align-items: center;
-      padding: 5px 15px;
-      height: 50px;
+    }
+    .ch-arrow {
+      color: var(--text-muted); font-size: 0.8rem;
+      transition: transform 0.18s, color 0.18s;
+    }
+    #library-list li:hover .ch-arrow { transform: translate(3px,-2px); color: var(--accent); }
+
+    .lib-loading {
+      display: flex; align-items: center; gap: 10px;
+      padding: 20px 4px;
+      font-family: var(--mono); font-size: 0.75rem; color: var(--text-muted);
+    }
+    .lib-loading::before {
+      content: '';
+      width: 13px; height: 13px;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══════════════ FOOTER ═══════════════ */
+    footer {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+      height: 68px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 12px;
+      display: flex; align-items: flex-end; gap: 8px;
     }
 
-    textarea { 
-      flex: 1; border: none; outline: none; padding: 10px 0;
-      font-size: 1rem; max-height: 100px; resize: none;
-      font-family: inherit; background: transparent;
-      height: auto;
+    .input-wrap {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      display: flex; align-items: flex-end;
+      padding: 8px 13px;
+      transition: border-color 0.18s;
     }
+    .input-wrap:focus-within { border-color: rgba(63,185,80,0.5); }
 
-    .send-btn { 
-      background: var(--wa-btn); color: white; border: none; 
-      border-radius: 50%; width: 48px; height: 48px; 
-      display: flex; align-items: center; justify-content: center; 
+    textarea {
+      flex: 1; border: none; outline: none;
+      background: transparent; color: var(--text);
+      font-family: var(--sans); font-size: 0.88rem;
+      resize: none; max-height: 90px; line-height: 1.4;
+    }
+    textarea::placeholder { color: var(--text-muted); }
+
+    .send-btn {
+      width: 44px; height: 44px;
+      background: var(--accent); border: none; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
       cursor: pointer; flex-shrink: 0;
+      transition: all 0.18s ease;
     }
-    .send-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+    .send-btn:hover:not(:disabled) { background: var(--accent2); transform: scale(1.06); }
+    .send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    .send-btn svg { fill: #0d1117; }
 
-    strong { color: var(--wa-header); }
+    @media (max-width: 380px) {
+      .logo-text .sub { display: none; }
+      .mode-btn { padding: 5px 8px; font-size: 0.7rem; }
+      .status-label { display: none; }
+    }
   </style>
 </head>
 <body>
-  <div class="app">
-    <header>
-      <div class="shield-icon">
+<div class="app">
+
+  <header>
+    <div class="logo">
+      <div class="logo-badge">
         <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
       </div>
-      <div class="header-info">
-        <h1>INOCUO</h1>
-        <p>Asistente de Seguridad Alimentaria · en línea</p>
+      <div class="logo-text">
+        <div class="name">INOCUO</div>
+        <div class="sub">Seguridad Alimentaria · CAA</div>
       </div>
-      <div class="mode-selector">
-        <button id="mode-tecnico" class="mode-btn active">Técnico</button>
-        <button id="mode-ensena" class="mode-btn">Enseña</button>
-        <button id="mode-biblioteca" class="mode-btn">Biblioteca</button>
-      </div>
-    </header>
-
-    <main id="chat-box"></main>
-
-    <div id="library-view">
-      <h2>Capítulos del CAA</h2>
-      <div id="library-list"></div>
     </div>
 
-    <footer>
-      <div class="input-wrapper">
-        <textarea id="user-input" placeholder="Escribe tu consulta técnica..." rows="1"></textarea>
-      </div>
-      <button class="send-btn" id="send-btn">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-      </button>
-    </footer>
+    <div class="status">
+      <div class="status-dot"></div>
+      <span class="status-label">EN LÍNEA</span>
+    </div>
+
+    <div class="mode-selector">
+      <button id="mode-tecnico"    class="mode-btn active">Técnico</button>
+      <button id="mode-ensena"     class="mode-btn">Enseña</button>
+      <button id="mode-biblioteca" class="mode-btn">Biblioteca</button>
+    </div>
+  </header>
+
+  <main id="chat-box"></main>
+
+  <div id="library-view">
+    <div class="lib-header">
+      <h2>Capítulos del CAA</h2>
+      <p>CÓDIGO ALIMENTARIO ARGENTINO · VERSIONES ACTUALIZADAS</p>
+    </div>
+    <ul id="library-list"></ul>
   </div>
 
-  <script>
-    const box = document.getElementById('chat-box');
-    const libraryView = document.getElementById('library-view');
-    const libraryList = document.getElementById('library-list');
-    const input = document.getElementById('user-input');
-    const btn = document.getElementById('send-btn');
-    const modeTecnico = document.getElementById('mode-tecnico');
-    const modeEnsena = document.getElementById('mode-ensena');
-    const modeBiblioteca = document.getElementById('mode-biblioteca');
+  <footer>
+    <div class="input-wrap">
+      <textarea id="user-input" placeholder="Escribe tu consulta técnica..." rows="1"></textarea>
+    </div>
+    <button class="send-btn" id="send-btn" aria-label="Enviar">
+      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </footer>
 
-    let historyTecnico = [];
-    let historyEnsena = [];
-    let currentMode = 'tecnico';
-    let currentTestState = null;
-    let isSending = false;
+</div>
+<script>
+  const box     = document.getElementById('chat-box');
+  const libView = document.getElementById('library-view');
+  const libList = document.getElementById('library-list');
+  const input   = document.getElementById('user-input');
+  const btn     = document.getElementById('send-btn');
 
-    function renderChatHistory(mode) {
-      while (box.firstChild) box.removeChild(box.firstChild);
-      if (mode === 'biblioteca') return;
-      const hist = mode === 'tecnico' ? historyTecnico : historyEnsena;
-      hist.forEach(msg => {
-        const side = msg.role === 'user' ? 'us' : 'va';
-        appendToDOM(msg.content, side);
-      });
-      box.scrollTop = box.scrollHeight;
-    }
+  let historyTecnico = [], historyEnsena = [];
+  let currentMode = 'tecnico', currentTestState = null, isSending = false;
 
-    function appendToDOM(text, side) {
-      const d = document.createElement('div');
-      d.className = `bubble ${side}`;
-      d.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
-      box.appendChild(d);
-    }
+  // ── Utils ──────────────────────────────────────
+  function safeRender(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+  }
+  function scrollEnd() { box.scrollTop = box.scrollHeight; }
 
-    function appendAndSave(text, side) {
-      appendToDOM(text, side);
-      const role = side === 'us' ? 'user' : 'assistant';
-      const msg = { role, content: text };
-      if (currentMode === 'tecnico') {
-        historyTecnico.push(msg);
-      } else if (currentMode === 'ensena') {
-        historyEnsena.push(msg);
-      }
-    }
+  function appendToDOM(text, side) {
+    const d = document.createElement('div');
+    d.className = `bubble ${side}`;
+    d.innerHTML = safeRender(text);
+    box.appendChild(d);
+    scrollEnd();
+    return d;
+  }
 
-    function showTemporaryMessage(text, isError = false) {
-      const msgDiv = document.createElement('div');
-      msgDiv.className = isError ? 'bubble va error-message' : 'bubble va';
-      msgDiv.textContent = text;
-      box.appendChild(msgDiv);
-      setTimeout(() => {
-        if (msgDiv.parentNode) msgDiv.remove();
-      }, 3000);
-    }
+  function appendAndSave(text, side) {
+    appendToDOM(text, side);
+    const role = side === 'us' ? 'user' : 'assistant';
+    if (currentMode === 'tecnico') historyTecnico.push({ role, content: text });
+    else if (currentMode === 'ensena') historyEnsena.push({ role, content: text });
+  }
 
-    function formatChapterName(filename) {
-      const romanMap = {
-        i: 'I', ii: 'II', iii: 'III', iv: 'IV', v: 'V', vi: 'VI',
-        vii: 'VII', viii: 'VIII', ix: 'IX', x: 'X', xi: 'XI', xii: 'XII',
-        xiii: 'XIII', xiv: 'XIV', xv: 'XV', xvi: 'XVI', xvii: 'XVII',
-        xviii: 'XVIII', xix: 'XIX', xx: 'XX', xxi: 'XXI', xxii: 'XXII'
-      };
+  function showTyping() {
+    const d = document.createElement('div');
+    d.className = 'typing-wrap'; d.id = 'typing';
+    d.innerHTML = '<div class="dots"><span></span><span></span><span></span></div>';
+    box.appendChild(d); scrollEnd();
+  }
+  function hideTyping() { document.getElementById('typing')?.remove(); }
 
-      const topicMap = {
-        'disp_grales': 'Disposiciones Generales',
-        'establec': 'Establecimientos',
-        'prod_alimenticios': 'Productos Alimenticios',
-        'envases': 'Envases',
-        'rotulacion': 'Rotulación',
-        'carneos': 'Productos Cárneos',
-        'lacteos': 'Productos Lácteos',
-        'harinas': 'Harinas y Derivados',
-        'azucarados': 'Productos Azucarados',
-        'vegetales': 'Vegetales',
-        'aguas': 'Aguas',
-        'beb_fermentadas': 'Bebidas Fermentadas',
-        'alimentos_grasos': 'Alimentos Grasos',
-        'estimulantes': 'Estimulantes',
-        'correctivos': 'Correctivos',
-        'dieteticos': 'Dietéticos',
-        'aditivos': 'Aditivos',
-        'aislados_prot': 'Aislados Proteicos',
-        'metodologia': 'Metodología',
-        'procedimientos': 'Procedimientos',
-        'miscelaneos': 'Misceláneos'
-      };
+  function showErr(msg, temporary = false) {
+    const d = document.createElement('div');
+    d.className = 'err-inline'; d.textContent = msg;
+    box.appendChild(d); scrollEnd();
+    if (temporary) setTimeout(() => d.remove(), 3000);
+  }
 
-      const match = filename.toLowerCase().match(/capitulo[_\s]*(i{1,3}|iv|vi{0,3}|ix|xi{0,3}|xiv|xvi{0,3}|xix|xx{0,2}i{0,3})/);
-      const roman = match ? romanMap[match[1]] || match[1].toUpperCase() : null;
+  function renderHistory(mode) {
+    while (box.firstChild) box.removeChild(box.firstChild);
+    if (mode === 'biblioteca') return;
+    const hist = mode === 'tecnico' ? historyTecnico : historyEnsena;
+    hist.forEach(m => appendToDOM(m.content, m.role === 'user' ? 'us' : 'va'));
+  }
 
-      let topic = null;
-      for (const key of Object.keys(topicMap)) {
-        if (filename.toLowerCase().includes(key)) {
-          topic = topicMap[key];
-          break;
-        }
-      }
+  // ── Library ────────────────────────────────────
+  const romanMap = { i:'I',ii:'II',iii:'III',iv:'IV',v:'V',vi:'VI',vii:'VII',viii:'VIII',ix:'IX',x:'X',xi:'XI',xii:'XII',xiii:'XIII',xiv:'XIV',xv:'XV',xvi:'XVI',xvii:'XVII',xviii:'XVIII',xix:'XIX',xx:'XX',xxi:'XXI',xxii:'XXII' };
+  const topicMap = { 'disp_grales':'Disposiciones Generales','establec':'Establecimientos','prod_alimenticios':'Productos Alimenticios','envases':'Envases','rotulacion':'Rotulación','carneos':'Productos Cárneos','lacteos':'Productos Lácteos','harinas':'Harinas y Derivados','azucarados':'Productos Azucarados','vegetales':'Vegetales','aguas':'Aguas','beb_fermentadas':'Bebidas Fermentadas','alimentos_grasos':'Alimentos Grasos','estimulantes':'Estimulantes','correctivos':'Correctivos','dieteticos':'Dietéticos','aditivos':'Aditivos','aislados_prot':'Aislados Proteicos','metodologia':'Metodología','procedimientos':'Procedimientos','miscelaneos':'Misceláneos' };
 
-      if (roman && topic) return `Capítulo ${roman} - ${topic}`;
-      if (roman) return `Capítulo ${roman}`;
-      return filename.replace(/\.pdf$/i, '').replace(/_/g, ' ');
-    }
+  function parseChapter(fn) {
+    const m = fn.toLowerCase().match(/capitulo[_\s]*(i{1,3}|iv|vi{0,3}|ix|xi{0,3}|xiv|xvi{0,3}|xix|xx{0,2}i{0,3})/);
+    const roman = m ? (romanMap[m[1]] || m[1].toUpperCase()) : null;
+    let topic = null;
+    for (const k of Object.keys(topicMap)) { if (fn.toLowerCase().includes(k)) { topic = topicMap[k]; break; } }
+    return { roman, topic };
+  }
 
-    function setActiveMode(mode) {
-      if (currentMode === mode) return;
-      currentMode = mode;
-      currentTestState = null;
-
-      modeTecnico.classList.remove('active');
-      modeEnsena.classList.remove('active');
-      modeBiblioteca.classList.remove('active');
-      if (mode === 'tecnico') modeTecnico.classList.add('active');
-      else if (mode === 'ensena') modeEnsena.classList.add('active');
-      else modeBiblioteca.classList.add('active');
-
-      if (mode === 'biblioteca') {
-        box.style.display = 'none';
-        libraryView.style.display = 'block';
-        if (!libraryList.dataset.loaded) {
-          loadLibrary();
-          libraryList.dataset.loaded = 'true';
-        }
-      } else {
-        box.style.display = 'flex';
-        libraryView.style.display = 'none';
-        renderChatHistory(mode);
-      }
-    }
-
-    async function loadLibrary() {
-      libraryList.innerHTML = '<p class="loading">Cargando capítulos...</p>';
-      try {
-        const res = await fetch('/.netlify/functions/list-docs');
-        if (!res.ok) throw new Error(`Error ${res.status}`);
-        const files = await res.json();
-        libraryList.innerHTML = '';
-        if (files.length === 0) {
-          libraryList.innerHTML = '<li>No hay capítulos disponibles.</li>';
-          return;
-        }
-        files.forEach(file => {
-          const li = document.createElement('li');
-          const a = document.createElement('a');
-          a.href = file.url;
-          a.target = '_blank';
-          a.textContent = formatChapterName(file.name);
-          li.appendChild(a);
-          libraryList.appendChild(li);
-        });
-      } catch (err) {
-        libraryList.innerHTML = `<p class="error-message">Error al cargar: ${err.message}</p>`;
-      }
-    }
-
-    modeTecnico.onclick = () => setActiveMode('tecnico');
-    modeEnsena.onclick = () => setActiveMode('ensena');
-    modeBiblioteca.onclick = () => setActiveMode('biblioteca');
-
-    window.onload = () => {
-      const msg = "Hola, soy **Inocuo**. Estoy aquí para asistirte en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**. Podés elegir entre **Modo Técnico** (respuestas concisas), **Modo Enseña** (explicaciones didácticas) o **Biblioteca** (acceso a los capítulos del CAA).";
-      appendAndSave(msg, 'va');
-    };
-
-    async function handleSend() {
-      if (isSending) return;
-      if (currentMode === 'biblioteca') {
-        alert('Estás en modo Biblioteca. Para hacer preguntas, cambiá a modo Técnico o Enseña.');
+  async function loadLibrary() {
+    libList.innerHTML = '<li class="lib-loading">Cargando capítulos del CAA...</li>';
+    try {
+      const res = await fetch('/.netlify/functions/list-docs');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const files = await res.json();
+      libList.innerHTML = '';
+      if (!files.length) {
+        libList.innerHTML = '<li style="padding:16px;font-family:var(--mono);font-size:0.78rem;color:var(--text-muted)">Sin capítulos disponibles.</li>';
         return;
       }
-      const q = input.value.trim();
-      if (!q) return;
+      files.forEach((file, i) => {
+        const { roman, topic } = parseChapter(file.name);
+        const li = document.createElement('li');
+        li.style.cssText = `animation: fadeUp 0.28s ${i*35}ms ease both`;
+        li.innerHTML = `<a href="${file.url}" target="_blank" rel="noopener">
+          <span class="ch-num">CAP. ${roman || '—'}</span>
+          <span class="ch-title">${topic || file.name.replace(/\.pdf$/i,'').replace(/_/g,' ')}</span>
+          <span class="ch-arrow">↗</span>
+        </a>`;
+        libList.appendChild(li);
+      });
+      libList.dataset.loaded = 'true';
+    } catch (e) {
+      libList.innerHTML = `<li style="padding:14px;font-family:var(--mono);font-size:0.75rem;color:var(--danger)">Error: ${e.message}</li>`;
+    }
+  }
 
-      if (currentTestState) {
-        const lowerQ = q.toLowerCase();
-        if (!['a', 'b', 'c'].includes(lowerQ)) {
-          showTemporaryMessage('Por favor, responde con una letra válida: a, b o c.', true);
-          return;
-        }
-      }
+  // ── Mode switching ──────────────────────────────
+  const modeNames = { tecnico:'MODO TÉCNICO', ensena:'MODO ENSEÑA', biblioteca:'BIBLIOTECA CAA' };
+  const placeholders = { tecnico:'Escribe tu consulta técnica...', ensena:'Preguntá sobre cualquier tema alimentario...' };
 
-      isSending = true;
-      btn.disabled = true;
+  function setMode(mode) {
+    if (currentMode === mode) return;
+    currentMode = mode; currentTestState = null;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`mode-${mode}`).classList.add('active');
 
-      appendAndSave(q, 'us');
-      input.value = '';
-      input.style.height = 'auto';
+    if (mode === 'biblioteca') {
+      box.style.display = 'none';
+      libView.style.display = 'block';
+      input.placeholder = '';
+      if (!libList.dataset.loaded) loadLibrary();
+    } else {
+      box.style.display = 'flex';
+      libView.style.display = 'none';
+      input.placeholder = placeholders[mode];
+      renderHistory(mode);
+    }
+  }
 
-      const historyToSend = currentMode === 'tecnico' ? historyTecnico : historyEnsena;
+  document.getElementById('mode-tecnico').onclick    = () => setMode('tecnico');
+  document.getElementById('mode-ensena').onclick     = () => setMode('ensena');
+  document.getElementById('mode-biblioteca').onclick = () => setMode('biblioteca');
 
-      const body = {
-        query: q,
-        history: historyToSend,
-        mode: currentMode
-      };
+  // ── Welcome ────────────────────────────────────
+  window.onload = () => {
+    const sep = document.createElement('div');
+    sep.className = 'sep';
+    sep.innerHTML = '<span>SESIÓN INICIADA</span>';
+    box.appendChild(sep);
+    appendToDOM("Hola, soy **INOCUO**. Estoy aquí para asistirte en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**.\n\nElegí entre **Modo Técnico** (respuestas concisas), **Modo Enseña** (explicaciones didácticas) o **Biblioteca** (capítulos del CAA).", 'va');
+  };
 
-      if (currentTestState) {
-        body.testState = currentTestState;
-      }
+  // ── Send ───────────────────────────────────────
+  async function handleSend() {
+    if (isSending || currentMode === 'biblioteca') return;
+    const q = input.value.trim();
+    if (!q) return;
 
-      try {
-        const res = await fetch('/.netlify/functions/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        const data = await res.json();
-        if (data.ok) {
-          if (data.testState !== undefined) {
-            currentTestState = data.testState;
-          }
-          appendAndSave(data.answer, 'va');
-        } else {
-          appendAndSave('Error en la respuesta.', 'va');
-        }
-      } catch (e) {
-        appendAndSave('Error de conexión. Intenta de nuevo.', 'va');
-      } finally {
-        setTimeout(() => {
-          isSending = false;
-          btn.disabled = false;
-        }, 500);
-      }
+    if (currentTestState && !['a','b','c'].includes(q.toLowerCase())) {
+      showErr('Respondé con a, b o c', true); return;
     }
 
-    btn.onclick = handleSend;
-    input.addEventListener('input', function() {
-      this.style.height = 'auto';
-      this.style.height = (this.scrollHeight) + 'px';
-    });
-    input.onkeydown = (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleSend();
+    isSending = true; btn.disabled = true;
+    appendAndSave(q, 'us');
+    input.value = ''; input.style.height = 'auto';
+    showTyping();
+
+    const hist = currentMode === 'tecnico' ? historyTecnico : historyEnsena;
+    const body = { query: q, history: hist, mode: currentMode };
+    if (currentTestState) body.testState = currentTestState;
+
+    try {
+      const res  = await fetch('/.netlify/functions/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      hideTyping();
+      if (data.ok) {
+        if (data.testState !== undefined) currentTestState = data.testState;
+        appendAndSave(data.answer, 'va');
+      } else {
+        showErr(data.error || 'Error en la respuesta.');
       }
-    };
-  </script>
+    } catch(e) {
+      hideTyping();
+      showErr('Error de conexión. Intentá de nuevo.');
+    } finally {
+      setTimeout(() => { isSending = false; btn.disabled = false; }, 500);
+    }
+  }
+
+  btn.onclick = handleSend;
+  input.addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = this.scrollHeight + 'px';
+  });
+  input.onkeydown = e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+</script>
 </body>
 </html>
+
