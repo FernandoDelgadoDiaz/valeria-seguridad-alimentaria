@@ -479,7 +479,7 @@
     for (const ov of filenameOverrides) {
       if (ov.match.test(fn)) return { roman: ov.roman, topic: ov.title };
     }
-    const m = fn.toLowerCase().match(/capitulo[_\s]*(i{1,3}|iv|vi{0,3}|ix|xi{0,3}|xiv|xvi{0,3}|xix|xx{0,2}i{0,3})/);
+    const m = fn.toLowerCase().match(/capitulo[_\s]*(xxii|xxi|xx|xix|xviii|xvii|xvi|xv|xiv|xiii|xii|xi|ix|viii|vii|vi|iv|iii|ii|x|v|i)(?![a-z])/);
     const roman = m ? (romanMap[m[1]] || m[1].toUpperCase()) : null;
     let topic = null;
     for (const k of Object.keys(topicMap)) { if (fn.toLowerCase().includes(k)) { topic = topicMap[k]; break; } }
