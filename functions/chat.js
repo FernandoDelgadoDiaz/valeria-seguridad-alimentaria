@@ -62,10 +62,9 @@ export async function handler(event) {
     // FIX: detectar pedidos de texto exacto del CAA — regex ampliado
     // Antes solo matcheaba "texto exacto", "literal", "dame el artículo"
     // Ahora también matchea "textual", "artículo X del capítulo Y", etc.
-    // Detecta pedidos de artículo/capítulo específico del CAA
     const pideExacto =
       /texto exacto|textual|literal|textualmente/i.test(query) ||
-      /dame|mostr[aá]|copi[aá]|transcrib|pas[aá]me|qu[eé] dice/i.test(query) ||
+      /dame|mostr[aá]|copi[aá]|transcrib|pas[aá]me|qu[eé] dice|extra[eé]|obten[eé]|traeme|dime|necesito|busca|encontr[aá]|consult[aá]|ver|ve[aá]|lee|le[eé]me/i.test(query) ||
       /art[ií]culo\s*\d+/i.test(query) ||
       /cap[ií]tulo\s*(completo|entero|todo)/i.test(query) ||
       (/cap[ií]tulo/i.test(query) && /art[ií]culo/i.test(query));
@@ -96,34 +95,65 @@ export async function handler(event) {
     const topInternos = internos.slice(0, 4);
     const topCAA = caaChunks.slice(0, 4);
 
+    // ── Mapa de capítulos → keywords de archivo ──
+    const CAP_FILE_MAP = {
+      'i':    ['capitulo_i','capitulo_1','disp_grales'],
+      'ii':   ['capitulo_ii','establec'],
+      'iii':  ['capitulo_iii','prod_alimenticios'],
+      'iv':   ['capitulo_iv','envases'],
+      'v':    ['capitulo_v','rotulacion'],
+      'vi':   ['capitulo_vi','carneos'],
+      'vii':  ['capitulo_vii','alimentos_grasos','caa_cap_alimentos'],
+      'viii': ['capitulo_viii','lacteos'],
+      'ix':   ['capitulo_ix','harinas'],
+      'x':    ['capitulo_x','azucarados'],
+      'xi':   ['capitulo_xi','vegetales'],
+      'xii':  ['capitulo_xii','aguas'],
+      'xiii': ['capitulo_xiii','beb_fermentadas'],
+      'xiv':  ['capitulo_xiv','caa_capitulo_xiv'],
+      'xv':   ['capitulo_xv','estimulantes'],
+      'xvi':  ['capitulo_xvi','correctivos'],
+      'xvii': ['capitulo_xvii','dieteticos'],
+      'xviii':['capitulo_xviii','aditivos'],
+      'xix':  ['capitulo_xix','aislados_prot'],
+      'xx':   ['capitulo_xx','metodologia'],
+      'xxi':  ['capitulo_xxi','procedimientos'],
+      'xxii': ['capitulo_xxii','miscelaneos'],
+    };
+    const ARAB_TO_ROMAN = {'1':'i','2':'ii','3':'iii','4':'iv','5':'v','6':'vi','7':'vii',
+      '8':'viii','9':'ix','10':'x','11':'xi','12':'xii','13':'xiii','14':'xiv','15':'xv',
+      '16':'xvi','17':'xvii','18':'xviii','19':'xix','20':'xx','21':'xxi','22':'xxii'};
+
     // ── Búsqueda exacta por artículo/capítulo ──
-    // Si el usuario pide un artículo específico, buscamos en TODOS los chunks por número
     let exactMatches = [];
     if (pideExacto) {
-      // Extraer número de artículo y capítulo de la query
-      const artMatch = query.match(/art[ií]culo\s*(n[°º]?\s*)?(\d+)/i);
-      const capMatch = query.match(/cap[ií]tulo\s*(n[°º]?\s*)?(\d+|[IVXivx]+)/i);
-      const artNum = artMatch ? artMatch[2] : null;
-      const capNum = capMatch ? capMatch[2] : null;
+      const artMatch = query.match(/art[ií]culo\s*(?:n[°º]?\s*)?(\d+)/i);
+      const capMatch = query.match(/cap[ií]tulo\s*(?:n[°º]?\s*)?(\d+|[IVXivx]+)/i);
+      const artNum = artMatch ? artMatch[1] : null;
+      let capRoman = capMatch ? capMatch[1].toLowerCase() : null;
+      if (capRoman && ARAB_TO_ROMAN[capRoman]) capRoman = ARAB_TO_ROMAN[capRoman];
+      const capKeywords = capRoman ? (CAP_FILE_MAP[capRoman] || [capRoman]) : null;
 
-      if (artNum || capNum) {
+      const isFromCap = (source) => {
+        const s = source.toLowerCase();
+        const isCAA = s.includes("capitulo") || s.includes("caa") || s.includes("anmat");
+        if (!capKeywords) return isCAA;
+        return capKeywords.some(k => s.includes(k));
+      };
+
+      if (artNum || capRoman) {
         exactMatches = CACHE_DATA.chunks.filter(c => {
+          if (!isFromCap(c.source)) return false;
           const t = c.text || '';
-          const isCAA = c.source.toLowerCase().includes("capitulo") || c.source.toLowerCase().includes("caa");
-          if (!isCAA) return false;
-          const hasArt = artNum ? new RegExp(`art[ií]culo\\s*${artNum}\\b`, 'i').test(t) : true;
-          const hasCap = capNum ? (
-            new RegExp(`cap[ií]tulo\\s*${capNum}\\b`, 'i').test(t) ||
-            c.source.toLowerCase().includes(`${capNum}`)
-          ) : true;
-          return hasArt && hasCap;
+          const hasArt = artNum ? new RegExp('art[ií]culo\\s*' + artNum + '\\b', 'i').test(t) : true;
+          return hasArt;
         });
-        // Si solo tenemos artículo sin capítulo, ser más permisivo
+        // Fallback: buscar artículo en todo el CAA sin filtro de capítulo
         if (exactMatches.length === 0 && artNum) {
           exactMatches = CACHE_DATA.chunks.filter(c => {
-            const t = c.text || '';
-            const isCAA = c.source.toLowerCase().includes("capitulo") || c.source.toLowerCase().includes("caa");
-            return isCAA && new RegExp(`art[ií]culo\\s*${artNum}\\b`, 'i').test(t);
+            const s = c.source.toLowerCase();
+            const isCAA = s.includes("capitulo") || s.includes("caa") || s.includes("anmat");
+            return isCAA && new RegExp('art[ií]culo\\s*' + artNum + '\\b', 'i').test(c.text || '');
           });
         }
       }
@@ -132,7 +162,6 @@ export async function handler(event) {
     // Jerarquía: documentos internos siempre primero
     let contextChunks = [];
     if (pideExacto) {
-      // Priorizar matches exactos + complementar con semántica
       const exactSet = new Set(exactMatches.map(c => c.text));
       const semCAA = topCAA.filter(c => !exactSet.has(c.text));
       contextChunks = [...exactMatches.slice(0, 6), ...semCAA.slice(0, 2)];
