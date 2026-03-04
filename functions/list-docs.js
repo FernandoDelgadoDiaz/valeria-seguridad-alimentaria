@@ -73,6 +73,8 @@ export async function handler(event) {
 
 function extractChapterNumber(filename) {
   const fn = filename.toLowerCase();
+  // Casos especiales que no siguen el patrón capitulo_X
+  if (fn.includes('alimentos_grasos')) return 7;
   const romanMap = [
     ["xxii",22],["xxi",21],["xx",20],["xix",19],["xviii",18],["xvii",17],["xvi",16],["xv",15],
     ["xiv",14],["xiii",13],["xii",12],["xi",11],["ix",9],["viii",8],["vii",7],["vi",6],
