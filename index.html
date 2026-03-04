@@ -23,8 +23,8 @@
       --cond:     'Barlow Condensed', sans-serif;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    html { scroll-behavior: smooth; }
-    body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+    html { scroll-behavior: smooth; overflow-x: hidden; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; overflow-y: auto; }
 
     /* GRID BG */
     #landing::before {
@@ -41,6 +41,7 @@
       position: relative;
       min-height: 100vh;
       overflow-x: hidden;
+      overflow-y: visible;
     }
     #app-view { display: none; height: 100vh; overflow: hidden; }
     body.in-app { overflow: hidden; height: 100vh; }
@@ -82,7 +83,8 @@
       min-height: 100vh;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      text-align: center; padding: 100px 24px 80px;
+      text-align: center; padding: 56px 24px 80px;
+      box-sizing: border-box;
     }
     .l-glow {
       position: absolute; width: 600px; height: 500px;
@@ -223,11 +225,8 @@
 
     *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
 
-    html, body {
+    body.in-app, body.in-app html {
       height: 100%; width: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--sans);
       overflow: hidden;
     }
 
@@ -577,7 +576,7 @@
       <span class="l-nav-name">INOCUO</span>
     </a>
     <div class="l-nav-right">
-      <a href="#l-features" class="l-nav-link" onclick="event.preventDefault();document.getElementById('l-features').scrollIntoView({behavior:'smooth'})">Funciones</a>
+      <a href="#l-features" class="l-nav-link" onclick="event.preventDefault();scrollToSection('l-features')">Funciones</a>
       <button class="l-nav-cta" onclick="openApp()">Abrir app →</button>
     </div>
   </nav>
@@ -594,7 +593,7 @@
         Iniciar consulta
         <svg viewBox="0 0 24 24" fill="none" stroke="#0a0f13" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </button>
-      <a href="#l-features" class="btn-ghost" onclick="event.preventDefault();document.getElementById('l-features').scrollIntoView({behavior:'smooth'})">Ver funciones ↓</a>
+      <a href="#l-features" class="btn-ghost" onclick="event.preventDefault();scrollToSection('l-features')">Ver funciones ↓</a>
     </div>
     <div class="l-scroll"><span>scroll</span><div class="l-scroll-line"></div></div>
   </div>
@@ -941,6 +940,14 @@
 </div>
 
 <script>
+  function scrollToSection(id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var navH = document.getElementById('l-nav') ? document.getElementById('l-nav').offsetHeight : 56;
+    var top = el.getBoundingClientRect().top + window.pageYOffset - navH - 16;
+    window.scrollTo({ top: top, behavior: 'smooth' });
+  }
+
   function openApp() {
     document.getElementById('landing').style.display = 'none';
     document.getElementById('app-view').style.display = 'block';
