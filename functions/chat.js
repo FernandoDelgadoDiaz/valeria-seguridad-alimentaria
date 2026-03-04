@@ -273,6 +273,49 @@ ${contextText}`;
       systemPrompt += `\n\nIMPORTANTE: El usuario pidió el TEXTO EXACTO o TEXTUAL del CAA. Buscá en el CONTEXTO el artículo mencionado y copialo de forma literal, sin resumir ni parafrasear. Indicá capítulo y artículo antes del texto. Si el fragmento exacto no está en el CONTEXTO disponible, indicalo claramente.`;
     }
 
+    const useStream = parsed.stream === true;
+
+    if (useStream) {
+      // ── Modo streaming SSE ──
+      const stream = await client.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...history.slice(-12),
+          { role: "user", content: query }
+        ],
+        temperature: pideExacto ? 0.1 : 0.3,
+        stream: true,
+      });
+
+      let sseBody = '';
+      let fullAnswer = '';
+
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content || '';
+        if (delta) {
+          fullAnswer += delta;
+          sseBody += `data: ${JSON.stringify({ delta })}\n\n`;
+        }
+      }
+
+      // Mandar historial actualizado en evento final
+      const updatedHistory = [...history, { role: "user", content: query }, { role: "assistant", content: fullAnswer }];
+      sseBody += `data: ${JSON.stringify({ done: true, history: updatedHistory })}\n\n`;
+      sseBody += `data: [DONE]\n\n`;
+
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'X-Accel-Buffering': 'no',
+        },
+        body: sseBody,
+      };
+    }
+
+    // ── Modo normal (sin streaming) ──
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
