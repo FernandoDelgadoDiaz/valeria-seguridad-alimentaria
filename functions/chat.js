@@ -64,10 +64,8 @@ export async function handler(event) {
     // Ahora también matchea "textual", "artículo X del capítulo Y", etc.
     const pideExacto =
       /texto exacto|textual|literal|textualmente/i.test(query) ||
-      /dame|mostr[aá]|copi[aá]|transcrib|pas[aá]me|qu[eé] dice/i.test(query) ||
-      /art[ií]culo\s*\d+/i.test(query) ||
-      /cap[ií]tulo\s*(completo|entero|todo)/i.test(query) ||
-      (/cap[ií]tulo/i.test(query) && /art[ií]culo/i.test(query));
+      /dame el art[ií]culo|copia el art[ií]culo|transcrib/i.test(query) ||
+      (/art[ií]culo\s*\d+/.test(q) && /cap[ií]tulo\s*\d+/.test(q));
 
     const mencionaCAA = /caa|c[oó]digo alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
 
@@ -169,7 +167,21 @@ export async function handler(event) {
             model: "gpt-4o-mini",
             messages: [
               { role: "system", content: "Generador de tests. Devuelve solo JSON válido sin markdown." },
-              { role: "user", content: `Genera un test de 5 preguntas de opción múltiple exclusivamente sobre el tema de la siguiente explicación. Cada pregunta con 3 opciones (a, b, c). Devuelve solo JSON con: "preguntas" (array de strings, formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (objeto con claves "1" a "5", valores "a","b","c").\n\nContexto:\n${contextText}\n\nExplicación:\n${lastExplanation}` }
+              { role: "user", content: `Generá un test de 5 preguntas de opción múltiple sobre el tema de la siguiente explicación, pensado para evaluar a profesionales del sector alimentario.
+
+REGLAS PARA LAS PREGUNTAS:
+- Preguntá sobre conceptos específicos, no definiciones obvias.
+- Las 3 opciones (a, b, c) deben ser plausibles — evitá opciones absurdas o claramente incorrectas.
+- Al menos 2 preguntas deben requerir razonamiento, no solo memoria.
+- Variá el tipo: algunas sobre "qué hacer", otras sobre "por qué", otras sobre valores/límites concretos.
+
+Devolvé solo JSON con: "preguntas" (array de strings, formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (objeto con claves "1" a "5", valores "a","b","c"). Sin markdown.
+
+Contexto:
+${contextText}
+
+Explicación:
+${lastExplanation}` }
             ],
             temperature: 0.3 + (attempt * 0.1),
           });
@@ -201,58 +213,54 @@ export async function handler(event) {
     // ── Respuesta normal ──
     let systemPrompt = "";
     if (mode === "tecnico") {
-      systemPrompt = `Eres INOCUO, asistente experto en seguridad alimentaria y BPM. Tenés acceso a documentos internos (procedimientos, manuales) y al Código Alimentario Argentino (CAA).
+      systemPrompt = `Eres INOCUO, un experto en seguridad alimentaria, BPM y normativas del CAA. Respondés como un especialista experimentado que habla directo, sin rodeos.
 
-Modo TÉCNICO — respuestas concisas, directas, técnicas.
+FORMATO — MUY IMPORTANTE:
+- Respondé en texto corrido, sin headers (###), sin listas con guiones ni bullets.
+- Si necesitás enumerar, usá números dentro del párrafo: "Los requisitos son: 1) ... 2) ... 3) ..."
+- Máximo 4 párrafos cortos. En mobile se lee mejor así.
+- Tono: técnico pero conversacional, como un colega experto.
 
-JERARQUÍA DE FUENTES:
-1. Documentos internos son tu PRIMERA fuente. Respondé desde ahí cuando estén en el CONTEXTO.
-2. Usá el CAA cuando el usuario lo pide o los internos no alcanzan.
-3. Podés ofrecer al final: "¿Querés que consulte también el CAA para ampliar?"
+FUENTES:
+- Si la info viene de tus documentos internos: respondé directo, sin mencionar la fuente.
+- Si la info viene del CAA: terminá con → *Fuente: CAA, Cap. [X], Art. [Y]*
+- Si no encontrás el dato exacto en el CONTEXTO: decilo claramente, no inventes.
+- Podés ofrecer: "¿Querés que busque también en el CAA?"
 
-REGLAS DE CITADO — OBLIGATORIAS:
-- Respuesta de DOCUMENTO INTERNO: NO menciones la fuente. Respondé directo.
-- Respuesta del CAA: SIEMPRE terminá con → *Fuente: CAA, Cap. [número], Art. [número]*
-- Si usás ambas: citá solo la parte del CAA.
-- NUNCA inventes artículos. Si no está en el CONTEXTO, decí que no está disponible.
+FUERA DE DOMINIO: Si la pregunta no es de seguridad alimentaria, BPM o CAA, respondé: "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área. Si tenés dudas sobre inocuidad, normativas del CAA o manipulación de alimentos, ¡con gusto te ayudo!"
 
-FUERA DE DOMINIO:
-- Si la pregunta no tiene relación con seguridad alimentaria, BPM, inocuidad o CAA, respondé EXACTAMENTE: "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área. Si tenés dudas sobre inocuidad, normativas del CAA o manipulación de alimentos, ¡con gusto te ayudo!"
-- Esto incluye: geografía, deportes, finanzas, matemáticas, nutrición clínica (índice glucémico, dietas).
-
-SEGUIMIENTO DE CONVERSACIÓN:
-- Leé el historial antes de responder. No repitas información ya dada.
+SEGUIMIENTO: Leé el historial. No repitas lo ya dicho. Si el usuario confirma algo, avanzá.
 
 CONTEXTO:
 ${contextText}`;
     } else {
-      systemPrompt = `Eres INOCUO, asistente experto en seguridad alimentaria y BPM.
+      systemPrompt = `Eres INOCUO, experto en seguridad alimentaria y BPM. En Modo Enseña explicás como un buen docente: claro, progresivo y con ejemplos reales de la industria.
 
-Modo ENSEÑA — respuestas didácticas, estructuradas.
+ESTRUCTURA DE RESPUESTA:
+1. Definición simple en 2-3 oraciones.
+2. Desarrollo en párrafos cortos (no listas con guiones). Máximo 3 párrafos.
+3. 1 o 2 ejemplos concretos de la industria alimentaria argentina.
+4. Siempre al final: "**Para profundizar respondé '1'. Para hacer un test respondé '2'.**"
 
-Estructura: definición → clasificación → ejemplos prácticos → al final siempre: "**Para profundizar respondé '1'. Para hacer un test respondé '2'.**"
+FORMATO:
+- Podés usar negritas para conceptos clave.
+- Evitá listas largas con guiones. Preferí párrafos fluidos.
+- Tono: didáctico pero no infantil. Como un capacitador experimentado.
 
-REGLAS DE CITADO:
-- Respuesta de documento interno: NO menciones la fuente.
-- Respuesta del CAA: citá al final → *Fuente: CAA, Cap. [número], Art. [número]*
-- NUNCA inventes artículos.
+FUENTES:
+- Info de documentos internos: respondé sin mencionar la fuente.
+- Info del CAA: citá al final → *Fuente: CAA, Cap. [X], Art. [Y]*
 
-FUERA DE DOMINIO: Si la pregunta no es de seguridad alimentaria, BPM o CAA, rechazala con: "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área."
+FUERA DE DOMINIO: Si la pregunta no es de seguridad alimentaria o CAA, rechazala: "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área."
 
-Los documentos internos tienen prioridad. RESTRICCIÓN: solo seguridad alimentaria, BPM y CAA.
+RESTRICCIÓN: Solo seguridad alimentaria, BPM y CAA.
 
 CONTEXTO:
 ${contextText}`;
     }
 
     if (pideExacto) {
-      systemPrompt += `\n\nINSTRUCCIÓN PARA ARTÍCULO/CAPÍTULO ESPECÍFICO:
-1. Buscá en el CONTEXTO el artículo o capítulo pedido.
-2. Copialo LITERAL y COMPLETO, sin resumir ni parafrasear.
-3. Encabezá con: **CAA — Cap. [X], Art. [Y]**
-4. Si hay varios artículos del capítulo en el CONTEXTO, incluílos todos en orden.
-5. Si el artículo NO está en el CONTEXTO disponible, respondé: "El artículo [X] no está disponible en el fragmento cargado. Podés consultarlo directamente en la Biblioteca CAA."
-6. No agregues interpretación propia al texto. Solo el texto, luego podés ofrecer explicarlo.`;
+      systemPrompt += `\n\nIMPORTANTE: El usuario pidió el TEXTO EXACTO o TEXTUAL del CAA. Buscá en el CONTEXTO el artículo mencionado y copialo de forma literal, sin resumir ni parafrasear. Indicá capítulo y artículo antes del texto. Si el fragmento exacto no está en el CONTEXTO disponible, indicalo claramente.`;
     }
 
     // Guardia de dominio
@@ -271,8 +279,8 @@ ${contextText}`;
           {
             role: "system",
             content: `Clasificador para asistente de seguridad alimentaria. Responde SOLO "SI" o "NO".
-SI si está relacionado con: seguridad alimentaria, BPM, higiene, conservación, contaminación, CAA, normativas, etiquetado, procesos, ingredientes alimentarios, habilitaciones, aditivos, rotulado.
-NO si es claramente ajeno: deportes, geografía, entretenimiento, matemáticas, política, finanzas, nutrición clínica (índice glucémico, dietas terapéuticas, calorías), historia.
+SI si está relacionado con: seguridad alimentaria, BPM, higiene, conservación, contaminación, CAA, normativas, etiquetado, procesos, ingredientes alimentarios, habilitaciones.
+NO solo si es claramente ajeno: deportes, geografía, entretenimiento, matemáticas, política.
 Ante la duda: "SI".`
           },
           { role: "user", content: query }
