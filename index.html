@@ -576,72 +576,43 @@
     if (currentTestState) body.testState = currentTestState;
 
     try {
-      // Streaming para todas las respuestas normales (no tests)
-      const useStream = !currentTestState;
       const res = await fetch('/.netlify/functions/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...body, stream: useStream })
+        body: JSON.stringify(body)
       });
+      const data = await res.json();
+      hideTyping();
 
-      const contentType = res.headers.get('Content-Type') || '';
+      if (data.ok) {
+        if (data.testState !== undefined) currentTestState = data.testState;
 
-      if (useStream && contentType.includes('text/event-stream')) {
-        // ── Modo streaming ──
-        hideTyping();
-        const bubble = document.createElement('div');
-        bubble.className = 'bubble va streaming-bubble';
-        box.appendChild(bubble);
-        box.scrollTop = box.scrollHeight;
+        // Pseudo-streaming: mostrar texto palabra por palabra
+        const usePseudoStream = !currentTestState && data.answer && data.answer.length > 30;
+        if (usePseudoStream) {
+          const bubble = document.createElement('div');
+          bubble.className = 'bubble va streaming-bubble';
+          box.appendChild(bubble);
+          box.scrollTop = box.scrollHeight;
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let fullText = '';
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop(); // última línea puede estar incompleta
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
-            const payload = line.slice(6).trim();
-            if (payload === '[DONE]') break;
-            try {
-              const parsed2 = JSON.parse(payload);
-              if (parsed2.error) { showErr(parsed2.error); break; }
-              if (parsed2.delta) {
-                fullText += parsed2.delta;
-                bubble.innerHTML = safeRender(fullText) + '<span class="cursor-blink">▌</span>';
-                box.scrollTop = box.scrollHeight;
-              }
-              if (parsed2.done && parsed2.history) {
-                // Sincronizar historial con el servidor
-                if (currentMode === 'tecnico') historyTecnico = parsed2.history;
-                else historyEnsena = parsed2.history;
-              }
-            } catch {}
+          const tokens = data.answer.split(/(\s+)/);
+          let built = '';
+          for (const token of tokens) {
+            built += token;
+            bubble.innerHTML = safeRender(built) + '<span class="cursor-blink">\u25ae</span>';
+            box.scrollTop = box.scrollHeight;
+            if (token.trim().length > 0) await new Promise(r => setTimeout(r, 18));
           }
-        }
-
-        // Finalizar bubble
-        bubble.innerHTML = safeRender(fullText);
-        bubble.classList.remove('streaming-bubble');
-        appendAndSave(null, 'va', fullText, bubble);
-
-      } else {
-        // ── Modo normal (tests, modo enseña) ──
-        const data = await res.json();
-        hideTyping();
-        if (data.ok) {
-          if (data.testState !== undefined) currentTestState = data.testState;
-          appendAndSave(data.answer, 'va');
+          bubble.innerHTML = safeRender(built);
+          bubble.classList.remove('streaming-bubble');
+          const role = 'assistant';
+          if (currentMode === 'tecnico') historyTecnico.push({ role, content: data.answer });
+          else if (currentMode === 'ensena') historyEnsena.push({ role, content: data.answer });
         } else {
-          showErr(data.error || 'Error en la respuesta.');
+          appendAndSave(data.answer, 'va');
         }
+      } else {
+        showErr(data.error || 'Error en la respuesta.');
       }
     } catch(e) {
       hideTyping();
