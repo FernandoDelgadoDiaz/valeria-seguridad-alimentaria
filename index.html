@@ -6,8 +6,202 @@
   <title>INOCUO — Seguridad Alimentaria</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Barlow+Condensed:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Barlow+Condensed:wght@300;400;500;600;700;800;900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
   <style>
+    /* ═══════════ LANDING ═══════════ */
+    :root {
+      --bg:       #0a0f13;
+      --surface:  #0d1117;
+      --border:   #1e2730;
+      --accent:   #3fb950;
+      --accent2:  #2ea043;
+      --accent-dim: rgba(63,185,80,0.12);
+      --text:     #e6edf3;
+      --muted:    #556370;
+      --mono:     'DM Mono', monospace;
+      --sans:     'DM Sans', sans-serif;
+      --cond:     'Barlow Condensed', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+    /* GRID BG */
+    #landing::before {
+      content: '';
+      position: absolute; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(63,185,80,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(63,185,80,0.035) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+    }
+
+    #landing {
+      position: relative;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    #app-view { display: none; height: 100vh; overflow: hidden; }
+    body.in-app { overflow: hidden; height: 100vh; }
+
+    /* NAV */
+    .l-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px;
+      background: rgba(10,15,19,0.88);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      animation: fadeDown 0.5s ease both;
+    }
+    .l-nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .l-nav-badge {
+      width: 30px; height: 30px; background: var(--accent); border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 14px rgba(63,185,80,0.4);
+    }
+    .l-nav-badge svg { fill: #0a0f13; width: 15px; height: 15px; }
+    .l-nav-name { font-family: var(--cond); font-weight: 700; font-size: 1.2rem; letter-spacing: 0.08em; color: var(--text); }
+    .l-nav-right { display: flex; align-items: center; gap: 16px; }
+    .l-nav-link { font-family: var(--mono); font-size: 0.67rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+    .l-nav-link:hover { color: var(--text); }
+    .l-nav-cta {
+      font-family: var(--mono); font-size: 0.67rem; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--accent); text-decoration: none;
+      border: 1px solid rgba(63,185,80,0.4); padding: 6px 14px; border-radius: 4px;
+      transition: background 0.2s, box-shadow 0.2s; cursor: pointer; background: none;
+    }
+    .l-nav-cta:hover { background: var(--accent-dim); box-shadow: 0 0 12px rgba(63,185,80,0.2); }
+
+    /* HERO */
+    .l-hero {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 100px 24px 80px;
+    }
+    .l-glow {
+      position: absolute; width: 600px; height: 500px;
+      background: radial-gradient(ellipse, rgba(63,185,80,0.1) 0%, transparent 70%);
+      top: 50%; left: 50%; transform: translate(-50%,-55%);
+      pointer-events: none; animation: pulseGlow 4s ease-in-out infinite;
+    }
+    @keyframes pulseGlow { 0%,100%{opacity:0.6;transform:translate(-50%,-55%) scale(1)} 50%{opacity:1;transform:translate(-50%,-55%) scale(1.08)} }
+
+    .l-tag {
+      display: inline-flex; align-items: center; gap: 7px;
+      font-family: var(--mono); font-size: 0.63rem; letter-spacing: 0.14em; text-transform: uppercase;
+      color: var(--accent); border: 1px solid rgba(63,185,80,0.3);
+      background: rgba(63,185,80,0.06); padding: 5px 12px; border-radius: 20px;
+      margin-bottom: 28px; animation: fadeUp 0.6s 0.1s ease both;
+    }
+    .l-tag-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: blinkDot 2s ease-in-out infinite; }
+    @keyframes blinkDot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .l-title {
+      font-family: var(--cond); font-weight: 900;
+      font-size: clamp(4rem, 14vw, 10rem); line-height: 0.9;
+      letter-spacing: -0.01em; color: var(--text);
+      margin-bottom: 10px; animation: fadeUp 0.6s 0.2s ease both;
+    }
+    .l-title span { color: var(--accent); text-shadow: 0 0 50px rgba(63,185,80,0.5); }
+
+    .l-sub {
+      font-family: var(--cond); font-weight: 300;
+      font-size: clamp(1rem, 3vw, 1.6rem); letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 36px; animation: fadeUp 0.6s 0.3s ease both;
+    }
+    .l-desc {
+      max-width: 480px; font-size: 0.97rem; line-height: 1.75; color: #7a8a96;
+      margin-bottom: 48px; animation: fadeUp 0.6s 0.4s ease both;
+    }
+    .l-actions {
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;
+      animation: fadeUp 0.6s 0.5s ease both;
+    }
+
+    .btn-go {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: var(--accent); color: #0a0f13;
+      font-family: var(--cond); font-weight: 700; font-size: 1rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 14px 32px; border-radius: 6px; border: none;
+      cursor: pointer; text-decoration: none;
+      transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+      box-shadow: 0 0 28px rgba(63,185,80,0.4);
+    }
+    .btn-go:hover { transform: translateY(-2px); box-shadow: 0 0 44px rgba(63,185,80,0.6); background: #4ece62; }
+    .btn-go svg { width: 16px; height: 16px; fill: #0a0f13; transition: transform 0.2s; }
+    .btn-go:hover svg { transform: translateX(3px); }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted); text-decoration: none; border: 1px solid var(--border);
+      padding: 13px 20px; border-radius: 6px; transition: color 0.2s, border-color 0.2s;
+    }
+    .btn-ghost:hover { color: var(--text); border-color: #3a4550; }
+
+    .l-scroll { position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; animation: fadeUp 0.6s 0.9s ease both; }
+    .l-scroll span { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+    .l-scroll-line { width: 1px; height: 26px; background: linear-gradient(to bottom, var(--muted), transparent); animation: dropLine 1.6s ease-in-out infinite; }
+    @keyframes dropLine { 0%,100%{opacity:0;transform:scaleY(0.2)} 50%{opacity:1;transform:scaleY(1)} }
+
+    /* FEATURES */
+    .l-features { position: relative; z-index: 1; padding: 90px 24px; max-width: 1100px; margin: 0 auto; }
+    .l-sec-label { font-family: var(--mono); font-size: 0.63rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+    .l-sec-title { font-family: var(--cond); font-weight: 800; font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.05; color: var(--text); margin-bottom: 48px; }
+    .l-sec-title em { font-style: normal; color: var(--accent); }
+
+    .l-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 2px; }
+    .l-card {
+      background: #0d1117; border: 1px solid var(--border); padding: 28px 24px;
+      transition: border-color 0.25s, transform 0.25s; position: relative; overflow: hidden;
+    }
+    .l-card:hover { border-color: rgba(63,185,80,0.3); transform: translateY(-2px); }
+    .l-card::before { content: ''; position: absolute; top:0; left:0; right:0; height:1px; background: linear-gradient(90deg,transparent,rgba(63,185,80,0.4),transparent); opacity:0; transition:opacity 0.3s; }
+    .l-card:hover::before { opacity:1; }
+    .l-card-num { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 16px; }
+    .l-card-icon { width:38px; height:38px; background:rgba(63,185,80,0.1); border:1px solid rgba(63,185,80,0.2); border-radius:7px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; }
+    .l-card-icon svg { width:17px; height:17px; fill:none; stroke:var(--accent); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .l-card-name { font-family: var(--cond); font-weight:700; font-size:1.1rem; letter-spacing:0.04em; color:var(--text); margin-bottom:8px; }
+    .l-card-desc { font-size:0.85rem; line-height:1.65; color:var(--muted); }
+
+    /* STATS */
+    .l-stats { position:relative; z-index:1; margin:0 24px 80px; display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:1px; border:1px solid var(--border); background:var(--border); }
+    .l-stat { background:var(--bg); padding:32px 28px; text-align:center; }
+    .l-stat-n { font-family:var(--cond); font-weight:900; font-size:2.8rem; line-height:1; color:var(--accent); letter-spacing:-0.02em; margin-bottom:6px; }
+    .l-stat-l { font-family:var(--mono); font-size:0.62rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+
+    /* CTA FINAL */
+    .l-cta { position:relative; z-index:1; padding:100px 24px; text-align:center; overflow:hidden; }
+    .l-cta-glow { position:absolute; width:500px; height:300px; background:radial-gradient(ellipse,rgba(63,185,80,0.12) 0%,transparent 70%); top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
+    .l-cta-title { font-family:var(--cond); font-weight:900; font-size:clamp(2.5rem,8vw,6rem); line-height:0.95; color:var(--text); margin-bottom:22px; }
+    .l-cta-title span { color:var(--accent); text-shadow:0 0 40px rgba(63,185,80,0.5); }
+    .l-cta-desc { max-width:440px; margin:0 auto 40px; font-size:0.95rem; line-height:1.7; color:#7a8a96; }
+
+    /* FOOTER */
+    .l-footer { position:relative; z-index:1; border-top:1px solid var(--border); padding:22px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+    .l-footer-text { font-family:var(--mono); font-size:0.6rem; letter-spacing:0.08em; color:var(--muted); }
+
+    /* REVEAL */
+    .reveal { opacity:0; transform:translateY(22px); transition:opacity 0.55s ease, transform 0.55s ease; }
+    .reveal.visible { opacity:1; transform:translateY(0); }
+
+    /* ANIMATIONS */
+    @keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeDown { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:translateY(0)} }
+
+    @media(max-width:600px) {
+      .l-nav { padding:0 14px; }
+      .l-nav-right .l-nav-link { display:none; }
+    }
+
+    /* ═══════════ CHAT APP ═══════════ */
+
     :root {
       --bg:              #0d1117;
       --surface:         #161b22;
@@ -362,9 +556,120 @@
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
   .cursor-blink { animation: blink 0.8s step-end infinite; color: var(--accent, #4af); }
   .streaming-bubble { min-height: 1.2em; }
-</style>
+
+    /* override body overflow when in chat */
+    body.in-app { overflow: hidden; height: 100vh; }
+    #app-view .app { height: 100vh; }
+  </style>
 </head>
 <body>
+
+<!-- ═══════ LANDING ═══════ -->
+<div id="landing">
+
+  <nav class="l-nav" id="l-nav">
+    <a href="#" class="l-nav-logo">
+      <div class="l-nav-badge">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.25 3.75 10.15 9 11.35C17.25 21.15 21 16.25 21 11V5l-9-4z"/></svg>
+      </div>
+      <span class="l-nav-name">INOCUO</span>
+    </a>
+    <div class="l-nav-right">
+      <a href="#l-features" class="l-nav-link">Funciones</a>
+      <button class="l-nav-cta" onclick="openApp()">Abrir app →</button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <div class="l-hero">
+    <div class="l-glow"></div>
+    <div class="l-tag"><div class="l-tag-dot"></div>Asistente IA · Seguridad Alimentaria · CAA</div>
+    <h1 class="l-title">INO<span>CUO</span></h1>
+    <p class="l-sub">Inteligencia aplicada a la inocuidad</p>
+    <p class="l-desc">Consultá el Código Alimentario Argentino, BPM y normativas con respuestas técnicas precisas — en segundos.</p>
+    <div class="l-actions">
+      <button class="btn-go" onclick="openApp()">
+        Iniciar consulta
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0a0f13" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+      <a href="#l-features" class="btn-ghost">Ver funciones ↓</a>
+    </div>
+    <div class="l-scroll"><span>scroll</span><div class="l-scroll-line"></div></div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="l-features" id="l-features">
+    <p class="l-sec-label reveal">Capacidades</p>
+    <h2 class="l-sec-title reveal">Diseñado para<br><em>profesionales del sector</em></h2>
+    <div class="l-grid">
+      <div class="l-card reveal">
+        <div class="l-card-num">01</div>
+        <div class="l-card-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+        <div class="l-card-name">Biblioteca CAA completa</div>
+        <div class="l-card-desc">Acceso directo a los 22 capítulos del Código Alimentario Argentino actualizados, con referencias exactas por artículo.</div>
+      </div>
+      <div class="l-card reveal" style="transition-delay:0.08s">
+        <div class="l-card-num">02</div>
+        <div class="l-card-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+        <div class="l-card-name">Búsqueda semántica</div>
+        <div class="l-card-desc">Preguntá en lenguaje natural. El sistema encuentra el contexto normativo más relevante sin que sepas el número de artículo.</div>
+      </div>
+      <div class="l-card reveal" style="transition-delay:0.16s">
+        <div class="l-card-num">03</div>
+        <div class="l-card-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="l-card-name">Modo Técnico y Enseña</div>
+        <div class="l-card-desc">Respuestas concisas para el profesional, o explicaciones didácticas con tests automáticos para capacitación de personal.</div>
+      </div>
+      <div class="l-card reveal" style="transition-delay:0.24s">
+        <div class="l-card-num">04</div>
+        <div class="l-card-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+        <div class="l-card-name">Documentos internos</div>
+        <div class="l-card-desc">Integrá tus propios manuales de BPM y POEs. INOCUO los prioriza como primera fuente antes de consultar el CAA.</div>
+      </div>
+      <div class="l-card reveal" style="transition-delay:0.32s">
+        <div class="l-card-num">05</div>
+        <div class="l-card-icon"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+        <div class="l-card-name">Tests de evaluación</div>
+        <div class="l-card-desc">Generá automáticamente tests de 5 preguntas sobre cualquier tema para evaluar el conocimiento del equipo.</div>
+      </div>
+      <div class="l-card reveal" style="transition-delay:0.40s">
+        <div class="l-card-num">06</div>
+        <div class="l-card-icon"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+        <div class="l-card-name">100% mobile-first</div>
+        <div class="l-card-desc">Optimizado para uso en planta desde cualquier dispositivo. Sin instalación, sin cuenta — acceso inmediato desde el navegador.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="l-stats reveal">
+    <div class="l-stat"><div class="l-stat-n">22</div><div class="l-stat-l">Capítulos CAA</div></div>
+    <div class="l-stat"><div class="l-stat-n">3</div><div class="l-stat-l">Modos de consulta</div></div>
+    <div class="l-stat"><div class="l-stat-n">&lt;1s</div><div class="l-stat-l">Primera respuesta visible</div></div>
+    <div class="l-stat"><div class="l-stat-n">0</div><div class="l-stat-l">Instalación requerida</div></div>
+  </div>
+
+  <!-- CTA FINAL -->
+  <div class="l-cta">
+    <div class="l-cta-glow"></div>
+    <h2 class="l-cta-title reveal">Empezá<br><span>ahora</span></h2>
+    <p class="l-cta-desc reveal" style="transition-delay:0.1s">Sin registro. Sin descarga. Consultá el CAA y tus procedimientos internos desde cualquier dispositivo.</p>
+    <div class="reveal" style="transition-delay:0.2s">
+      <button class="btn-go" onclick="openApp()">
+        Abrir INOCUO
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0a0f13" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <footer class="l-footer">
+    <span class="l-footer-text">© 2025 INOCUO — Seguridad Alimentaria & CAA</span>
+  </footer>
+
+</div>
+
+<!-- ═══════ CHAT APP ═══════ -->
+<div id="app-view">
 <div class="app">
 
   <header>
@@ -548,7 +853,7 @@
   document.getElementById('mode-biblioteca').onclick = () => setMode('biblioteca');
 
   // ── Welcome ────────────────────────────────────
-  window.onload = () => {
+  function initChat() {
     const sep = document.createElement('div');
     sep.className = 'sep';
     sep.innerHTML = '<span>SESIÓN INICIADA</span>';
@@ -631,5 +936,24 @@
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 </script>
+</div>
+
+<script>
+  function openApp() {
+    document.getElementById('landing').style.display = 'none';
+    document.getElementById('app-view').style.display = 'block';
+    document.body.classList.add('in-app');
+    // Forzar el onload del chat si ya pasó
+    if (typeof initChat === 'function') initChat();
+  }
+
+  // Scroll reveal
+  const revealObs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+</script>
+
+
 </body>
 </html>
