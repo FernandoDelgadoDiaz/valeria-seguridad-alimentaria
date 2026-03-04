@@ -62,10 +62,13 @@ export async function handler(event) {
     // FIX: detectar pedidos de texto exacto del CAA — regex ampliado
     // Antes solo matcheaba "texto exacto", "literal", "dame el artículo"
     // Ahora también matchea "textual", "artículo X del capítulo Y", etc.
+    // Detecta pedidos de artículo/capítulo específico del CAA
     const pideExacto =
       /texto exacto|textual|literal|textualmente/i.test(query) ||
-      /dame el art[ií]culo|copia el art[ií]culo|transcrib/i.test(query) ||
-      (/art[ií]culo\s*\d+/.test(q) && /cap[ií]tulo\s*\d+/.test(q));
+      /dame|mostr[aá]|copi[aá]|transcrib|pas[aá]me|qu[eé] dice/i.test(query) ||
+      /art[ií]culo\s*\d+/i.test(query) ||
+      /cap[ií]tulo\s*(completo|entero|todo)/i.test(query) ||
+      (/cap[ií]tulo/i.test(query) && /art[ií]culo/i.test(query));
 
     const mencionaCAA = /caa|c[oó]digo alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
 
@@ -93,10 +96,47 @@ export async function handler(event) {
     const topInternos = internos.slice(0, 4);
     const topCAA = caaChunks.slice(0, 4);
 
+    // ── Búsqueda exacta por artículo/capítulo ──
+    // Si el usuario pide un artículo específico, buscamos en TODOS los chunks por número
+    let exactMatches = [];
+    if (pideExacto) {
+      // Extraer número de artículo y capítulo de la query
+      const artMatch = query.match(/art[ií]culo\s*(n[°º]?\s*)?(\d+)/i);
+      const capMatch = query.match(/cap[ií]tulo\s*(n[°º]?\s*)?(\d+|[IVXivx]+)/i);
+      const artNum = artMatch ? artMatch[2] : null;
+      const capNum = capMatch ? capMatch[2] : null;
+
+      if (artNum || capNum) {
+        exactMatches = CACHE_DATA.chunks.filter(c => {
+          const t = c.text || '';
+          const isCAA = c.source.toLowerCase().includes("capitulo") || c.source.toLowerCase().includes("caa");
+          if (!isCAA) return false;
+          const hasArt = artNum ? new RegExp(`art[ií]culo\\s*${artNum}\\b`, 'i').test(t) : true;
+          const hasCap = capNum ? (
+            new RegExp(`cap[ií]tulo\\s*${capNum}\\b`, 'i').test(t) ||
+            c.source.toLowerCase().includes(`${capNum}`)
+          ) : true;
+          return hasArt && hasCap;
+        });
+        // Si solo tenemos artículo sin capítulo, ser más permisivo
+        if (exactMatches.length === 0 && artNum) {
+          exactMatches = CACHE_DATA.chunks.filter(c => {
+            const t = c.text || '';
+            const isCAA = c.source.toLowerCase().includes("capitulo") || c.source.toLowerCase().includes("caa");
+            return isCAA && new RegExp(`art[ií]culo\\s*${artNum}\\b`, 'i').test(t);
+          });
+        }
+      }
+    }
+
     // Jerarquía: documentos internos siempre primero
     let contextChunks = [];
     if (pideExacto) {
-      contextChunks = topCAA.length > 0 ? topCAA : topInternos;
+      // Priorizar matches exactos + complementar con semántica
+      const exactSet = new Set(exactMatches.map(c => c.text));
+      const semCAA = topCAA.filter(c => !exactSet.has(c.text));
+      contextChunks = [...exactMatches.slice(0, 6), ...semCAA.slice(0, 2)];
+      if (contextChunks.length === 0) contextChunks = topCAA;
     } else if (mencionaCAA) {
       contextChunks = [...topInternos, ...topCAA];
     } else {
@@ -167,21 +207,7 @@ export async function handler(event) {
             model: "gpt-4o-mini",
             messages: [
               { role: "system", content: "Generador de tests. Devuelve solo JSON válido sin markdown." },
-              { role: "user", content: `Generá un test de 5 preguntas de opción múltiple sobre el tema de la siguiente explicación, pensado para evaluar a profesionales del sector alimentario.
-
-REGLAS PARA LAS PREGUNTAS:
-- Preguntá sobre conceptos específicos, no definiciones obvias.
-- Las 3 opciones (a, b, c) deben ser plausibles — evitá opciones absurdas o claramente incorrectas.
-- Al menos 2 preguntas deben requerir razonamiento, no solo memoria.
-- Variá el tipo: algunas sobre "qué hacer", otras sobre "por qué", otras sobre valores/límites concretos.
-
-Devolvé solo JSON con: "preguntas" (array de strings, formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (objeto con claves "1" a "5", valores "a","b","c"). Sin markdown.
-
-Contexto:
-${contextText}
-
-Explicación:
-${lastExplanation}` }
+              { role: "user", content: `Genera un test de 5 preguntas de opción múltiple exclusivamente sobre el tema de la siguiente explicación. Cada pregunta con 3 opciones (a, b, c). Devuelve solo JSON con: "preguntas" (array de strings, formato "Pregunta? a) ... b) ... c) ...") y "respuestasCorrectas" (objeto con claves "1" a "5", valores "a","b","c").\n\nContexto:\n${contextText}\n\nExplicación:\n${lastExplanation}` }
             ],
             temperature: 0.3 + (attempt * 0.1),
           });
@@ -213,47 +239,32 @@ ${lastExplanation}` }
     // ── Respuesta normal ──
     let systemPrompt = "";
     if (mode === "tecnico") {
-      systemPrompt = `Eres INOCUO, un experto en seguridad alimentaria, BPM y normativas del CAA. Respondés como un especialista experimentado que habla directo, sin rodeos.
+      systemPrompt = `Eres INOCUO, asistente experto en seguridad alimentaria y BPM. Tenés acceso a documentos internos (procedimientos, manuales) y al Código Alimentario Argentino (CAA).
 
-FORMATO — MUY IMPORTANTE:
-- Respondé en texto corrido, sin headers (###), sin listas con guiones ni bullets.
-- Si necesitás enumerar, usá números dentro del párrafo: "Los requisitos son: 1) ... 2) ... 3) ..."
-- Máximo 4 párrafos cortos. En mobile se lee mejor así.
-- Tono: técnico pero conversacional, como un colega experto.
+Modo TÉCNICO — respuestas concisas, directas, técnicas.
 
-FUENTES:
-- Si la info viene de tus documentos internos: respondé directo, sin mencionar la fuente.
-- Si la info viene del CAA: terminá con → *Fuente: CAA, Cap. [X], Art. [Y]*
-- Si no encontrás el dato exacto en el CONTEXTO: decilo claramente, no inventes.
-- Podés ofrecer: "¿Querés que busque también en el CAA?"
+JERARQUÍA DE FUENTES:
+1. Documentos internos son tu PRIMERA fuente. Respondé desde ahí cuando estén en el CONTEXTO.
+2. El CAA solo cuando el usuario lo pide explícitamente o los internos no alcanzan.
+3. No menciones la fuente interna. Si citás CAA, indicá capítulo y artículo.
+4. Podés ofrecer: "¿Necesitás que consulte también el CAA para ampliar?"
 
-FUERA DE DOMINIO: Si la pregunta no es de seguridad alimentaria, BPM o CAA, respondé: "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área. Si tenés dudas sobre inocuidad, normativas del CAA o manipulación de alimentos, ¡con gusto te ayudo!"
+SEGUIMIENTO DE CONVERSACIÓN:
+- Leé el historial antes de responder. No repitas información ya dada.
+- Si el usuario valida o comenta algo, reconocelo y avanzá desde ahí.
 
-SEGUIMIENTO: Leé el historial. No repitas lo ya dicho. Si el usuario confirma algo, avanzá.
+RESTRICCIÓN: Solo seguridad alimentaria, BPM y CAA.
 
 CONTEXTO:
 ${contextText}`;
     } else {
-      systemPrompt = `Eres INOCUO, experto en seguridad alimentaria y BPM. En Modo Enseña explicás como un buen docente: claro, progresivo y con ejemplos reales de la industria.
+      systemPrompt = `Eres INOCUO, asistente experto en seguridad alimentaria y BPM.
 
-ESTRUCTURA DE RESPUESTA:
-1. Definición simple en 2-3 oraciones.
-2. Desarrollo en párrafos cortos (no listas con guiones). Máximo 3 párrafos.
-3. 1 o 2 ejemplos concretos de la industria alimentaria argentina.
-4. Siempre al final: "**Para profundizar respondé '1'. Para hacer un test respondé '2'.**"
+Modo ENSEÑA — respuestas didácticas, estructuradas.
 
-FORMATO:
-- Podés usar negritas para conceptos clave.
-- Evitá listas largas con guiones. Preferí párrafos fluidos.
-- Tono: didáctico pero no infantil. Como un capacitador experimentado.
+Estructura: definición → clasificación → ejemplos prácticos → al final siempre: "**Para profundizar respondé '1'. Para hacer un test respondé '2'.**"
 
-FUENTES:
-- Info de documentos internos: respondé sin mencionar la fuente.
-- Info del CAA: citá al final → *Fuente: CAA, Cap. [X], Art. [Y]*
-
-FUERA DE DOMINIO: Si la pregunta no es de seguridad alimentaria o CAA, rechazala: "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área."
-
-RESTRICCIÓN: Solo seguridad alimentaria, BPM y CAA.
+Los documentos internos tienen prioridad. RESTRICCIÓN: solo seguridad alimentaria, BPM y CAA.
 
 CONTEXTO:
 ${contextText}`;
