@@ -358,7 +358,11 @@
       .status-label { display: none; }
       .mode-btn { font-size: 0.75rem; letter-spacing: 0.04em; }
     }
-  </style>
+  
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .cursor-blink { animation: blink 0.8s step-end infinite; color: var(--accent, #4af); }
+  .streaming-bubble { min-height: 1.2em; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -436,11 +440,12 @@
     return d;
   }
 
-  function appendAndSave(text, side) {
-    appendToDOM(text, side);
+  function appendAndSave(text, side, streamedText, existingBubble) {
+    const finalText = streamedText || text;
+    if (!existingBubble) appendToDOM(finalText, side);
     const role = side === 'us' ? 'user' : 'assistant';
-    if (currentMode === 'tecnico') historyTecnico.push({ role, content: text });
-    else if (currentMode === 'ensena') historyEnsena.push({ role, content: text });
+    if (currentMode === 'tecnico') historyTecnico.push({ role, content: finalText });
+    else if (currentMode === 'ensena') historyEnsena.push({ role, content: finalText });
   }
 
   function showTyping() {
@@ -571,14 +576,72 @@
     if (currentTestState) body.testState = currentTestState;
 
     try {
-      const res  = await fetch('/.netlify/functions/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-      const data = await res.json();
-      hideTyping();
-      if (data.ok) {
-        if (data.testState !== undefined) currentTestState = data.testState;
-        appendAndSave(data.answer, 'va');
+      // Streaming para todas las respuestas normales (no tests)
+      const useStream = !currentTestState;
+      const res = await fetch('/.netlify/functions/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body, stream: useStream })
+      });
+
+      const contentType = res.headers.get('Content-Type') || '';
+
+      if (useStream && contentType.includes('text/event-stream')) {
+        // ── Modo streaming ──
+        hideTyping();
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble va streaming-bubble';
+        box.appendChild(bubble);
+        box.scrollTop = box.scrollHeight;
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // última línea puede estar incompleta
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const payload = line.slice(6).trim();
+            if (payload === '[DONE]') break;
+            try {
+              const parsed2 = JSON.parse(payload);
+              if (parsed2.error) { showErr(parsed2.error); break; }
+              if (parsed2.delta) {
+                fullText += parsed2.delta;
+                bubble.innerHTML = safeRender(fullText) + '<span class="cursor-blink">▌</span>';
+                box.scrollTop = box.scrollHeight;
+              }
+              if (parsed2.done && parsed2.history) {
+                // Sincronizar historial con el servidor
+                if (currentMode === 'tecnico') historyTecnico = parsed2.history;
+                else historyEnsena = parsed2.history;
+              }
+            } catch {}
+          }
+        }
+
+        // Finalizar bubble
+        bubble.innerHTML = safeRender(fullText);
+        bubble.classList.remove('streaming-bubble');
+        appendAndSave(null, 'va', fullText, bubble);
+
       } else {
-        showErr(data.error || 'Error en la respuesta.');
+        // ── Modo normal (tests, modo enseña) ──
+        const data = await res.json();
+        hideTyping();
+        if (data.ok) {
+          if (data.testState !== undefined) currentTestState = data.testState;
+          appendAndSave(data.answer, 'va');
+        } else {
+          showErr(data.error || 'Error en la respuesta.');
+        }
       }
     } catch(e) {
       hideTyping();
