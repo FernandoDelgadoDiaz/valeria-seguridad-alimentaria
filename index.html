@@ -44,6 +44,7 @@
     }
     #app-view { display: none; height: 100vh; overflow: hidden; }
     body.in-app { overflow: hidden; height: 100vh; }
+    body.in-app .l-nav { display: none !important; }
 
     /* NAV */
     .l-nav {
@@ -151,7 +152,7 @@
     @keyframes dropLine { 0%,100%{opacity:0;transform:scaleY(0.2)} 50%{opacity:1;transform:scaleY(1)} }
 
     /* FEATURES */
-    .l-features { position: relative; z-index: 1; padding: 90px 24px; max-width: 1100px; margin: 0 auto; }
+    .l-features { position: relative; z-index: 1; padding: 90px 24px; max-width: 1100px; margin: 0 auto; scroll-margin-top: 70px; }
     .l-sec-label { font-family: var(--mono); font-size: 0.63rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
     .l-sec-title { font-family: var(--cond); font-weight: 800; font-size: clamp(1.8rem, 5vw, 3rem); line-height: 1.05; color: var(--text); margin-bottom: 48px; }
     .l-sec-title em { font-style: normal; color: var(--accent); }
@@ -559,6 +560,7 @@
 
     /* override body overflow when in chat */
     body.in-app { overflow: hidden; height: 100vh; }
+    body.in-app .l-nav { display: none !important; }
     #app-view .app { height: 100vh; }
   </style>
 </head>
@@ -575,7 +577,7 @@
       <span class="l-nav-name">INOCUO</span>
     </a>
     <div class="l-nav-right">
-      <a href="#l-features" class="l-nav-link">Funciones</a>
+      <a href="#l-features" class="l-nav-link" onclick="event.preventDefault();document.getElementById('l-features').scrollIntoView({behavior:'smooth'})">Funciones</a>
       <button class="l-nav-cta" onclick="openApp()">Abrir app →</button>
     </div>
   </nav>
@@ -592,7 +594,7 @@
         Iniciar consulta
         <svg viewBox="0 0 24 24" fill="none" stroke="#0a0f13" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       </button>
-      <a href="#l-features" class="btn-ghost">Ver funciones ↓</a>
+      <a href="#l-features" class="btn-ghost" onclick="event.preventDefault();document.getElementById('l-features').scrollIntoView({behavior:'smooth'})">Ver funciones ↓</a>
     </div>
     <div class="l-scroll"><span>scroll</span><div class="l-scroll-line"></div></div>
   </div>
