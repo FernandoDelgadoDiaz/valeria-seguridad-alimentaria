@@ -59,9 +59,6 @@ export async function handler(event) {
 
     const q = query.toLowerCase();
 
-    // FIX: detectar pedidos de texto exacto del CAA — regex ampliado
-    // Antes solo matcheaba "texto exacto", "literal", "dame el artículo"
-    // Ahora también matchea "textual", "artículo X del capítulo Y", etc.
     const pideExacto =
       /texto exacto|textual|literal|textualmente/i.test(query) ||
       /dame el art[ií]culo|copia el art[ií]culo|transcrib/i.test(query) ||
@@ -70,10 +67,52 @@ export async function handler(event) {
     const mencionaCAA = /caa|c[oó]digo alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
 
     const lastMsg = history.length > 0 ? history[history.length - 1].content : "";
-    const qEmb = await client.embeddings.create({
+
+    // Determinar si hay que correr el guardián
+    const esContinuacion =
+      query.trim().length <= 3 ||
+      history.length > 2 ||
+      /^(si|sí|no|ok|yes|dale|bueno|claro|1|2|a|b|c|gracias|entendido|correcto|otro tema|mismo tema|otro|cambiar|continuar|seguir)$/i.test(query.trim()) ||
+      pideExacto ||
+      mencionaCAA;
+
+    // ── OPTIMIZACIÓN: embedding y guardián en paralelo ──
+    const embPromise = client.embeddings.create({
       model: "text-embedding-3-small",
       input: `${query} ${lastMsg}`.slice(0, 1000),
     });
+
+    const guardPromise = esContinuacion
+      ? Promise.resolve(null)
+      : client.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: `Clasificador para asistente de seguridad alimentaria. Responde SOLO "SI" o "NO".
+SI si está relacionado con: seguridad alimentaria, BPM, higiene, conservación, contaminación, CAA, normativas, etiquetado, procesos, ingredientes alimentarios, habilitaciones.
+NO solo si es claramente ajeno: deportes, geografía, entretenimiento, matemáticas, política.
+Ante la duda: "SI".`
+            },
+            { role: "user", content: query }
+          ],
+          temperature: 0,
+          max_tokens: 5,
+        });
+
+    const [qEmb, guardCheck] = await Promise.all([embPromise, guardPromise]);
+
+    // Evaluar guardián
+    if (guardCheck) {
+      const esRelevante = guardCheck.choices[0].message.content.trim().toUpperCase().startsWith("SI");
+      if (!esRelevante) {
+        const rechazo = "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área. Si tenés dudas sobre inocuidad, normativas del CAA o manipulación de alimentos, ¡con gusto te ayudo!";
+        return json({
+          ok: true, answer: rechazo, testState: null,
+          history: [...history, { role: "user", content: query }, { role: "assistant", content: rechazo }]
+        });
+      }
+    }
 
     const allChunks = CACHE_DATA.chunks.map(c => ({
       ...c,
@@ -234,42 +273,6 @@ ${contextText}`;
       systemPrompt += `\n\nIMPORTANTE: El usuario pidió el TEXTO EXACTO o TEXTUAL del CAA. Buscá en el CONTEXTO el artículo mencionado y copialo de forma literal, sin resumir ni parafrasear. Indicá capítulo y artículo antes del texto. Si el fragmento exacto no está en el CONTEXTO disponible, indicalo claramente.`;
     }
 
-    // Guardia de dominio
-    // FIX: bypass ampliado — cualquier mensaje que mencione artículo+capítulo es claramente del dominio
-    const esContinuacion =
-      query.trim().length <= 3 ||
-      history.length > 2 ||  // FIX: con historial activo es continuacion de sesion
-      /^(si|sí|no|ok|yes|dale|bueno|claro|1|2|a|b|c|gracias|entendido|correcto|otro tema|mismo tema|otro|cambiar|continuar|seguir)$/i.test(query.trim()) ||
-      pideExacto ||
-      mencionaCAA;
-
-    if (!esContinuacion) {
-      const guardCheck = await client.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: `Clasificador para asistente de seguridad alimentaria. Responde SOLO "SI" o "NO".
-SI si está relacionado con: seguridad alimentaria, BPM, higiene, conservación, contaminación, CAA, normativas, etiquetado, procesos, ingredientes alimentarios, habilitaciones.
-NO solo si es claramente ajeno: deportes, geografía, entretenimiento, matemáticas, política.
-Ante la duda: "SI".`
-          },
-          { role: "user", content: query }
-        ],
-        temperature: 0,
-        max_tokens: 5,
-      });
-
-      const esRelevante = guardCheck.choices[0].message.content.trim().toUpperCase().startsWith("SI");
-      if (!esRelevante) {
-        const rechazo = "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área. Si tenés dudas sobre inocuidad, normativas del CAA o manipulación de alimentos, ¡con gusto te ayudo!";
-        return json({
-          ok: true, answer: rechazo, testState: null,
-          history: [...history, { role: "user", content: query }, { role: "assistant", content: rechazo }]
-        });
-      }
-    }
-
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -291,4 +294,3 @@ Ante la duda: "SI".`
     return json({ ok: false, error: "Error interno. Intentá de nuevo." });
   }
 }
-
