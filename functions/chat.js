@@ -62,10 +62,20 @@ export async function handler(event) {
     // FIX: detectar pedidos de texto exacto del CAA — regex ampliado
     // Antes solo matcheaba "texto exacto", "literal", "dame el artículo"
     // Ahora también matchea "textual", "artículo X del capítulo Y", etc.
+    // Detecta pedidos de texto del CAA: artículo específico, capítulo completo, o pedido explícito
+    // pideExacto: el usuario quiere el texto literal de un artículo o capítulo del CAA
+    const tieneArticulo = /art[ií]culo\s*\d+/i.test(query);
+    const tieneCapitulo = /cap[ií]tulo\s*(\d+|[ivxlcdm]+)/i.test(query);
+    const tieneVerboExacto = /texto exacto|textual|literal|textualmente/i.test(query);
+    const tieneVerboPedido = /dame|mostr[aá]|copi[aá]|transcrib|pas[aá]me/i.test(query);
+    const tieneCapituloCompleto = /cap[ií]tulo\s*(completo|entero|todo)/i.test(query);
+
     const pideExacto =
-      /texto exacto|textual|literal|textualmente/i.test(query) ||
-      /dame el art[ií]culo|copia el art[ií]culo|transcrib/i.test(query) ||
-      (/art[ií]culo\s*\d+/.test(q) && /cap[ií]tulo\s*\d+/.test(q));
+      tieneVerboExacto ||
+      tieneCapituloCompleto ||
+      (tieneArticulo) ||                              // cualquier mención de artículo N activa modo exacto
+      (tieneVerboPedido && tieneCapitulo) ||          // "dame el capítulo VIII"
+      (tieneCapitulo && tieneArticulo);               // "capítulo X artículo Y"
 
     const mencionaCAA = /caa|c[oó]digo alimentario|art[ií]culo|cap[ií]tulo/i.test(query);
 
@@ -206,8 +216,13 @@ Modo TÉCNICO — respuestas concisas, directas, técnicas.
 JERARQUÍA DE FUENTES:
 1. Documentos internos son tu PRIMERA fuente. Respondé desde ahí cuando estén en el CONTEXTO.
 2. El CAA solo cuando el usuario lo pide explícitamente o los internos no alcanzan.
-3. No menciones la fuente interna. Si citás CAA, indicá capítulo y artículo.
-4. Podés ofrecer: "¿Necesitás que consulte también el CAA para ampliar?"
+3. Podés ofrecer al final: "¿Querés que consulte también el CAA para ampliar?"
+
+REGLAS DE CITADO — MUY IMPORTANTES:
+- Si la respuesta viene de un DOCUMENTO INTERNO: NO menciones la fuente. Respondé directamente sin aclarar de dónde viene.
+- Si la respuesta viene del CAA: SIEMPRE citá al final con el formato → *Fuente: CAA, Cap. [número], Art. [número]*
+- Si usás ambas fuentes: citá solo la parte que venga del CAA.
+- Nunca inventes números de artículo. Si no encontrás el artículo exacto en el CONTEXTO, no lo cites.
 
 SEGUIMIENTO DE CONVERSACIÓN:
 - Leé el historial antes de responder. No repitas información ya dada.
@@ -224,6 +239,11 @@ Modo ENSEÑA — respuestas didácticas, estructuradas.
 
 Estructura: definición → clasificación → ejemplos prácticos → al final siempre: "**Para profundizar respondé '1'. Para hacer un test respondé '2'.**"
 
+REGLAS DE CITADO:
+- Si la información viene de documentos internos: NO menciones la fuente.
+- Si la información viene del CAA: citá al final → *Fuente: CAA, Cap. [número], Art. [número]*
+- Nunca inventes números de artículo.
+
 Los documentos internos tienen prioridad. RESTRICCIÓN: solo seguridad alimentaria, BPM y CAA.
 
 CONTEXTO:
@@ -231,7 +251,18 @@ ${contextText}`;
     }
 
     if (pideExacto) {
-      systemPrompt += `\n\nIMPORTANTE: El usuario pidió el TEXTO EXACTO o TEXTUAL del CAA. Buscá en el CONTEXTO el artículo mencionado y copialo de forma literal, sin resumir ni parafrasear. Indicá capítulo y artículo antes del texto. Si el fragmento exacto no está en el CONTEXTO disponible, indicalo claramente.`;
+      systemPrompt += `\n\nINSTRUCCIÓN DE CITADO EXACTO:
+El usuario quiere el texto literal del CAA. Reglas estrictas:
+1. Buscá en el CONTEXTO el artículo o capítulo pedido.
+2. Si lo encontrás: transcribilo COMPLETO y LITERAL, sin resumir ni parafrasear.
+   Formato obligatorio:
+   **CAA — Cap. [número en romano], Art. [número]**
+   [texto exacto del artículo]
+3. Si el CONTEXTO tiene varios artículos del capítulo, incluílos todos en orden.
+4. Si el artículo NO está en el CONTEXTO: respondé exactamente así:
+   "El Art. [X] del Cap. [Y] no está disponible en el fragmento activo. Podés acceder al capítulo completo desde la **Biblioteca CAA** (ícono arriba a la derecha)."
+5. NO resumás, NO parafrasées, NO agregues comentarios propios dentro del texto del artículo.
+6. Después del texto podés ofrecer: "¿Querés que te lo explique?"`;
     }
 
     // Guardia de dominio
