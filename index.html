@@ -395,6 +395,23 @@
     }
     .bubble strong { color: var(--accent); font-weight: 500; }
 
+    /* Botón copiar */
+    .bubble-wrap { display: contents; }
+    .va-wrap { display: flex; flex-direction: column; align-items: flex-start; max-width: 82%; }
+    .copy-btn {
+      align-self: flex-start;
+      margin-top: 4px; margin-left: 2px;
+      background: none; border: none; cursor: pointer;
+      font-family: var(--mono); font-size: 0.58rem;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-muted); padding: 3px 6px;
+      border-radius: 4px; transition: color 0.2s, background 0.2s;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .copy-btn:hover { color: var(--accent); background: rgba(63,185,80,0.08); }
+    .copy-btn.copied { color: var(--accent); }
+    .copy-btn svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
     /* Typing */
     .typing-wrap {
       align-self: flex-start;
@@ -561,6 +578,86 @@
     body.in-app { overflow: hidden; height: 100vh; }
     body.in-app .l-nav { display: none !important; }
     #app-view .app { height: 100vh; }
+  
+    /* ── LISTA DE ESPERA ── */
+    .l-waitlist {
+      position: relative; z-index: 1;
+      padding: 80px 24px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: #0b1015;
+      text-align: center;
+    }
+    .l-waitlist-inner { max-width: 480px; margin: 0 auto; }
+    .l-waitlist-label { font-family: var(--mono); font-size: 0.63rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+    .l-waitlist-title { font-family: var(--cond); font-weight: 800; font-size: clamp(1.6rem, 4vw, 2.4rem); color: var(--text); margin-bottom: 12px; line-height: 1.1; }
+    .l-waitlist-desc { font-size: 0.9rem; line-height: 1.7; color: var(--muted); margin-bottom: 28px; }
+    .l-waitlist-form { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .l-waitlist-input {
+      flex: 1; min-width: 220px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--mono); font-size: 0.82rem;
+      padding: 12px 16px; border-radius: 6px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .l-waitlist-input:focus { border-color: rgba(63,185,80,0.5); }
+    .l-waitlist-input::placeholder { color: var(--muted); }
+    .l-waitlist-btn {
+      background: var(--accent); color: #0a0f13;
+      font-family: var(--cond); font-weight: 700; font-size: 0.95rem;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 12px 24px; border-radius: 6px; border: none; cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+      white-space: nowrap;
+    }
+    .l-waitlist-btn:hover { background: #4ece62; box-shadow: 0 0 20px rgba(63,185,80,0.4); }
+    .l-waitlist-success {
+      display: none;
+      font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.06em;
+      color: var(--accent); margin-top: 16px;
+    }
+    .l-waitlist-note { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em; color: var(--muted); margin-top: 14px; }
+
+    /* ── PANTALLA DE CÓDIGO ── */
+    #code-screen {
+      display: none;
+      position: fixed; inset: 0; z-index: 999;
+      background: var(--bg);
+      flex-direction: column; align-items: center; justify-content: center;
+      padding: 32px 24px; text-align: center;
+    }
+    #code-screen.active { display: flex; }
+    .cs-badge {
+      width: 52px; height: 52px; background: var(--accent); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 24px rgba(63,185,80,0.4); margin-bottom: 24px;
+    }
+    .cs-badge svg { fill: #0a0f13; width: 24px; height: 24px; }
+    .cs-title { font-family: var(--cond); font-weight: 900; font-size: 2rem; letter-spacing: 0.04em; color: var(--text); margin-bottom: 8px; }
+    .cs-sub { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 32px; }
+    .cs-input {
+      width: 100%; max-width: 300px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); font-family: var(--mono); font-size: 1.1rem;
+      letter-spacing: 0.2em; text-align: center; text-transform: uppercase;
+      padding: 14px 20px; border-radius: 8px; outline: none;
+      transition: border-color 0.2s; margin-bottom: 12px;
+    }
+    .cs-input:focus { border-color: rgba(63,185,80,0.5); }
+    .cs-input::placeholder { letter-spacing: 0.1em; font-size: 0.8rem; text-transform: none; color: var(--muted); }
+    .cs-btn {
+      width: 100%; max-width: 300px;
+      background: var(--accent); color: #0a0f13;
+      font-family: var(--cond); font-weight: 700; font-size: 1rem;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 14px; border-radius: 8px; border: none; cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s; margin-bottom: 12px;
+    }
+    .cs-btn:hover { background: #4ece62; box-shadow: 0 0 24px rgba(63,185,80,0.4); }
+    .cs-error { font-family: var(--mono); font-size: 0.72rem; color: #f85149; min-height: 18px; margin-bottom: 8px; }
+    .cs-back { font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); background: none; border: none; cursor: pointer; transition: color 0.2s; }
+    .cs-back:hover { color: var(--text); }
+
   </style>
 </head>
 <body>
@@ -612,8 +709,8 @@
       <div class="l-card reveal" style="transition-delay:0.08s">
         <div class="l-card-num">02</div>
         <div class="l-card-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-        <div class="l-card-name">Búsqueda semántica</div>
-        <div class="l-card-desc">Preguntá en lenguaje natural. El sistema encuentra el contexto normativo más relevante sin que sepas el número de artículo.</div>
+        <div class="l-card-name">Respuestas con respaldo normativo</div>
+        <div class="l-card-desc">Preguntá como si le hablaras a un colega. INOCUO encuentra el artículo del CAA que respalda cada respuesta, aunque no sepas el capítulo ni el número.</div>
       </div>
       <div class="l-card reveal" style="transition-delay:0.16s">
         <div class="l-card-num">03</div>
@@ -621,20 +718,14 @@
         <div class="l-card-name">Modo Técnico y Enseña</div>
         <div class="l-card-desc">Respuestas concisas para el profesional, o explicaciones didácticas con tests automáticos para capacitación de personal.</div>
       </div>
-      <div class="l-card reveal" style="transition-delay:0.24s">
-        <div class="l-card-num">04</div>
-        <div class="l-card-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-        <div class="l-card-name">Documentos internos</div>
-        <div class="l-card-desc">Integrá tus propios manuales de BPM y POEs. INOCUO los prioriza como primera fuente antes de consultar el CAA.</div>
-      </div>
       <div class="l-card reveal" style="transition-delay:0.32s">
-        <div class="l-card-num">05</div>
+        <div class="l-card-num">04</div>
         <div class="l-card-icon"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
         <div class="l-card-name">Tests de evaluación</div>
         <div class="l-card-desc">Generá automáticamente tests de 5 preguntas sobre cualquier tema para evaluar el conocimiento del equipo.</div>
       </div>
       <div class="l-card reveal" style="transition-delay:0.40s">
-        <div class="l-card-num">06</div>
+        <div class="l-card-num">05</div>
         <div class="l-card-icon"><svg viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
         <div class="l-card-name">100% mobile-first</div>
         <div class="l-card-desc">Optimizado para uso en planta desde cualquier dispositivo. Sin instalación, sin cuenta — acceso inmediato desde el navegador.</div>
@@ -651,6 +742,23 @@
   </div>
 
   <!-- CTA FINAL -->
+
+  <!-- LISTA DE ESPERA -->
+  <div class="l-waitlist" id="l-waitlist">
+    <div class="l-waitlist-inner reveal">
+      <p class="l-waitlist-label">Acceso anticipado</p>
+      <h2 class="l-waitlist-title">Sumate a la lista<br>de espera</h2>
+      <p class="l-waitlist-desc">Dejá tu email y te avisamos cuando haya nuevos accesos disponibles.</p>
+      <form class="l-waitlist-form" name="waitlist" method="POST" data-netlify="true" onsubmit="handleWaitlist(event)">
+        <input type="hidden" name="form-name" value="waitlist">
+        <input class="l-waitlist-input" type="email" name="email" placeholder="tu@email.com" required>
+        <button class="l-waitlist-btn" type="submit">Anotarme</button>
+      </form>
+      <p class="l-waitlist-success" id="waitlist-ok">✓ Anotado. Te avisamos pronto.</p>
+      <p class="l-waitlist-note">Sin spam. Solo te contactamos cuando hay acceso disponible.</p>
+    </div>
+  </div>
+
   <div class="l-cta">
     <div class="l-cta-glow"></div>
     <h2 class="l-cta-title reveal">Empezá<br><span>ahora</span></h2>
@@ -667,6 +775,20 @@
     <span class="l-footer-text">© 2025 INOCUO — Seguridad Alimentaria & CAA</span>
   </footer>
 
+</div>
+
+
+<!-- ═══════ PANTALLA DE CÓDIGO ═══════ -->
+<div id="code-screen">
+  <div class="cs-badge">
+    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.25 3.75 10.15 9 11.35C17.25 21.15 21 16.25 21 11V5l-9-4z"/></svg>
+  </div>
+  <div class="cs-title">INOCUO</div>
+  <div class="cs-sub">Ingresá tu código de acceso</div>
+  <input class="cs-input" id="code-input" type="text" placeholder="Código de acceso" maxlength="20" autocomplete="off" autocorrect="off" spellcheck="false">
+  <div class="cs-error" id="code-error"></div>
+  <button class="cs-btn" onclick="checkCode()">Ingresar</button>
+  <button class="cs-back" onclick="backToLanding()">← Volver al inicio</button>
 </div>
 
 <!-- ═══════ CHAT APP ═══════ -->
@@ -724,7 +846,26 @@
   const input   = document.getElementById('user-input');
   const btn     = document.getElementById('send-btn');
 
-  let historyTecnico = [], historyEnsena = [];
+  // ── localStorage: cargar historial previo ──
+  function loadHistory() {
+    try {
+      const t = localStorage.getItem('inocuo_hist_tecnico');
+      const e = localStorage.getItem('inocuo_hist_ensena');
+      return {
+        tecnico: t ? JSON.parse(t) : [],
+        ensena: e ? JSON.parse(e) : []
+      };
+    } catch(e) { return { tecnico: [], ensena: [] }; }
+  }
+  function saveHistory() {
+    try {
+      localStorage.setItem('inocuo_hist_tecnico', JSON.stringify(historyTecnico.slice(-40)));
+      localStorage.setItem('inocuo_hist_ensena', JSON.stringify(historyEnsena.slice(-40)));
+    } catch(e) {}
+  }
+
+  const savedHist = loadHistory();
+  let historyTecnico = savedHist.tecnico, historyEnsena = savedHist.ensena;
   let currentMode = 'tecnico', currentTestState = null, isSending = false;
 
   // ── Utils ──────────────────────────────────────
@@ -741,7 +882,31 @@
     const d = document.createElement('div');
     d.className = `bubble ${side}`;
     d.innerHTML = safeRender(text);
-    box.appendChild(d);
+
+    if (side === 'va') {
+      const wrap = document.createElement('div');
+      wrap.className = 'va-wrap';
+      wrap.appendChild(d);
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-btn';
+      copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copiar`;
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(text).then(() => {
+          copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Copiado`;
+          copyBtn.classList.add('copied');
+          setTimeout(() => {
+            copyBtn.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copiar`;
+            copyBtn.classList.remove('copied');
+          }, 2000);
+        });
+      };
+      wrap.appendChild(copyBtn);
+      box.appendChild(wrap);
+    } else {
+      box.appendChild(d);
+    }
+
     scrollEnd();
     return d;
   }
@@ -752,6 +917,7 @@
     const role = side === 'us' ? 'user' : 'assistant';
     if (currentMode === 'tecnico') historyTecnico.push({ role, content: finalText });
     else if (currentMode === 'ensena') historyEnsena.push({ role, content: finalText });
+    saveHistory();
   }
 
   function showTyping() {
@@ -854,12 +1020,42 @@
   document.getElementById('mode-biblioteca').onclick = () => setMode('biblioteca');
 
   // ── Welcome ────────────────────────────────────
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.getElementById('code-screen').classList.contains('active')) {
+      checkCode();
+    }
+  });
+
   function initChat() {
     const sep = document.createElement('div');
     sep.className = 'sep';
-    sep.innerHTML = '<span>SESIÓN INICIADA</span>';
-    box.appendChild(sep);
-    appendToDOM("Hola, soy **INOCUO**. Estoy aquí para asistirte en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**.\n\nElegí entre **Modo Técnico** (respuestas concisas), **Modo Enseña** (explicaciones didácticas) o **Biblioteca** (capítulos del CAA).", 'va');
+
+    // Si hay historial previo, restaurarlo
+    const hasTecnico = historyTecnico.length > 0;
+    const hasEnsena = historyEnsena.length > 0;
+
+    if (hasTecnico || hasEnsena) {
+      sep.innerHTML = '<span>SESIÓN RESTAURADA</span>';
+      box.appendChild(sep);
+      // Mostrar historial del modo activo
+      renderHistory(currentMode);
+      // Agregar botón para nueva sesión
+      const newBtn = document.createElement('button');
+      newBtn.className = 'copy-btn';
+      newBtn.style.cssText = 'align-self:center;margin:8px auto;';
+      newBtn.innerHTML = '+ Nueva sesión';
+      newBtn.onclick = () => {
+        historyTecnico = []; historyEnsena = [];
+        saveHistory();
+        while(box.firstChild) box.removeChild(box.firstChild);
+        initChat();
+      };
+      box.appendChild(newBtn);
+    } else {
+      sep.innerHTML = '<span>SESIÓN INICIADA</span>';
+      box.appendChild(sep);
+      appendToDOM("Hola, soy **INOCUO**. Estoy aquí para asistirte en temas de **seguridad alimentaria** y normativas del **Código Alimentario Argentino (CAA)**.\n\nElegí entre **Modo Técnico** (respuestas concisas), **Modo Enseña** (explicaciones didácticas) o **Biblioteca** (capítulos del CAA).", 'va');
+    }
   };
 
   // ── Send ───────────────────────────────────────
@@ -911,9 +1107,31 @@
           }
           bubble.innerHTML = safeRender(built);
           bubble.classList.remove('streaming-bubble');
+
+          // Agregar botón copiar al bubble de streaming
+          const copyBtn2 = document.createElement('button');
+          copyBtn2.className = 'copy-btn';
+          copyBtn2.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copiar`;
+          copyBtn2.onclick = () => {
+            navigator.clipboard.writeText(data.answer).then(() => {
+              copyBtn2.innerHTML = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Copiado`;
+              copyBtn2.classList.add('copied');
+              setTimeout(() => {
+                copyBtn2.innerHTML = `<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copiar`;
+                copyBtn2.classList.remove('copied');
+              }, 2000);
+            });
+          };
+          const wrap2 = document.createElement('div');
+          wrap2.className = 'va-wrap';
+          bubble.parentNode.insertBefore(wrap2, bubble);
+          wrap2.appendChild(bubble);
+          wrap2.appendChild(copyBtn2);
+
           const role = 'assistant';
           if (currentMode === 'tecnico') historyTecnico.push({ role, content: data.answer });
           else if (currentMode === 'ensena') historyEnsena.push({ role, content: data.answer });
+          saveHistory();
         } else {
           appendAndSave(data.answer, 'va');
         }
@@ -940,6 +1158,53 @@
 </div>
 
 <script>
+  // ── CÓDIGOS DE ACCESO ──
+  // Para agregar o cambiar códigos, editá este array
+  const ACCESS_CODES = ['INOCUO2025', 'BETA01', 'PRUEBA'];
+
+  function openApp() {
+    document.getElementById('code-screen').classList.add('active');
+    setTimeout(() => document.getElementById('code-input').focus(), 100);
+  }
+
+  function checkCode() {
+    const input = document.getElementById('code-input').value.trim().toUpperCase();
+    const error = document.getElementById('code-error');
+    if (ACCESS_CODES.includes(input)) {
+      document.getElementById('code-screen').classList.remove('active');
+      showChat();
+    } else {
+      error.textContent = 'Código incorrecto. Verificá e intentá de nuevo.';
+      document.getElementById('code-input').select();
+    }
+  }
+
+  function showChat() {
+    document.getElementById('landing').style.display = 'none';
+    document.getElementById('app-view').style.display = 'block';
+    document.body.classList.add('in-app');
+    if (typeof initChat === 'function') initChat();
+  }
+
+  function backToLanding() {
+    document.getElementById('code-screen').classList.remove('active');
+  }
+
+  function handleWaitlist(e) {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+    fetch('/', { method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: new URLSearchParams(data).toString() })
+      .then(() => {
+        form.style.display = 'none';
+        document.getElementById('waitlist-ok').style.display = 'block';
+      })
+      .catch(() => {
+        form.style.display = 'none';
+        document.getElementById('waitlist-ok').style.display = 'block';
+      });
+  }
+
   function scrollToSection(id) {
     var el = document.getElementById(id);
     if (!el) return;
