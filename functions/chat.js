@@ -148,14 +148,14 @@ export async function handler(event) {
         exactMatches = CACHE_DATA.chunks.filter(c => {
           if (!isFromCap(c.source)) return false;
           const t = c.text || '';
-          const hasArt = artNum ? (['artículo ' + artNum, 'articulo ' + artNum, 'Art. ' + artNum, 'Artículo ' + artNum, 'ARTÍCULO ' + artNum].some(p => t.includes(p))) : true;
+          const hasArt = artNum ? (['artículo ' + artNum, 'articulo ' + artNum, 'Artículo ' + artNum, 'ARTÍCULO ' + artNum, 'Art. ' + artNum, 'Art ' + artNum, 'ART ' + artNum, 'ART. ' + artNum, 'art ' + artNum].some(p => t.includes(p))) : true;
           return hasArt;
         });
         if (exactMatches.length === 0 && artNum) {
           exactMatches = CACHE_DATA.chunks.filter(c => {
             const s = c.source.toLowerCase();
             const isCAA = s.includes("capitulo") || s.includes("caa") || s.includes("anmat");
-            return isCAA && ['artículo ' + artNum, 'articulo ' + artNum, 'Art. ' + artNum, 'Artículo ' + artNum, 'ARTÍCULO ' + artNum].some(p => (c.text || '').includes(p));
+            return isCAA && ['artículo ' + artNum, 'articulo ' + artNum, 'Artículo ' + artNum, 'ARTÍCULO ' + artNum, 'Art. ' + artNum, 'Art ' + artNum, 'ART ' + artNum, 'ART. ' + artNum, 'art ' + artNum].some(p => (c.text || '').includes(p));
           });
         }
       }
