@@ -95,7 +95,7 @@ export async function handler(event) {
     const topInternos = internos.slice(0, 4);
     const topCAA = caaChunks.slice(0, 4);
 
-    // ── Mapa de capítulos → keywords de archivo ──
+    // Mapa de capítulos a keywords de archivo
     const CAP_FILE_MAP = {
       'i':    ['capitulo_i','capitulo_1','disp_grales'],
       'ii':   ['capitulo_ii','establec'],
@@ -124,7 +124,7 @@ export async function handler(event) {
       '8':'viii','9':'ix','10':'x','11':'xi','12':'xii','13':'xiii','14':'xiv','15':'xv',
       '16':'xvi','17':'xvii','18':'xviii','19':'xix','20':'xx','21':'xxi','22':'xxii'};
 
-    // ── Búsqueda exacta por artículo/capítulo ──
+    // Búsqueda exacta por artículo/capítulo
     let exactMatches = [];
     if (pideExacto) {
       const artMatch = query.match(/art[ií]culo\s*(?:n[°º]?\s*)?(\d+)/i);
@@ -145,21 +145,20 @@ export async function handler(event) {
         exactMatches = CACHE_DATA.chunks.filter(c => {
           if (!isFromCap(c.source)) return false;
           const t = c.text || '';
-          const hasArt = artNum ? new RegExp('art[ií]culo\\s*' + artNum + '\\b', 'i').test(t) : true;
+          const hasArt = artNum ? (['artículo ' + artNum, 'articulo ' + artNum, 'Art. ' + artNum, 'Artículo ' + artNum, 'ARTÍCULO ' + artNum].some(p => t.includes(p))) : true;
           return hasArt;
         });
-        // Fallback: buscar artículo en todo el CAA sin filtro de capítulo
         if (exactMatches.length === 0 && artNum) {
           exactMatches = CACHE_DATA.chunks.filter(c => {
             const s = c.source.toLowerCase();
             const isCAA = s.includes("capitulo") || s.includes("caa") || s.includes("anmat");
-            return isCAA && new RegExp('art[ií]culo\\s*' + artNum + '\\b', 'i').test(c.text || '');
+            return isCAA && ['artículo ' + artNum, 'articulo ' + artNum, 'Art. ' + artNum, 'Artículo ' + artNum, 'ARTÍCULO ' + artNum].some(p => (c.text || '').includes(p));
           });
         }
       }
     }
 
-    // Jerarquía: documentos internos siempre primero
+    // Jerarquía de contexto
     let contextChunks = [];
     if (pideExacto) {
       const exactSet = new Set(exactMatches.map(c => c.text));
@@ -268,32 +267,34 @@ export async function handler(event) {
     // ── Respuesta normal ──
     let systemPrompt = "";
     if (mode === "tecnico") {
-      systemPrompt = `Eres INOCUO, asistente experto en seguridad alimentaria y BPM. Tenés acceso a documentos internos (procedimientos, manuales) y al Código Alimentario Argentino (CAA).
+      systemPrompt = `Eres INOCUO, un experto en seguridad alimentaria, BPM y normativas del CAA. Respondés como un especialista experimentado que habla directo, sin rodeos.
 
-Modo TÉCNICO — respuestas concisas, directas, técnicas.
+IDIOMA: Siempre español rioplatense. "vos", "tenés", "querés", "podés", "necesitás". Nunca "tú", "tienes", "quieres", "puedes".
 
-JERARQUÍA DE FUENTES:
-1. Documentos internos son tu PRIMERA fuente. Respondé desde ahí cuando estén en el CONTEXTO.
-2. El CAA solo cuando el usuario lo pide explícitamente o los internos no alcanzan.
-3. No menciones la fuente interna. Si citás CAA, indicá capítulo y artículo.
-4. Podés ofrecer: "¿Necesitás que consulte también el CAA para ampliar?"
+FORMATO: Respondé en texto corrido, sin headers ni listas. Si enumerás, usá: "1) ... 2) ... 3) ...". Máximo 4 párrafos cortos. Tono de colega experto.
 
-SEGUIMIENTO DE CONVERSACIÓN:
-- Leé el historial antes de responder. No repitas información ya dada.
-- Si el usuario valida o comenta algo, reconocelo y avanzá desde ahí.
+FUENTES: Info interna: respondé directo sin mencionar fuente. Info del CAA: terminá con → *Fuente: CAA, Cap. [X], Art. [Y]*. Si no encontrás el dato: decilo, no inventes. Podés ofrecer: "¿Querés que busque también en el CAA?"
 
-RESTRICCIÓN: Solo seguridad alimentaria, BPM y CAA.
+FUERA DE DOMINIO: "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área. Si tenés dudas sobre inocuidad, normativas del CAA o manipulación de alimentos, ¡con gusto te ayudo!"
+
+SEGUIMIENTO: Leé el historial. No repitas lo ya dicho.
 
 CONTEXTO:
 ${contextText}`;
     } else {
-      systemPrompt = `Eres INOCUO, asistente experto en seguridad alimentaria y BPM.
+      systemPrompt = `Eres INOCUO, experto en seguridad alimentaria y BPM. Explicás como un buen docente: claro, progresivo, con ejemplos reales de la industria argentina.
 
-Modo ENSEÑA — respuestas didácticas, estructuradas.
+IDIOMA: Siempre español rioplatense. "vos", "tenés", "querés", "podés". Nunca "tú", "tienes", "quieres", "puedes".
 
-Estructura: definición → clasificación → ejemplos prácticos → al final siempre: "**Para profundizar respondé '1'. Para hacer un test respondé '2'.**"
+ESTRUCTURA: 1) Definición simple en 2-3 oraciones. 2) Desarrollo en párrafos cortos, sin listas con guiones. 3) 1 o 2 ejemplos concretos de la industria alimentaria argentina. 4) Siempre al final: "**Para profundizar respondé '1'. Para hacer un test respondé '2'.**"
 
-Los documentos internos tienen prioridad. RESTRICCIÓN: solo seguridad alimentaria, BPM y CAA.
+FORMATO: Negritas solo para conceptos clave. Párrafos fluidos, no bullets. Tono de capacitador experimentado, no infantil.
+
+FUENTES: Info del CAA: citá al final → *Fuente: CAA, Cap. [X], Art. [Y]*
+
+FUERA DE DOMINIO: "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área."
+
+RESTRICCIÓN: Solo seguridad alimentaria, BPM y CAA.
 
 CONTEXTO:
 ${contextText}`;
