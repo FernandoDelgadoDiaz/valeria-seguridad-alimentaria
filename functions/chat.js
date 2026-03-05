@@ -95,40 +95,8 @@ export async function handler(event) {
     const topInternos = internos.slice(0, 4);
 
     // Boost: si la query menciona un tema específico, priorizar ese capítulo
-    const TOPIC_CAP = [
-      { words: ['cárneo','carneos','carne','frigorífico','embutido','chacinado','fiambre','salchicha','chorizo','jamón','mortadela'], cap: 'vi' },
-      { words: ['lácteo','lacteos','leche','queso','yogur','manteca','crema','ricota','dulce de leche'], cap: 'viii' },
-      { words: ['rotulado','rotulación','etiqueta','rótulo','envase','packaging','declaración nutricional','tabla nutricional'], cap: 'v' },
-      { words: ['harina','pan','galletita','panificado','cereal','pasta','fideos','arroz','sémola'], cap: 'ix' },
-      { words: ['agua potable','agua mineral','agua de red','potabilización','agua envasada'], cap: 'xii' },
-      { words: ['aditivo','conservante','colorante','antioxidante','estabilizante','emulsionante','edulcorante','espesante','gelificante','benzoato','sorbato','nitrito','nitrato'], cap: 'xviii' },
-      { words: ['vegetal','fruta','hortaliza','legumbre','verdura','tomate','papa','cebolla'], cap: 'xi' },
-      { words: ['aceite','grasa','margarina','manteca vegetal','oliva','girasol','soja'], cap: 'vii' },
-      { words: ['azúcar','miel','dulce','chocolate','cacao','caramelo','mermelada','confitura'], cap: 'x' },
-      { words: ['vino','cerveza','fermentad','alcohólica','sidra','champagne','espumante'], cap: 'xiii' },
-      { words: ['dietético','dietética','bajo en calorías','light','sin azúcar','para diabéticos'], cap: 'xvii' },
-      { words: ['estimulante','café','té','mate','yerba','infusión'], cap: 'xv' },
-      { words: ['correctivo','acidulante','regulador de acidez'], cap: 'xvi' },
-      { words: ['establecimiento','habilitación','planta elaboradora','planta procesadora'], cap: 'ii' },
-    ];
-
-    const qLower = query.toLowerCase();
-    const matchedCap = TOPIC_CAP.find(t => t.words.some(w => qLower.includes(w)));
-
     let topCAA;
-    if (matchedCap) {
-      const capKeywords = { 'vi': 'carneos', 'viii': 'lacteos', 'v': 'rotulacion',
-        'ix': 'harinas', 'xii': 'aguas', 'xviii': 'aditivos', 'xi': 'vegetales',
-        'vii': 'alimentos_grasos', 'x': 'azucarados', 'xiii': 'beb_fermentadas',
-        'xvii': 'dieteticos', 'xv': 'estimulantes', 'xvi': 'correctivos',
-        'ii': 'establec', 'xix': 'aislados_prot', 'xxii': 'miscelaneos' };
-      const keyword = capKeywords[matchedCap.cap];
-      const capChunks = caaChunks.filter(c => keyword && c.source.toLowerCase().includes(keyword));
-      const otherChunks = caaChunks.filter(c => !keyword || !c.source.toLowerCase().includes(keyword));
-      topCAA = [...capChunks.slice(0, 3), ...otherChunks.slice(0, 2)];
-    } else {
-      topCAA = caaChunks.slice(0, 4);
-    }
+    topCAA = caaChunks.slice(0, 5);
 
     // Mapa de capítulos a keywords de archivo
     const CAP_FILE_MAP = {
@@ -329,7 +297,7 @@ IDIOMA: Siempre español rioplatense. "vos", "tenés", "querés", "podés", "nec
 
 FORMATO: Respondé en texto corrido, sin headers ni listas. Si enumerás, usá: "1) ... 2) ... 3) ...". Máximo 4 párrafos cortos. Tono de colega experto.
 
-FUENTES: Info interna: respondé directo sin mencionar fuente. Info del CAA: terminá SIEMPRE con → *Fuente: CAA, Cap. [X], Art. [Y]* usando las citas del CONTEXTO. Si no encontrás el dato: decilo, no inventes.
+FUENTES: Info interna: respondé directo sin mencionar fuente. Info del CAA: si el CONTEXTO tiene encabezados como [CAA — Cap. X, Art. Y], usá ESE dato exacto para citar al final → *Fuente: CAA, Cap. X, Art. Y*. Si el contexto NO tiene encabezado con capítulo y artículo, NO cites — es mejor no citar que inventar.
 
 FUERA DE DOMINIO: "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área. Si tenés dudas sobre inocuidad, normativas del CAA o manipulación de alimentos, ¡con gusto te ayudo!"
 
