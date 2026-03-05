@@ -177,7 +177,28 @@ export async function handler(event) {
     }
     if (contextChunks.length === 0) contextChunks = topCAA;
 
-    const contextText = contextChunks.map(c => c.text).join("\n\n---\n\n");
+    // Construir contexto con metadata de citas
+    const contextText = contextChunks.map(c => {
+      let header = '';
+      if (c.capitulo) {
+        header = `[CAA — Cap. ${c.capitulo}`;
+        if (c.articulos && c.articulos.length > 0) {
+          header += `, Art. ${c.articulos.join(', ')}`;
+        }
+        header += ']\n';
+      }
+      return header + c.text;
+    }).join("\n\n---\n\n");
+
+    // Citas disponibles para que el modelo las use
+    const citasDisponibles = contextChunks
+      .filter(c => c.capitulo)
+      .map(c => {
+        if (c.articulos && c.articulos.length > 0) {
+          return `CAA, Cap. ${c.capitulo}, Art. ${c.articulos[0]}`;
+        }
+        return `CAA, Cap. ${c.capitulo}`;
+      });
 
     // ── Test interactivo en curso ──
     if (mode === "ensena" && incomingTestState) {
@@ -273,11 +294,13 @@ IDIOMA: Siempre español rioplatense. "vos", "tenés", "querés", "podés", "nec
 
 FORMATO: Respondé en texto corrido, sin headers ni listas. Si enumerás, usá: "1) ... 2) ... 3) ...". Máximo 4 párrafos cortos. Tono de colega experto.
 
-FUENTES: Info interna: respondé directo sin mencionar fuente. Info del CAA: terminá con → *Fuente: CAA, Cap. [X], Art. [Y]*. Si no encontrás el dato: decilo, no inventes. Podés ofrecer: "¿Querés que busque también en el CAA?"
+FUENTES: Info interna: respondé directo sin mencionar fuente. Info del CAA: terminá SIEMPRE con → *Fuente: CAA, Cap. [X], Art. [Y]* usando las citas del CONTEXTO. Si no encontrás el dato: decilo, no inventes.
 
 FUERA DE DOMINIO: "Soy INOCUO, especializado en seguridad alimentaria y BPM. Esta consulta está fuera de mi área. Si tenés dudas sobre inocuidad, normativas del CAA o manipulación de alimentos, ¡con gusto te ayudo!"
 
 SEGUIMIENTO: Leé el historial. No repitas lo ya dicho.
+
+CITAS DISPONIBLES: ${citasDisponibles.length > 0 ? citasDisponibles.join(' | ') : 'ninguna detectada'}
 
 CONTEXTO:
 ${contextText}`;
