@@ -19,6 +19,54 @@ const openai = new OpenAI({
 });
 
 /**
+ * Extrae metadata de artículos y capítulo de un fragmento de texto
+ */
+function extractMetadata(text, filename) {
+  // Detectar capítulo desde el nombre del archivo
+  const CAP_MAP = {
+    'capitulo_i': 'I', 'capitulo_1': 'I', 'disp_grales': 'I',
+    'capitulo_ii': 'II', 'establec': 'II',
+    'capitulo_iii': 'III', 'prod_alimenticios': 'III',
+    'capitulo_iv': 'IV', 'envases': 'IV',
+    'capitulo_v': 'V', 'rotulacion': 'V',
+    'capitulo_vi': 'VI', 'carneos': 'VI',
+    'capitulo_vii': 'VII', 'alimentos_grasos': 'VII', 'caa_cap_alimentos': 'VII',
+    'capitulo_viii': 'VIII', 'lacteos': 'VIII',
+    'capitulo_ix': 'IX', 'harinas': 'IX',
+    'capitulo_x': 'X', 'azucarados': 'X',
+    'capitulo_xi': 'XI', 'vegetales': 'XI',
+    'capitulo_xii': 'XII', 'aguas': 'XII',
+    'capitulo_xiii': 'XIII', 'beb_fermentadas': 'XIII',
+    'capitulo_xiv': 'XIV',
+    'capitulo_xv': 'XV', 'estimulantes': 'XV',
+    'capitulo_xvi': 'XVI', 'correctivos': 'XVI',
+    'capitulo_xvii': 'XVII', 'dieteticos': 'XVII',
+    'capitulo_xviii': 'XVIII', 'aditivos': 'XVIII',
+    'capitulo_xix': 'XIX', 'aislados_prot': 'XIX',
+    'capitulo_xx': 'XX', 'metodologia': 'XX',
+    'capitulo_xxi': 'XXI', 'procedimientos': 'XXI',
+    'capitulo_xxii': 'XXII', 'miscelaneos': 'XXII',
+  };
+
+  const fn = filename.toLowerCase();
+  let capitulo = null;
+  for (const [key, val] of Object.entries(CAP_MAP)) {
+    if (fn.includes(key)) { capitulo = val; break; }
+  }
+
+  // Detectar artículos mencionados en el texto
+  const artRegex = /art[ií]culo[s]?\s*(?:n[°º]?\s*)?(\d+)/gi;
+  const articulos = [];
+  let match;
+  while ((match = artRegex.exec(text)) !== null) {
+    const num = parseInt(match[1]);
+    if (!articulos.includes(num)) articulos.push(num);
+  }
+
+  return { capitulo, articulos };
+}
+
+/**
  * Limpia y anonimiza el texto eliminando referencias corporativas
  */
 function cleanAndAnonymize(text) {
@@ -133,10 +181,13 @@ async function main() {
         });
 
         resp.data.forEach((d, j) => {
+          const meta = extractMetadata(batch[j], file);
           finalData.push({
             source: file,
             text: batch[j],
             embedding: d.embedding,
+            capitulo: meta.capitulo,
+            articulos: meta.articulos,
           });
         });
 
