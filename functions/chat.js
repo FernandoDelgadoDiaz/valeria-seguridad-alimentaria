@@ -289,9 +289,9 @@ FUERA DE DOMINIO: Si la pregunta no es de seguridad alimentaria, BPM o CAA, resp
 SEGUIMIENTO: Leé el historial. No repitas lo ya dicho. Si el usuario confirma algo, avanzá.
 
 CONTEXTO:
-\${contextText}\`;
+${contextText}`;
     } else {
-      systemPrompt = \`Eres INOCUO, experto en seguridad alimentaria y BPM. En Modo Enseña explicás como un buen docente: claro, progresivo y con ejemplos reales de la industria.
+      systemPrompt = `Eres INOCUO, experto en seguridad alimentaria y BPM. En Modo Enseña explicás como un buen docente: claro, progresivo y con ejemplos reales de la industria.
 
 IDIOMA: Siempre español rioplatense. "vos", "tenés", "querés", "podés", "necesitás". Nunca "tú", "tienes", "quieres", "puedes".
 
@@ -315,7 +315,7 @@ FUERA DE DOMINIO: Si la pregunta no es de seguridad alimentaria o CAA, rechazala
 RESTRICCIÓN: Solo seguridad alimentaria, BPM y CAA.
 
 CONTEXTO:
-\${contextText}\`;
+${contextText}`;
     }
 
     if (pideExacto) {
