@@ -145,14 +145,14 @@ export async function handler(event) {
         exactMatches = CACHE_DATA.chunks.filter(c => {
           if (!isFromCap(c.source)) return false;
           const t = c.text || '';
-          const hasArt = artNum ? new RegExp('art[ií]culo\\s*' + artNum + '\\b', 'i').test(t) : true;
+          const hasArt = artNum ? (['artículo ' + artNum, 'articulo ' + artNum, 'Art. ' + artNum, 'Artículo ' + artNum, 'ARTÍCULO ' + artNum].some(p => t.includes(p))) : true;
           return hasArt;
         });
         if (exactMatches.length === 0 && artNum) {
           exactMatches = CACHE_DATA.chunks.filter(c => {
             const s = c.source.toLowerCase();
             const isCAA = s.includes("capitulo") || s.includes("caa") || s.includes("anmat");
-            return isCAA && new RegExp('art[ií]culo\\s*' + artNum + '\\b', 'i').test(c.text || '');
+            return isCAA && ['artículo ' + artNum, 'articulo ' + artNum, 'Art. ' + artNum, 'Artículo ' + artNum, 'ARTÍCULO ' + artNum].some(p => (c.text || '').includes(p));
           });
         }
       }
