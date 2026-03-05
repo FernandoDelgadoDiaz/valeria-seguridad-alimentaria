@@ -93,7 +93,36 @@ export async function handler(event) {
     );
 
     const topInternos = internos.slice(0, 4);
-    const topCAA = caaChunks.slice(0, 4);
+
+    // Boost: si la query menciona un tema específico, priorizar ese capítulo
+    const TOPIC_CAP = [
+      { words: ['cárneo','carneos','carne','frigorífico','embutido','chacinado'], cap: 'vi' },
+      { words: ['lácteo','lacteos','leche','queso','yogur','manteca'], cap: 'viii' },
+      { words: ['rotulado','rotulación','etiqueta','envase','rótulo'], cap: 'v' },
+      { words: ['harina','pan','galletita','panificado','cereal'], cap: 'ix' },
+      { words: ['agua','mineral','bebida sin alcohol'], cap: 'xii' },
+      { words: ['aditivo','conservante','colorante','antioxidante'], cap: 'xviii' },
+      { words: ['vegetal','fruta','hortaliza','legumbre'], cap: 'xi' },
+      { words: ['graso','aceite','manteca','margarina'], cap: 'vii' },
+      { words: ['azúcar','miel','dulce','chocolate','cacao'], cap: 'x' },
+      { words: ['vino','cerveza','fermentad','alcohólica'], cap: 'xiii' },
+    ];
+
+    const qLower = query.toLowerCase();
+    const matchedCap = TOPIC_CAP.find(t => t.words.some(w => qLower.includes(w)));
+
+    let topCAA;
+    if (matchedCap) {
+      const capKeywords = { 'vi': 'carneos', 'viii': 'lacteos', 'v': 'rotulacion',
+        'ix': 'harinas', 'xii': 'aguas', 'xviii': 'aditivos', 'xi': 'vegetales',
+        'vii': 'alimentos_grasos', 'x': 'azucarados', 'xiii': 'beb_fermentadas' };
+      const keyword = capKeywords[matchedCap.cap];
+      const capChunks = caaChunks.filter(c => keyword && c.source.toLowerCase().includes(keyword));
+      const otherChunks = caaChunks.filter(c => !keyword || !c.source.toLowerCase().includes(keyword));
+      topCAA = [...capChunks.slice(0, 3), ...otherChunks.slice(0, 2)];
+    } else {
+      topCAA = caaChunks.slice(0, 4);
+    }
 
     // Mapa de capítulos a keywords de archivo
     const CAP_FILE_MAP = {
