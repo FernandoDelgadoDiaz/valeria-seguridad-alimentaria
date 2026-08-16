@@ -1,29 +1,13 @@
 import fs from 'node:fs';
-import path from 'node:path';
 
 const file = 'index.html';
 let html = fs.readFileSync(file, 'utf8');
 
-// Generate 30 same-origin SVG crops from the 6x5 sprite.
-// Each SVG is a normal site asset, avoiding Safari blocking data: SVGs
-// that reference another remote image.
-const outDir = 'assets/desafio5s/crops';
-fs.mkdirSync(outDir, { recursive: true });
-for (let i = 0; i < 30; i++) {
-  const col = i % 6;
-  const row = Math.floor(i / 6);
-  const x = -(col * 300);
-  const y = -(row * 400);
-  const n = String(i + 1).padStart(2, '0');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400"><image href="../fotos-30.jpg" x="${x}" y="${y}" width="1800" height="2000" preserveAspectRatio="none"/></svg>`;
-  fs.writeFileSync(path.join(outDir, `v${n}.svg`), svg);
-}
-
 const css = `
 <style id="mobile-hotfix-5s">
-/* Institutional header: no invented symbol. */
 .mark{display:none!important}
 .wordmark{gap:0!important}
+.sprite-photo{width:100%;aspect-ratio:3/4;background-image:url('/assets/desafio5s/fotos-30.jpg?v=5');background-repeat:no-repeat;background-size:600% 500%;border-radius:16px;box-shadow:0 12px 32px rgba(14,52,89,.14);background-color:#fff}
 
 @media (max-width:800px){
   .top{height:64px;padding:0 14px}
@@ -52,9 +36,9 @@ const css = `
   .field input,.field select{padding:13px 12px!important}
   .btn{padding:14px!important}
 
-  /* Let the photo define its own height; never reserve a blank giant box. */
   .visual-photo{min-height:0!important;padding:12px!important;align-items:flex-start!important}
-  .visual-photo img{display:block!important;width:100%!important;height:auto!important;aspect-ratio:3/4!important;object-fit:contain!important;background:#fff!important;border-radius:16px!important}
+  .visual-photo img{display:block!important;width:100%!important;height:auto!important;object-fit:contain!important;background:#fff!important;border-radius:16px!important}
+  .sprite-photo{width:100%!important;aspect-ratio:3/4!important}
 }
 @media (max-width:390px){
   .hero{padding:24px 18px 68px!important}
@@ -71,5 +55,16 @@ if (!html.includes('id="mobile-hotfix-5s"')) {
   html = html.replace(/<style id="mobile-hotfix-5s">[\s\S]*?<\/style>/, css.trim());
 }
 
+// Safari-safe rendering: visual questions from V01..V30 are cropped directly
+// from the JPG sprite, with no SVG/data-image indirection.
+html = html.replace(
+  'const img=imageMap[current.imagen_url]||current.imagen_url;app.innerHTML=',
+  'const img=imageMap[current.imagen_url]||current.imagen_url;const vm=String(current.imagen_url||"").match(/v(\\d{2})\\.svg$/i);let visualMedia;if(vm){const n=Number(vm[1])-1,col=n%6,row=Math.floor(n/6);visualMedia=`<div class="sprite-photo" style="background-position:${col*20}% ${row*25}%"></div>`}else{visualMedia=`<img src="${img}" alt="Situación real de la sucursal" loading="eager">`};app.innerHTML='
+);
+html = html.replace(
+  '<div class="visual-photo"><img src="${img}" alt="Situación real de la sucursal" loading="eager"></div>',
+  '<div class="visual-photo">${visualMedia}</div>'
+);
+
 fs.writeFileSync(file, html);
-console.log('Mobile 5S hotfix and 30 visual crops generated.');
+console.log('5S mobile hotfix applied: direct JPG sprite rendering enabled.');
