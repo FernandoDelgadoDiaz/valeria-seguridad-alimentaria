@@ -1,15 +1,34 @@
 import fs from 'node:fs';
+import path from 'node:path';
 
 const file = 'index.html';
 let html = fs.readFileSync(file, 'utf8');
 
+// Generate 30 same-origin SVG crops from the 6x5 sprite.
+// Each SVG is a normal site asset, avoiding Safari blocking data: SVGs
+// that reference another remote image.
+const outDir = 'assets/desafio5s/crops';
+fs.mkdirSync(outDir, { recursive: true });
+for (let i = 0; i < 30; i++) {
+  const col = i % 6;
+  const row = Math.floor(i / 6);
+  const x = -(col * 300);
+  const y = -(row * 400);
+  const n = String(i + 1).padStart(2, '0');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400"><image href="../fotos-30.jpg" x="${x}" y="${y}" width="1800" height="2000" preserveAspectRatio="none"/></svg>`;
+  fs.writeFileSync(path.join(outDir, `v${n}.svg`), svg);
+}
+
 const css = `
 <style id="mobile-hotfix-5s">
+/* Institutional header: no invented symbol. */
+.mark{display:none!important}
+.wordmark{gap:0!important}
+
 @media (max-width:800px){
   .top{height:64px;padding:0 14px}
-  .mark{width:30px;height:30px}
-  .wordmark{gap:9px}
-  .wordmark b{font-size:12px;letter-spacing:.07em}
+  .wordmark{gap:0!important}
+  .wordmark b{font-size:13px;letter-spacing:.08em}
   .top-title{font-size:12px;letter-spacing:.05em}
 
   .home{display:block;background:#eef4fa}
@@ -32,6 +51,10 @@ const css = `
   .field{margin:11px 0!important}
   .field input,.field select{padding:13px 12px!important}
   .btn{padding:14px!important}
+
+  /* Let the photo define its own height; never reserve a blank giant box. */
+  .visual-photo{min-height:0!important;padding:12px!important;align-items:flex-start!important}
+  .visual-photo img{display:block!important;width:100%!important;height:auto!important;aspect-ratio:3/4!important;object-fit:contain!important;background:#fff!important;border-radius:16px!important}
 }
 @media (max-width:390px){
   .hero{padding:24px 18px 68px!important}
@@ -49,4 +72,4 @@ if (!html.includes('id="mobile-hotfix-5s"')) {
 }
 
 fs.writeFileSync(file, html);
-console.log('Mobile 5S hotfix injected.');
+console.log('Mobile 5S hotfix and 30 visual crops generated.');
