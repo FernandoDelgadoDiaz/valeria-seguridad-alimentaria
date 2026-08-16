@@ -6,30 +6,59 @@ const file = 'index.html';
 const sprite = 'assets/desafio5s/fotos-30.jpg';
 const photosDir = 'assets/desafio5s/photos';
 
-// Definitive visual-bank build: turn the 6x5 master sheet into 30 real JPG files.
-// The browser receives an ordinary <img> URL; no SVG, data URI or CSS crop is used.
+// Build the 30 standalone visual files from the 6x5 master sheet.
+// The source JPEG was produced during the migration and may contain JPEG
+// warnings. failOn:'none' tells libvips to decode all recoverable pixels
+// instead of failing the entire Netlify deploy on a warning.
 if (!fs.existsSync(sprite)) {
   throw new Error(`Missing visual master: ${sprite}`);
 }
 
 fs.mkdirSync(photosDir, { recursive: true });
-const meta = await sharp(sprite).metadata();
+const source = () => sharp(sprite, { failOn: 'none', unlimited: true });
+const meta = await source().metadata();
 if (!meta.width || !meta.height) throw new Error('Invalid visual master dimensions');
 
 const cols = 6;
 const rows = 5;
 const cellW = Math.floor(meta.width / cols);
 const cellH = Math.floor(meta.height / rows);
-if (cellW < 100 || cellH < 100) throw new Error(`Unexpected visual master size: ${meta.width}x${meta.height}`);
+if (cellW < 100 || cellH < 100) {
+  throw new Error(`Unexpected visual master size: ${meta.width}x${meta.height}`);
+}
+
+// Remove leftovers so a successful build guarantees all 30 files were
+// generated in this deploy, not inherited from a previous one.
+for (let i = 1; i <= 30; i++) {
+  const n = String(i).padStart(2, '0');
+  const target = path.join(photosDir, `v${n}.jpg`);
+  if (fs.existsSync(target)) fs.unlinkSync(target);
+}
 
 for (let i = 0; i < 30; i++) {
   const col = i % cols;
   const row = Math.floor(i / cols);
   const n = String(i + 1).padStart(2, '0');
-  await sharp(sprite)
-    .extract({ left: col * cellW, top: row * cellH, width: cellW, height: cellH })
-    .jpeg({ quality: 88, mozjpeg: true })
-    .toFile(path.join(photosDir, `v${n}.jpg`));
+  const target = path.join(photosDir, `v${n}.jpg`);
+
+  try {
+    await source()
+      .extract({ left: col * cellW, top: row * cellH, width: cellW, height: cellH })
+      .jpeg({ quality: 88 })
+      .toFile(target);
+  } catch (err) {
+    throw new Error(`Could not generate visual v${n}.jpg: ${err?.message || err}`);
+  }
+
+  const stat = fs.statSync(target);
+  if (stat.size < 1000) {
+    throw new Error(`Generated visual v${n}.jpg is invalid (${stat.size} bytes)`);
+  }
+}
+
+const generated = fs.readdirSync(photosDir).filter(n => /^v\d{2}\.jpg$/.test(n));
+if (generated.length !== 30) {
+  throw new Error(`Visual bank incomplete: generated ${generated.length}/30 JPG files`);
 }
 
 let html = fs.readFileSync(file, 'utf8');
