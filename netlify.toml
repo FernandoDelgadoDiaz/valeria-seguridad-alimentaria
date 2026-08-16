@@ -1,4 +1,5 @@
 [build]
+  command = "node scripts/patch-mobile-5s.mjs"
   publish = "."
 
 [[headers]]
