@@ -3,10 +3,12 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const file = 'index.html';
-const sprite = 'assets/desafio5s/fotos-30.jpg';
+const spriteHQ = 'assets/desafio5s/fotos-30-hq.jpg';
+const spriteLegacy = 'assets/desafio5s/fotos-30.jpg';
+const sprite = fs.existsSync(spriteHQ) ? spriteHQ : spriteLegacy;
 const photosDir = 'assets/desafio5s/photos';
 
-// Fallback visual bank. Data-URI originals stored in Supabase take precedence.
+// Un único master fotográfico genera V01..V30. El master HQ tiene prioridad absoluta.
 if (fs.existsSync(sprite)) {
   fs.mkdirSync(photosDir, { recursive: true });
   const source = () => sharp(sprite, { failOn: 'none', unlimited: true });
@@ -21,9 +23,11 @@ if (fs.existsSync(sprite)) {
         const target = path.join(photosDir, `v${n}.jpg`);
         try {
           await source().extract({ left: col * cellW, top: row * cellH, width: cellW, height: cellH })
-            .jpeg({ quality: 90, chromaSubsampling: '4:4:4' }).toFile(target);
+            .jpeg({ quality: 91, chromaSubsampling: '4:4:4', mozjpeg: true }).toFile(target);
+          const check = await sharp(target, { failOn: 'error' }).metadata();
+          if (!check.width || !check.height) throw new Error('invalid generated image');
         } catch (e) {
-          console.warn(`Fallback visual v${n} skipped: ${e.message}`);
+          console.warn(`Visual v${n} skipped: ${e.message}`);
         }
       }
     }
@@ -77,4 +81,4 @@ if (!html.includes('id="mobile-hotfix-5s"')) html = html.replace('</head>', `${c
 else html = html.replace(/<style id="mobile-hotfix-5s">[\s\S]*?<\/style>/, css.trim());
 
 fs.writeFileSync(file, html);
-console.log('5S build OK: clearer visual instructions and dynamic 5S breakdown applied.');
+console.log(`5S build OK using ${sprite}; visual instructions and dynamic 5S breakdown applied.`);
