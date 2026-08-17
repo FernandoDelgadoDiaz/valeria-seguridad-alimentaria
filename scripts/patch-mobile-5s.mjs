@@ -1,85 +1,30 @@
 import fs from 'node:fs';
-import path from 'node:path';
-import sharp from 'sharp';
 
-const file = 'index.html';
-const spriteRoot = 'fotos-30-hq.jpg';
-const spriteHQ = 'assets/desafio5s/fotos-30-hq.jpg';
-const spriteLegacy = 'assets/desafio5s/fotos-30.jpg';
-const sprite = fs.existsSync(spriteRoot) ? spriteRoot : (fs.existsSync(spriteHQ) ? spriteHQ : spriteLegacy);
-const photosDir = 'assets/desafio5s/photos';
+const file='index.html';
+let html=fs.readFileSync(file,'utf8');
 
-// Un único master fotográfico genera V01..V30. El master HQ tiene prioridad absoluta.
-if (fs.existsSync(sprite)) {
-  fs.mkdirSync(photosDir, { recursive: true });
-  const source = () => sharp(sprite, { failOn: 'none', unlimited: true });
-  const meta = await source().metadata();
-  if (meta.width && meta.height) {
-    const cols = 6, rows = 5;
-    const cellW = Math.floor(meta.width / cols), cellH = Math.floor(meta.height / rows);
-    if (cellW >= 100 && cellH >= 100) {
-      for (let i = 0; i < 30; i++) {
-        const col = i % cols, row = Math.floor(i / cols);
-        const n = String(i + 1).padStart(2, '0');
-        const target = path.join(photosDir, `v${n}.jpg`);
-        try {
-          await source().extract({ left: col * cellW, top: row * cellH, width: cellW, height: cellH })
-            .jpeg({ quality: 91, chromaSubsampling: '4:4:4', mozjpeg: true }).toFile(target);
-          const check = await sharp(target, { failOn: 'error' }).metadata();
-          if (!check.width || !check.height) throw new Error('invalid generated image');
-        } catch (e) {
-          console.warn(`Visual v${n} skipped: ${e.message}`);
-        }
-      }
-    }
-  }
-}
+html=html.replace('Marcá todas las oportunidades de mejora que veas.','¿Qué afirmaciones son correctas sobre esta situación?');
+html=html.replace('Puede haber más de una correcta. Mirá la escena completa antes de seguir.','Marcá todas las afirmaciones correctas. Puede haber una o varias.');
+html=html.replace('<span>QUÉ DETECTÁS</span>','<span>OBSERVÁ</span>');
+html=html.replace('<span>QUÉ HARÍAS</span>','<span>DECIDÍ</span>');
 
-let html = fs.readFileSync(file, 'utf8');
+const oldBreakdown="${Object.entries(r.por_s||{}).map(([s,v])=>`<div><span>${s}</span><b>${v}/3</b></div>`).join('')}";
+const newBreakdown="${Object.entries(r.por_s||{}).map(([s,v])=>{const names={S1:'Clasificar',S2:'Ordenar',S3:'Limpiar',S4:'Estandarizar',S5:'Sostener'};const item=(v&&typeof v==='object')?v:{correctas:Number(v||0),total:0,porcentaje:0};const correctas=Number(item.correctas||0),total=Number(item.total||0),pct=Number(item.porcentaje||0);return `<div class=\"principle\"><div><span>${s} · ${names[s]||''}</span><small>${correctas} de ${total} correctas</small></div><b>${pct.toFixed(0)}%</b></div>`}).join('')}";
+html=html.replace(oldBreakdown,newBreakdown);
 
-html = html.replace(
-  'Marcá todas las oportunidades de mejora que veas.',
-  '¿Qué afirmaciones son correctas sobre esta situación?'
-);
-html = html.replace(
-  'Puede haber más de una correcta. Mirá la escena completa antes de seguir.',
-  'Marcá todas las afirmaciones correctas. Puede haber una o varias.'
-);
-html = html.replace('<span>QUÉ DETECTÁS</span>', '<span>OBSERVÁ</span>');
-html = html.replace('<span>QUÉ HARÍAS</span>', '<span>DECIDÍ</span>');
+html=html.replace("<button id=\"dash\" class=\"btn secondary\">VER RESULTADOS</button>","<button id=\"dash\" class=\"btn secondary\">VER RESULTADOS</button><button id=\"photos\" class=\"btn secondary\">📷 GESTIONAR FOTOS</button>");
+html=html.replace("document.querySelector('#dash').onclick=adminDashboard;document.querySelector('#logout')","document.querySelector('#dash').onclick=adminDashboard;document.querySelector('#photos').onclick=adminPhotos;document.querySelector('#logout')");
 
-const oldBreakdown = "${Object.entries(r.por_s||{}).map(([s,v])=>`<div><span>${s}</span><b>${v}/3</b></div>`).join('')}";
-const newBreakdown = "${Object.entries(r.por_s||{}).map(([s,v])=>{const names={S1:'Clasificar',S2:'Ordenar',S3:'Limpiar',S4:'Estandarizar',S5:'Sostener'};const item=(v&&typeof v==='object')?v:{correctas:Number(v||0),total:0,porcentaje:0};const correctas=Number(item.correctas||0);const total=Number(item.total||0);const pct=Number(item.porcentaje||0);return `<div class=\"principle\"><div><span>${s} · ${names[s]||''}</span><small>${correctas} de ${total} correctas</small></div><b>${pct.toFixed(0)}%</b></div>`}).join('')}";
-html = html.replace(oldBreakdown, newBreakdown);
+const adminPhotosCode=`
+async function adminPhotos(){try{const items=await rpc('desafio5s_admin_visuales');app.innerHTML=\`<section class="adminwrap"><div class="admin-title"><div><div class="eyebrow">ADMINISTRADOR · DESAFÍOS VISUALES</div><h1>Fotos del Desafío 5S</h1><p class="small">Tocá cada recuadro para elegir la foto correcta directamente desde la galería del celular. La imagen queda guardada de forma persistente y no requiere deploy.</p></div><button id="menu" class="btn secondary inline">MENÚ</button></div><div class="photo-admin-grid">\${(items||[]).map(x=>\`<article class="photo-admin-card"><div class="photo-admin-head"><b>\${esc(x.codigo)}</b><span>\${esc(x.sector_visual||'Sector sin definir')}</span></div><label class="photo-picker" for="photo-\${esc(x.codigo)}">\${x.imagen_url?\`<img src="\${esc(x.imagen_url)}" alt="Foto actual \${esc(x.codigo)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">\`:''}<span class="photo-empty" style="\${x.imagen_url?'display:none':''}"><strong>+ SUBIR FOTO</strong><small>Galería del celular</small></span></label><input class="photo-input" id="photo-\${esc(x.codigo)}" data-code="\${esc(x.codigo)}" type="file" accept="image/*"><p>\${esc(x.pregunta||'')}</p><button class="btn secondary photo-button" data-code="\${esc(x.codigo)}">CAMBIAR IMAGEN</button></article>\`).join('')}</div></section>\`;document.querySelector('#menu').onclick=adminMenu;document.querySelectorAll('.photo-button').forEach(b=>b.onclick=()=>document.querySelector('#photo-'+b.dataset.code).click());document.querySelectorAll('.photo-input').forEach(i=>i.onchange=()=>uploadAdminPhoto(i));}catch(e){flash(e.message)}}
+async function uploadAdminPhoto(input){const file=input.files&&input.files[0];if(!file)return;if(!file.type.startsWith('image/'))return flash('Elegí una imagen de la galería');if(file.size>8*1024*1024)return flash('La imagen supera 8 MB');const code=input.dataset.code;const button=document.querySelector('.photo-button[data-code="'+code+'"]');if(button){button.disabled=true;button.textContent='SUBIENDO…'}try{const{data:{user}}=await supabase.auth.getUser();if(!user)throw new Error('Sesión de administrador vencida');const ext=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')||'jpg';const path=user.id+'/'+code.toLowerCase()+'-'+Date.now()+'.'+ext;const{error}=await supabase.storage.from('desafio5s-imagenes').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type});if(error)throw error;const{data:pub}=supabase.storage.from('desafio5s-imagenes').getPublicUrl(path);await rpc('desafio5s_admin_set_imagen',{p_codigo:code,p_imagen_url:pub.publicUrl});flash(code+' · imagen guardada','ok');await adminPhotos()}catch(e){flash(e.message);if(button){button.disabled=false;button.textContent='CAMBIAR IMAGEN'}}}
+`;
+html=html.replace('async function startAdminTest()',adminPhotosCode+'async function startAdminTest()');
 
-const css = `
-<style id="mobile-hotfix-5s">
-.mark{display:none!important}.wordmark{gap:0!important}
-.visual-photo{min-height:0!important;padding:12px!important;display:flex!important;align-items:flex-start!important;justify-content:center!important;background:#eef4fa!important}
-.visual-photo img{display:block!important;width:100%!important;height:auto!important;max-height:76vh!important;object-fit:contain!important;background:#fff!important;border-radius:16px!important;box-shadow:0 12px 32px rgba(14,52,89,.14)!important}
-.observe-title{font-size:20px!important;line-height:1.28!important;margin-bottom:7px!important}
-.observe-help{font-size:14px!important;line-height:1.45!important;margin-bottom:16px!important}
-.decision h2{font-size:24px!important;line-height:1.28!important;margin:12px 0 18px!important}
-.breakdown{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:10px!important;margin-top:16px!important}
-.breakdown .principle{border:1px solid #d6e2ef;border-radius:14px;padding:14px 12px;background:#fbfdff;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left!important}
-.breakdown .principle span{display:block;font-size:11px;font-weight:900;color:#526a84;line-height:1.25}
-.breakdown .principle small{display:block;font-size:10px;color:#657c95;margin-top:4px}
-.breakdown .principle b{display:block;font-size:23px;color:#0755a5;white-space:nowrap}
-@media (max-width:800px){
-.top{height:64px;padding:0 14px}.wordmark b{font-size:13px}.top-title{font-size:12px}
-.home{display:block;background:#eef4fa}.hero{min-height:0!important;padding:28px 22px 74px!important;justify-content:flex-start!important}
-.hero h1{font-size:54px!important;line-height:.86!important;margin:10px 0 14px!important;max-width:280px}.hero-copy{font-size:15px!important;line-height:1.42!important;margin:0 0 16px!important;max-width:330px}
-.hero-meta{gap:7px!important;display:grid!important;grid-template-columns:1fr 1fr}.hero-chip{padding:7px 9px!important;font-size:10px!important;text-align:center}.hero-chip:last-child{grid-column:1/-1;justify-self:start}
-.home-right{padding:0 12px 26px!important}.card{margin-top:-42px!important;padding:22px 20px!important;border-radius:20px!important}
-.visual-photo{padding:10px!important}.visual-photo img{width:100%!important;max-height:none!important}.visual-content{padding:24px 20px 28px!important}
-.step{margin-bottom:10px!important}.step span{letter-spacing:.06em!important}.observe-title{font-size:20px!important}.observe-help{font-size:14px!important}.check{padding:14px 13px!important}.check span{font-size:15px!important;line-height:1.4!important}
-.decision{margin-top:6px!important;padding-top:24px!important}.decision h2{font-size:22px!important}
-.breakdown{grid-template-columns:1fr!important;gap:8px!important}.breakdown .principle{padding:13px 14px!important}.breakdown .principle span{font-size:12px!important}.breakdown .principle small{font-size:11px!important}.breakdown .principle b{font-size:22px!important}
-}
+const css=`<style id="mobile-hotfix-5s">
+.mark{display:none!important}.wordmark{gap:0!important}.visual-photo{min-height:0!important;padding:12px!important;display:flex!important;align-items:flex-start!important;justify-content:center!important;background:#eef4fa!important}.visual-photo img{display:block!important;width:100%!important;height:auto!important;max-height:76vh!important;object-fit:contain!important;background:#fff!important;border-radius:16px!important;box-shadow:0 12px 32px rgba(14,52,89,.14)!important}.observe-title{font-size:20px!important;line-height:1.28!important;margin-bottom:7px!important}.observe-help{font-size:14px!important;line-height:1.45!important;margin-bottom:16px!important}.decision h2{font-size:24px!important;line-height:1.28!important;margin:12px 0 18px!important}.breakdown{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:10px!important;margin-top:16px!important}.breakdown .principle{border:1px solid #d6e2ef;border-radius:14px;padding:14px 12px;background:#fbfdff;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left!important}.breakdown .principle span{display:block;font-size:11px;font-weight:900;color:#526a84}.breakdown .principle small{display:block;font-size:10px;color:#657c95;margin-top:4px}.breakdown .principle b{font-size:23px;color:#0755a5}.photo-admin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px}.photo-admin-card{background:#fff;border:1px solid #d6e2ef;border-radius:18px;padding:14px;box-shadow:0 10px 30px rgba(20,54,91,.08)}.photo-admin-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}.photo-admin-head b{color:#0755a5;font-size:18px}.photo-admin-head span{font-size:11px;color:#657c95;text-align:right}.photo-picker{display:block;width:100%;aspect-ratio:4/3;background:#eef4fa;border:2px dashed #b9cde0;border-radius:14px;overflow:hidden;cursor:pointer}.photo-picker img{width:100%;height:100%;object-fit:contain;background:#fff}.photo-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#0755a5;gap:5px}.photo-empty small{color:#657c95}.photo-input{display:none}.photo-admin-card p{font-size:12px;line-height:1.35;color:#526a84;min-height:34px}.photo-button{margin-top:6px!important}
+@media(max-width:800px){.top{height:64px;padding:0 14px}.wordmark b{font-size:13px}.top-title{font-size:12px}.home{display:block;background:#eef4fa}.hero{min-height:0!important;padding:28px 22px 74px!important}.hero h1{font-size:54px!important;margin:10px 0 14px!important}.hero-copy{font-size:15px!important}.home-right{padding:0 12px 26px!important}.card{margin-top:-42px!important;padding:22px 20px!important}.visual-photo{padding:10px!important}.visual-photo img{max-height:none!important}.visual-content{padding:24px 20px 28px!important}.observe-title{font-size:20px!important}.check span{font-size:15px!important}.decision h2{font-size:22px!important}.breakdown{grid-template-columns:1fr!important;gap:8px!important}.photo-admin-grid{grid-template-columns:1fr!important;gap:12px!important}.photo-admin-card p{min-height:0}.admin-title{display:block!important}.admin-title .btn{margin-top:12px!important}}
 </style>`;
-
-if (!html.includes('id="mobile-hotfix-5s"')) html = html.replace('</head>', `${css}\n</head>`);
-else html = html.replace(/<style id="mobile-hotfix-5s">[\s\S]*?<\/style>/, css.trim());
-
-fs.writeFileSync(file, html);
-console.log(`5S build OK using ${sprite}; visual instructions and dynamic 5S breakdown applied.`);
+if(!html.includes('id="mobile-hotfix-5s"'))html=html.replace('</head>',css+'\n</head>');else html=html.replace(/<style id="mobile-hotfix-5s">[\s\S]*?<\/style>/,css);
+fs.writeFileSync(file,html);
+console.log('5S build OK: persistent admin photo manager + mobile fixes applied.');
