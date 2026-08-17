@@ -1,5 +1,5 @@
 [build]
-  command = "node scripts/patch-mobile-5s.mjs && node scripts/patch-clarity-5s.mjs && node scripts/patch-reference-ui.mjs && node scripts/patch-hangman-v2.mjs && node scripts/patch-v3-ux.mjs"
+  command = "node scripts/patch-mobile-5s.mjs && node scripts/patch-clarity-5s.mjs && node scripts/patch-reference-ui.mjs && node scripts/patch-hangman-v2.mjs && node scripts/patch-v3-ux.mjs && node scripts/patch-hangman-bank.mjs && node scripts/patch-wheel-v2.mjs"
   publish = "."
 
 [[headers]]
@@ -14,4 +14,4 @@
   to = "/index.html"
   status = 200
 
-# deploy-trigger: 2026-08-17-v3-ux
+# deploy-trigger: 2026-08-17-hangman-bank-wheel-v2
