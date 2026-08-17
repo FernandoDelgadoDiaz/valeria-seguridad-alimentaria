@@ -1,5 +1,5 @@
 [build]
-  command = "node scripts/patch-mobile-5s.mjs && node scripts/patch-reference-ui.mjs"
+  command = "node scripts/patch-mobile-5s.mjs && node scripts/patch-clarity-5s.mjs && node scripts/patch-reference-ui.mjs"
   publish = "."
 
 [[headers]]
@@ -14,4 +14,4 @@
   to = "/index.html"
   status = 200
 
-# deploy-trigger: 2026-08-17-reference-ui
+# deploy-trigger: 2026-08-17-restore-full-features
