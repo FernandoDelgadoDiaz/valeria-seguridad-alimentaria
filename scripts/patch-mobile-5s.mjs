@@ -3,9 +3,10 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const file = 'index.html';
+const spriteRoot = 'fotos-30-hq.jpg';
 const spriteHQ = 'assets/desafio5s/fotos-30-hq.jpg';
 const spriteLegacy = 'assets/desafio5s/fotos-30.jpg';
-const sprite = fs.existsSync(spriteHQ) ? spriteHQ : spriteLegacy;
+const sprite = fs.existsSync(spriteRoot) ? spriteRoot : (fs.existsSync(spriteHQ) ? spriteHQ : spriteLegacy);
 const photosDir = 'assets/desafio5s/photos';
 
 // Un único master fotográfico genera V01..V30. El master HQ tiene prioridad absoluta.
