@@ -10,12 +10,16 @@ const css=`<style id="institutional-mobile-v31-5s">
 @media(max-width:800px){
   /* Home: preserve the approved composition, keep the wheel readable and collision-free. */
   .hero{min-height:232px!important;padding:19px 20px 58px!important}
-  .institutional-wheel{right:14px!important;top:27px!important;width:122px!important;gap:5px!important}
+  .institutional-wheel{right:14px!important;top:27px!important;width:128px!important;gap:5px!important}
   .wheel-disc{width:70px!important;height:70px!important}
   .wheel-disc:after{inset:20px!important}
-  .wheel-legend{width:122px!important;padding:5px 6px!important;gap:3px 5px!important}
-  .wheel-legend b{font-size:7.2px!important;line-height:1.12!important;padding-left:8px!important}
+  .wheel-legend{width:128px!important;padding:5px 6px!important;gap:3px 5px!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;overflow:hidden!important}
+  .wheel-legend b{font-size:7.2px!important;line-height:1.12!important;padding-left:8px!important;min-width:0!important;white-space:normal!important;overflow-wrap:break-word!important}
   .wheel-legend b:before{width:4px!important;height:4px!important}
+  .wheel-legend b:nth-child(4){grid-column:1/-1!important;grid-row:3!important;text-align:center!important;padding-left:0!important}
+  .wheel-legend b:nth-child(4):before{position:static!important;display:inline-block!important;margin-right:4px!important;vertical-align:middle!important}
+  .wheel-legend b:nth-child(5){grid-column:2!important;grid-row:2!important;text-align:left!important;padding-left:8px!important}
+  .wheel-legend b:nth-child(5):before{position:absolute!important;display:block!important;left:0!important;top:.34em!important;margin-right:0!important;vertical-align:initial!important;width:4px!important;height:4px!important}
   .hero-meta{bottom:12px!important;gap:6px!important}
   .hero-chip{font-size:9.5px!important;padding:6px 7px!important;line-height:1.1!important}
 
@@ -55,4 +59,4 @@ const runtime=`<script id="institutional-mobile-v31-runtime-5s">
 
 html=html.replace('</head>',css+'</head>').replace('</body>',runtime+'</body>');
 fs.writeFileSync(file,html);
-console.log('Institutional mobile v3.2 applied; institutional wheel legend restored; presentation-only tuning.');
+console.log('Institutional mobile v3.2 applied; wheel legend contained; presentation-only tuning.');
