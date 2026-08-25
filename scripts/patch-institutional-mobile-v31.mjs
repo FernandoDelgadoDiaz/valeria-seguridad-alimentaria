@@ -22,7 +22,7 @@ const css=`<style id="institutional-mobile-v31-5s">
   /* Test-mode banner must stay fully visible below the sticky corporate header. */
   .testbar.on{position:sticky!important;top:52px!important;z-index:19!important;padding:5px 10px!important;font-size:8.5px!important;line-height:1.15!important}
 
-  /* Visual challenges: complete image, but it must not dominate the mobile viewport. */
+  /* Visual challenges: keep the current image size so operational details remain readable. */
   .question-shell:has(.visual-layout) .visual-photo{max-height:min(34vh,280px)!important}
   .question-shell:has(.visual-layout) .visual-photo img{max-height:min(34vh,280px)!important}
   .question-shell:has(.visual-layout) .visual-content{padding-top:14px!important}
@@ -39,13 +39,13 @@ const css=`<style id="institutional-mobile-v31-5s">
 
 const runtime=`<script id="institutional-mobile-v31-runtime-5s">
 (()=>{
-  const labels=['S1 · Clasificar','S2 · Ordenar','S3 · Limpiar','S4 · Estandarizar','S5 · Sostener'];
+  const labels=['Personas','Consistencia','Adaptabilidad','Análisis de peligros y riesgos','Misión y visión'];
   const fixWheel=()=>{
     const nodes=document.querySelectorAll('.wheel-legend b');
     if(nodes.length!==5)return;
     nodes.forEach((node,i)=>{if(node.textContent!==labels[i])node.textContent=labels[i]});
     const wheel=document.querySelector('.institutional-wheel');
-    if(wheel)wheel.setAttribute('aria-label','Principios de la metodología 5S');
+    if(wheel)wheel.setAttribute('aria-label','Dimensiones institucionales');
   };
   const app=document.querySelector('#app');
   if(app)new MutationObserver(fixWheel).observe(app,{childList:true,subtree:true});
@@ -55,4 +55,4 @@ const runtime=`<script id="institutional-mobile-v31-runtime-5s">
 
 html=html.replace('</head>',css+'</head>').replace('</body>',runtime+'</body>');
 fs.writeFileSync(file,html);
-console.log('Institutional mobile v3.2 applied; 5S labels corrected; presentation-only tuning.');
+console.log('Institutional mobile v3.2 applied; institutional wheel legend restored; presentation-only tuning.');
