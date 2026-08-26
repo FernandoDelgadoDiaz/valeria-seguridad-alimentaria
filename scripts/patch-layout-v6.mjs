@@ -3,75 +3,100 @@ import fs from 'node:fs';
 const file='index.html';
 let html=fs.readFileSync(file,'utf8');
 html=html.replace(/<style id="layout-v6-5s">[\s\S]*?<\/style>/g,'');
+html=html.replace(/<script id="layout-v6-runtime-5s">[\s\S]*?<\/script>/g,'');
 
 const css=`<style id="layout-v6-5s">
-/* V6.1 · Mobile vertical balance. Presentation only. */
-@media(max-width:800px) and (min-height:700px){
-  /* Intro de cada S: use the viewport instead of leaving a large empty area below. */
+/* V6.2 · Mobile vertical balance using explicit screen markers + dynamic viewport. */
+@media(max-width:800px){
+  /* Qué esperamos: compact content, intentionally centered in the usable viewport. */
   .standard-screen{
-    min-height:calc(100svh - 82px)!important;
+    min-height:calc(100dvh - 80px)!important;
     padding-top:14px!important;
-    padding-bottom:18px!important;
+    padding-bottom:max(18px,env(safe-area-inset-bottom))!important;
     display:flex!important;
-    align-items:flex-start!important;
+    align-items:center!important;
+    justify-content:center!important;
   }
   .standard-card{
-    min-height:min(600px,calc(100svh - 116px))!important;
-    display:flex!important;
-    flex-direction:column!important;
+    min-height:0!important;
+    height:auto!important;
+    display:block!important;
   }
   .standard-list{margin-top:4px!important}
-  .standard-note{margin-top:auto!important}
+  .standard-note{margin-top:16px!important}
   .standard-card .btn{margin-top:14px!important}
 
-  /* Preguntas sólo texto: fill the usable viewport, not a fixed-height card. */
-  .screen:has(.question-shell:not(:has(.visual-layout))){
-    min-height:calc(100svh - 82px)!important;
+  /* Preguntas sólo texto: progress + card fill the real mobile viewport. */
+  .text-question-screen{
+    min-height:calc(100dvh - 80px)!important;
+    padding-top:12px!important;
+    padding-bottom:max(16px,env(safe-area-inset-bottom))!important;
+    display:grid!important;
+    grid-template-rows:auto minmax(0,1fr)!important;
+    gap:12px!important;
+  }
+  .text-question-screen>.progress-wrap{
+    margin:0!important;
+    align-self:start!important;
+  }
+  .text-question-screen .question-shell{
+    margin-top:0!important;
+    min-height:0!important;
+    height:100%!important;
     display:flex!important;
     flex-direction:column!important;
-    padding-bottom:18px!important;
   }
-  .screen:has(.question-shell:not(:has(.visual-layout))) .progress-wrap{
+  .text-question-screen .question-head{
     flex:0 0 auto!important;
   }
-  .question-shell:not(:has(.visual-layout)){
+  .text-question-screen .question-body{
     flex:1 1 auto!important;
     min-height:0!important;
-    display:flex!important;
-    flex-direction:column!important;
-  }
-  .question-shell:not(:has(.visual-layout)) .question-head{
-    flex:0 0 auto!important;
-  }
-  .question-shell:not(:has(.visual-layout)) .question-body{
-    flex:1 1 auto!important;
-    display:flex!important;
-    flex-direction:column!important;
+    display:grid!important;
+    grid-template-rows:auto minmax(0,1fr) auto!important;
     padding-bottom:16px!important;
   }
-  .question-shell:not(:has(.visual-layout)) .question-body h2{
-    margin-bottom:10px!important;
+  .text-question-screen .question-body h2{
+    margin:10px 0 12px!important;
   }
-  .question-shell:not(:has(.visual-layout)) .options{
-    flex:1 1 auto!important;
-    display:grid!important;
-    align-content:center!important;
+  .text-question-screen .options{
     width:100%!important;
-    margin:10px 0 14px!important;
+    align-self:center!important;
+    align-content:center!important;
+    display:grid!important;
+    gap:10px!important;
+    margin:12px 0!important;
   }
-  .question-shell:not(:has(.visual-layout)) .nextbar{
-    margin-top:auto!important;
-    flex:0 0 auto!important;
+  .text-question-screen .nextbar{
+    align-self:end!important;
+    margin-top:8px!important;
   }
 }
 
-/* On shorter phones, keep natural content height to avoid forced scrolling. */
 @media(max-width:800px) and (max-height:699px){
-  .standard-card,.question-shell:not(:has(.visual-layout)){min-height:0!important}
-  .question-shell:not(:has(.visual-layout)){flex:none!important}
+  .standard-screen{min-height:0!important;display:block!important}
+  .text-question-screen{min-height:0!important;display:block!important}
+  .text-question-screen .question-shell{height:auto!important}
+  .text-question-screen .question-body{display:block!important}
 }
 </style>`;
 
-html=html.replace('</head>',css+'</head>');
+const runtime=`<script id="layout-v6-runtime-5s">
+(()=>{
+  const app=document.querySelector('#app');
+  if(!app)return;
+  const markScreens=()=>{
+    app.querySelectorAll('.screen').forEach(screen=>{
+      screen.classList.remove('text-question-screen');
+      const shell=screen.querySelector('.question-shell');
+      if(shell && !shell.querySelector('.visual-layout')) screen.classList.add('text-question-screen');
+    });
+  };
+  new MutationObserver(markScreens).observe(app,{childList:true,subtree:true});
+  markScreens();
+})();
+</script>`;
+
+html=html.replace('</head>',css+'</head>').replace('</body>',runtime+'</body>');
 fs.writeFileSync(file,html);
-console.log('Layout v6.1 applied: text-only questions now fill the usable mobile viewport.');
+console.log('Layout v6.2 applied: explicit mobile text-question marker and dynamic viewport balance.');
