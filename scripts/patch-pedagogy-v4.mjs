@@ -9,11 +9,11 @@ const oldLoad="async function loadQuestion(){try{decision=null;current=await rpc
 
 const newLoad=`const standardSeen=new Set();
 const standards5s={
- S1:{name:'CLASIFICAR',lead:'En el puesto queda sólo lo necesario. Lo que no corresponde se retira, segrega o deriva.',items:['Sólo elementos necesarios para la tarea.','Condición y destino claros.','Sin sobrantes ni materiales ajenos.']},
- S2:{name:'ORDENAR',lead:'Cada elemento necesario tiene una ubicación definida y vuelve a ella después de usarlo.',items:['Ubicaciones claras y conocidas.','Circulaciones y superficies liberadas.','Cada cosa vuelve a su lugar.']},
- S3:{name:'LIMPIAR',lead:'La condición se recupera cuando aparece un desvío y también se busca qué lo está generando.',items:['Pisos y superficies en condición.','Acceso libre para limpiar e inspeccionar.','Suciedad y anomalías se corrigen a tiempo.']},
- S4:{name:'ESTANDARIZAR',lead:'La condición correcta debe poder reconocerse sin depender de la memoria de una persona.',items:['Ubicaciones e identificaciones visibles.','Criterios comunes para todos los turnos.','Usos, destinos y separaciones claramente definidos.']},
- S5:{name:'SOSTENER',lead:'El estándar se mantiene todos los días y cada tarea termina devolviendo el puesto a condición.',items:['El estándar se cumple durante toda la jornada.','Los desvíos se corrigen antes de normalizarse.','La disciplina convierte la mejora en hábito.']}
+ S1:{name:'CLASIFICAR',lead:'En el puesto queda sólo lo necesario. Lo que no corresponde se retira, se separa o se lleva al lugar que corresponde.',items:['Sólo queda lo necesario para la tarea.','Se sabe qué es cada cosa y qué destino tiene.','No quedan sobrantes ni elementos ajenos al puesto.']},
+ S2:{name:'ORDENAR',lead:'Cada elemento necesario tiene un lugar definido y vuelve ahí después de usarlo.',items:['Cada cosa tiene un lugar claro.','Pasillos y superficies quedan libres.','Después de usar algo, vuelve a su lugar.']},
+ S3:{name:'LIMPIAR',lead:'Si algo se ensucia o queda fuera de lugar, se corrige y también se busca por qué pasó.',items:['Pisos y superficies limpios y en buen estado.','Se puede acceder para limpiar y revisar.','La suciedad y los problemas se corrigen a tiempo.']},
+ S4:{name:'ESTANDARIZAR',lead:'Cualquiera debe poder ver rápidamente cómo tiene que quedar el puesto, sin depender de la memoria de una persona.',items:['Lugares e identificaciones visibles.','El mismo criterio para todos los turnos.','Queda claro qué va en cada lugar y para qué se usa.']},
+ S5:{name:'SOSTENER',lead:'El estándar se mantiene todos los días y cada tarea termina dejando el puesto como corresponde.',items:['El estándar se mantiene durante toda la jornada.','Los problemas se corrigen antes de que se vuelvan costumbre.','La constancia convierte la mejora en hábito.']}
 };
 function renderStandard(s){const st=standards5s[s];if(!st)return renderQuestion();const n=Number(String(s).replace('S',''))||1;app.innerHTML=\`<section class="screen standard-screen"><article class="standard-card"><div class="standard-top"><span class="eyebrow">ANTES DE RESPONDER</span><span class="standard-count">PRINCIPIO \${n} DE 5</span></div><div class="standard-code">\${s} · \${st.name}</div><h1>Qué esperamos</h1><p class="standard-lead">\${st.lead}</p><div class="standard-list">\${st.items.map(x=>\`<div><i>✓</i><span>\${x}</span></div>\`).join('')}</div><div class="standard-note"><strong>Ahora aplicalo.</strong><span>Vas a resolver 3 situaciones distintas sobre este principio.</span></div><button id="startBlock" class="btn primary">VER 3 SITUACIONES</button></article></section>\`;document.querySelector('#startBlock').onclick=()=>{renderQuestion();window.scrollTo(0,0)}}
 async function loadQuestion(){try{decision=null;current=await rpc('desafio5s_pregunta',{p_evaluacion_id:session.evaluacionId,p_access_token:session.accessToken,p_orden:order});const s=current&&current.s;const key=session.evaluacionId+':'+s;if(s&&standards5s[s]&&!standardSeen.has(key)){standardSeen.add(key);renderStandard(s)}else renderQuestion()}catch(e){flash(e.message)}}`;
@@ -53,4 +53,4 @@ const css=`<style id="pedagogy-v4-5s">
 
 html=html.replace('</head>',css+'</head>');
 fs.writeFileSync(file,html);
-console.log('Pedagogy v4 applied: 5S standard intro before each block; assessment logic remains backend-driven.');
+console.log('Pedagogy v4 applied: Argentine plain-language 5S intro before each block; assessment logic remains backend-driven.');
