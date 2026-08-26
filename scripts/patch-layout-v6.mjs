@@ -5,7 +5,7 @@ let html=fs.readFileSync(file,'utf8');
 html=html.replace(/<style id="layout-v6-5s">[\s\S]*?<\/style>/g,'');
 
 const css=`<style id="layout-v6-5s">
-/* V6 · Mobile vertical balance. Presentation only. */
+/* V6.1 · Mobile vertical balance. Presentation only. */
 @media(max-width:800px) and (min-height:700px){
   /* Intro de cada S: use the viewport instead of leaving a large empty area below. */
   .standard-screen{
@@ -24,17 +24,19 @@ const css=`<style id="layout-v6-5s">
   .standard-note{margin-top:auto!important}
   .standard-card .btn{margin-top:14px!important}
 
-  /* Preguntas sólo texto: balance question, answers and CTA across the usable screen. */
+  /* Preguntas sólo texto: fill the usable viewport, not a fixed-height card. */
   .screen:has(.question-shell:not(:has(.visual-layout))){
     min-height:calc(100svh - 82px)!important;
     display:flex!important;
     flex-direction:column!important;
+    padding-bottom:18px!important;
   }
   .screen:has(.question-shell:not(:has(.visual-layout))) .progress-wrap{
     flex:0 0 auto!important;
   }
   .question-shell:not(:has(.visual-layout)){
-    min-height:min(560px,calc(100svh - 170px))!important;
+    flex:1 1 auto!important;
+    min-height:0!important;
     display:flex!important;
     flex-direction:column!important;
   }
@@ -45,17 +47,20 @@ const css=`<style id="layout-v6-5s">
     flex:1 1 auto!important;
     display:flex!important;
     flex-direction:column!important;
+    padding-bottom:16px!important;
   }
   .question-shell:not(:has(.visual-layout)) .question-body h2{
-    margin-bottom:12px!important;
+    margin-bottom:10px!important;
   }
   .question-shell:not(:has(.visual-layout)) .options{
-    margin-top:auto!important;
-    margin-bottom:auto!important;
+    flex:1 1 auto!important;
+    display:grid!important;
+    align-content:center!important;
     width:100%!important;
+    margin:10px 0 14px!important;
   }
   .question-shell:not(:has(.visual-layout)) .nextbar{
-    margin-top:14px!important;
+    margin-top:auto!important;
     flex:0 0 auto!important;
   }
 }
@@ -63,9 +68,10 @@ const css=`<style id="layout-v6-5s">
 /* On shorter phones, keep natural content height to avoid forced scrolling. */
 @media(max-width:800px) and (max-height:699px){
   .standard-card,.question-shell:not(:has(.visual-layout)){min-height:0!important}
+  .question-shell:not(:has(.visual-layout)){flex:none!important}
 }
 </style>`;
 
 html=html.replace('</head>',css+'</head>');
 fs.writeFileSync(file,html);
-console.log('Layout v6 applied: mobile vertical space balanced for standards and text-only questions.');
+console.log('Layout v6.1 applied: text-only questions now fill the usable mobile viewport.');
